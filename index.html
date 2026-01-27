@@ -8,12 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg-deep: #0a0f1a;
             --bg-card: #141b2d;
@@ -22,10 +17,8 @@
             --text-secondary: #8892a8;
             --accent: #6366f1;
             --accent-glow: rgba(99, 102, 241, 0.3);
-            --success: #22c55e;
             --border: rgba(255, 255, 255, 0.06);
         }
-
         body {
             font-family: 'DM Sans', -apple-system, sans-serif;
             background: var(--bg-deep);
@@ -33,20 +26,16 @@
             min-height: 100vh;
             line-height: 1.6;
         }
-
         .app {
             max-width: 600px;
             margin: 0 auto;
             padding: 0 20px;
             padding-bottom: 100px;
         }
-
-        /* Header */
         .header {
             padding: 40px 0 30px;
             text-align: center;
         }
-
         .header h1 {
             font-family: 'Fraunces', Georgia, serif;
             font-size: 2rem;
@@ -55,20 +44,13 @@
             background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
-
         .header p {
             color: var(--text-secondary);
             font-size: 0.95rem;
             margin-top: 6px;
         }
-
-        /* Continue Playing */
-        .continue-section {
-            margin-bottom: 32px;
-        }
-
+        .library-section { margin-bottom: 32px; }
         .section-label {
             font-size: 0.75rem;
             font-weight: 600;
@@ -77,126 +59,69 @@
             color: var(--text-secondary);
             margin-bottom: 12px;
         }
-
-        .continue-card {
-            background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
-            border-radius: 16px;
-            padding: 20px;
-            display: none;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .continue-card.active {
-            display: block;
-        }
-
-        .continue-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px var(--accent-glow);
-        }
-
-        .continue-card .game-title {
-            font-family: 'Fraunces', serif;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .continue-card .game-progress {
-            font-size: 0.875rem;
-            opacity: 0.9;
-        }
-
-        /* Game Library */
-        .library-section {
-            margin-bottom: 32px;
-        }
-
         .game-grid {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-
         .game-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 16px;
-            padding: 20px;
+            padding: 16px;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
             text-decoration: none;
             color: inherit;
         }
-
         .game-card:hover {
             background: var(--bg-card-hover);
             border-color: rgba(255, 255, 255, 0.1);
             transform: translateY(-1px);
         }
-
         .game-icon {
-            width: 56px;
-            height: 56px;
+            width: 50px;
+            height: 50px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             flex-shrink: 0;
         }
-
-        .game-icon.puzzle { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .game-icon.memory { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); }
-        .game-icon.twenty48 { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
-        .game-icon.lights { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
-        .game-icon.word { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .game-icon.mine { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-
-        .game-info {
-            flex: 1;
-            min-width: 0;
-        }
-
+        .game-info { flex: 1; min-width: 0; }
         .game-info h3 {
             font-family: 'Fraunces', serif;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 600;
             margin-bottom: 2px;
         }
-
         .game-info p {
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
         }
-
         .game-meta {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-top: 6px;
+            gap: 6px;
+            margin-top: 4px;
         }
-
         .tag {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.06);
             color: var(--text-secondary);
         }
-
         .play-btn {
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: var(--accent);
             display: flex;
@@ -205,26 +130,36 @@
             flex-shrink: 0;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-
         .game-card:hover .play-btn {
             transform: scale(1.05);
             box-shadow: 0 4px 20px var(--accent-glow);
         }
-
         .play-btn svg {
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             fill: white;
             margin-left: 2px;
         }
-
-        /* Bottom Nav */
+        .icon-puzzle { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .icon-memory { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .icon-2048 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .icon-lights { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .icon-word { background: linear-gradient(135deg, #10b981, #059669); }
+        .icon-mine { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .icon-snake { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .icon-tetris { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .icon-simon { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .icon-tictac { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .icon-sudoku { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        .icon-breakout { background: linear-gradient(135deg, #a855f7, #9333ea); }
+        .icon-hangman { background: linear-gradient(135deg, #64748b, #475569); }
+        .icon-connect { background: linear-gradient(135deg, #ef4444, #eab308); }
         .bottom-nav {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(10, 15, 26, 0.9);
+            background: rgba(10, 15, 26, 0.95);
             backdrop-filter: blur(20px);
             border-top: 1px solid var(--border);
             padding: 12px 20px 24px;
@@ -232,7 +167,6 @@
             justify-content: center;
             gap: 48px;
         }
-
         .nav-item {
             display: flex;
             flex-direction: column;
@@ -244,13 +178,8 @@
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            transition: color 0.2s ease;
         }
-
-        .nav-item.active {
-            color: var(--accent);
-        }
-
+        .nav-item.active { color: var(--accent); }
         .nav-item svg {
             width: 24px;
             height: 24px;
@@ -264,108 +193,155 @@
     <div class="app">
         <header class="header">
             <h1>Game Hub</h1>
-            <p>Your calm corner for puzzles</p>
+            <p>14 games · No ads · Just fun</p>
         </header>
 
-        <section class="continue-section">
-            <div class="section-label">Continue Playing</div>
-            <a href="#" class="continue-card" id="continueCard">
-                <div class="game-title" id="continueTitle">Sliding Puzzle</div>
-                <div class="game-progress" id="continueProgress">3 moves · 0:42</div>
-            </a>
-        </section>
-
         <section class="library-section">
-            <div class="section-label">All Games</div>
+            <div class="section-label">Puzzle Games</div>
             <div class="game-grid">
                 <a href="games/sliding-puzzle/index.html" class="game-card">
-                    <div class="game-icon puzzle">🧩</div>
+                    <div class="game-icon icon-puzzle">🧩</div>
                     <div class="game-info">
                         <h3>Sliding Puzzle</h3>
                         <p>Classic tile-sliding challenge</p>
-                        <div class="game-meta">
-                            <span class="tag">Puzzle</span>
-                            <span class="tag">3 Levels</span>
-                        </div>
+                        <div class="game-meta"><span class="tag">3 Levels</span></div>
                     </div>
-                    <div class="play-btn">
-                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
                 </a>
+                <a href="games/twenty48/index.html" class="game-card">
+                    <div class="game-icon icon-2048">🔢</div>
+                    <div class="game-info">
+                        <h3>2048</h3>
+                        <p>Slide and merge tiles</p>
+                        <div class="game-meta"><span class="tag">Endless</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/lights-out/index.html" class="game-card">
+                    <div class="game-icon icon-lights">💡</div>
+                    <div class="game-info">
+                        <h3>Lights Out</h3>
+                        <p>Toggle all lights off</p>
+                        <div class="game-meta"><span class="tag">3 Levels</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/sudoku/index.html" class="game-card">
+                    <div class="game-icon icon-sudoku">9️⃣</div>
+                    <div class="game-info">
+                        <h3>Sudoku</h3>
+                        <p>Number placement puzzle</p>
+                        <div class="game-meta"><span class="tag">3 Levels</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/tetris/index.html" class="game-card">
+                    <div class="game-icon icon-tetris">🧱</div>
+                    <div class="game-info">
+                        <h3>Tetris</h3>
+                        <p>Classic falling blocks</p>
+                        <div class="game-meta"><span class="tag">Endless</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+            </div>
+        </section>
 
+        <section class="library-section">
+            <div class="section-label">Memory & Logic</div>
+            <div class="game-grid">
                 <a href="games/memory-match/index.html" class="game-card">
-                    <div class="game-icon memory">🎴</div>
+                    <div class="game-icon icon-memory">🎴</div>
                     <div class="game-info">
                         <h3>Memory Match</h3>
                         <p>Flip cards, find pairs</p>
-                        <div class="game-meta">
-                            <span class="tag">Memory</span>
-                            <span class="tag">3 Levels</span>
-                        </div>
+                        <div class="game-meta"><span class="tag">3 Levels</span></div>
                     </div>
-                    <div class="play-btn">
-                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
                 </a>
-
-                <a href="games/twenty48/index.html" class="game-card">
-                    <div class="game-icon twenty48">🔢</div>
+                <a href="games/simon/index.html" class="game-card">
+                    <div class="game-icon icon-simon">🔴</div>
                     <div class="game-info">
-                        <h3>2048</h3>
-                        <p>Slide and merge to reach 2048</p>
-                        <div class="game-meta">
-                            <span class="tag">Puzzle</span>
-                            <span class="tag">Endless</span>
-                        </div>
+                        <h3>Simon</h3>
+                        <p>Repeat the color sequence</p>
+                        <div class="game-meta"><span class="tag">Endless</span></div>
                     </div>
-                    <div class="play-btn">
-                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
                 </a>
-
-                <a href="games/lights-out/index.html" class="game-card">
-                    <div class="game-icon lights">💡</div>
-                    <div class="game-info">
-                        <h3>Lights Out</h3>
-                        <p>Toggle lights to turn them all off</p>
-                        <div class="game-meta">
-                            <span class="tag">Logic</span>
-                            <span class="tag">3 Levels</span>
-                        </div>
-                    </div>
-                    <div class="play-btn">
-                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-                    </div>
-                </a>
-
-                <a href="games/word-search/index.html" class="game-card">
-                    <div class="game-icon word">🔤</div>
-                    <div class="game-info">
-                        <h3>Word Search</h3>
-                        <p>Find hidden words in the grid</p>
-                        <div class="game-meta">
-                            <span class="tag">Word</span>
-                            <span class="tag">6 Themes</span>
-                        </div>
-                    </div>
-                    <div class="play-btn">
-                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-                    </div>
-                </a>
-
                 <a href="games/minesweeper/index.html" class="game-card">
-                    <div class="game-icon mine">💣</div>
+                    <div class="game-icon icon-mine">💣</div>
                     <div class="game-info">
                         <h3>Minesweeper</h3>
                         <p>Classic mine-finding logic</p>
-                        <div class="game-meta">
-                            <span class="tag">Logic</span>
-                            <span class="tag">3 Levels</span>
-                        </div>
+                        <div class="game-meta"><span class="tag">3 Levels</span></div>
                     </div>
-                    <div class="play-btn">
-                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+            </div>
+        </section>
+
+        <section class="library-section">
+            <div class="section-label">Word Games</div>
+            <div class="game-grid">
+                <a href="games/word-search/index.html" class="game-card">
+                    <div class="game-icon icon-word">🔤</div>
+                    <div class="game-info">
+                        <h3>Word Search</h3>
+                        <p>Find hidden words</p>
+                        <div class="game-meta"><span class="tag">6 Themes</span></div>
                     </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/hangman/index.html" class="game-card">
+                    <div class="game-icon icon-hangman">📝</div>
+                    <div class="game-info">
+                        <h3>Hangman</h3>
+                        <p>Guess the word</p>
+                        <div class="game-meta"><span class="tag">5 Categories</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+            </div>
+        </section>
+
+        <section class="library-section">
+            <div class="section-label">Strategy & Arcade</div>
+            <div class="game-grid">
+                <a href="games/tic-tac-toe/index.html" class="game-card">
+                    <div class="game-icon icon-tictac">⭕</div>
+                    <div class="game-info">
+                        <h3>Tic Tac Toe</h3>
+                        <p>Classic X's and O's vs AI</p>
+                        <div class="game-meta"><span class="tag">3 Difficulties</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/connect-four/index.html" class="game-card">
+                    <div class="game-icon icon-connect">🔴</div>
+                    <div class="game-info">
+                        <h3>Connect Four</h3>
+                        <p>Get four in a row vs AI</p>
+                        <div class="game-meta"><span class="tag">3 Difficulties</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/snake/index.html" class="game-card">
+                    <div class="game-icon icon-snake">🐍</div>
+                    <div class="game-info">
+                        <h3>Snake</h3>
+                        <p>Eat food, grow longer</p>
+                        <div class="game-meta"><span class="tag">Classic</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/breakout/index.html" class="game-card">
+                    <div class="game-icon icon-breakout">🎾</div>
+                    <div class="game-info">
+                        <h3>Breakout</h3>
+                        <p>Break all the bricks</p>
+                        <div class="game-meta"><span class="tag">Levels</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
                 </a>
             </div>
         </section>
@@ -385,43 +361,5 @@
             Profile
         </a>
     </nav>
-
-    <script>
-        // Check for saved game states and show continue card
-        function updateContinueCard() {
-            const continueCard = document.getElementById('continueCard');
-            const continueTitle = document.getElementById('continueTitle');
-            const continueProgress = document.getElementById('continueProgress');
-            
-            // Check sliding puzzle
-            const slidingState = localStorage.getItem('slidingPuzzle_state');
-            if (slidingState) {
-                try {
-                    const state = JSON.parse(slidingState);
-                    if (state.moves > 0) {
-                        continueCard.classList.add('active');
-                        continueCard.href = 'games/sliding-puzzle/index.html';
-                        continueTitle.textContent = 'Sliding Puzzle';
-                        const minutes = Math.floor(state.time / 60);
-                        const seconds = state.time % 60;
-                        continueProgress.textContent = `${state.moves} moves · ${minutes}:${seconds.toString().padStart(2, '0')}`;
-                        return;
-                    }
-                } catch (e) {}
-            }
-
-            // Check 2048
-            const twenty48Score = localStorage.getItem('twenty48_current');
-            if (twenty48Score && parseInt(twenty48Score) > 0) {
-                continueCard.classList.add('active');
-                continueCard.href = 'games/twenty48/index.html';
-                continueTitle.textContent = '2048';
-                continueProgress.textContent = `Score: ${twenty48Score}`;
-                return;
-            }
-        }
-
-        updateContinueCard();
-    </script>
 </body>
 </html>

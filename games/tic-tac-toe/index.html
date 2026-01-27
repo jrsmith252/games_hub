@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tic Tac Toe — Game Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-deep: #0a0f1a;
+            --bg-card: #141b2d;
+            --text-primary: #f0f4fc;
+            --text-secondary: #8892a8;
+            --accent: #6366f1;
+            --x-color: #3b82f6;
+            --o-color: #ef4444;
+        }
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px;
+            background: rgba(20, 27, 45, 0.8);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .back-btn {
+            width: 40px; height: 40px; border-radius: 10px;
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary); text-decoration: none;
+        }
+        .back-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .game-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 600; }
+        .menu-btn {
+            width: 40px; height: 40px; border-radius: 10px; background: transparent;
+            border: none; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-secondary);
+        }
+        .stats-bar { display: flex; justify-content: center; gap: 32px; padding: 16px 20px; }
+        .stat { text-align: center; }
+        .stat-value { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; }
+        .stat-value.x { color: var(--x-color); }
+        .stat-value.o { color: var(--o-color); }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+        .game-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            width: 100%;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background: var(--bg-card);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fraunces', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .cell:hover:not(.taken) { background: rgba(255,255,255,0.05); }
+        .cell.taken { cursor: default; }
+        .cell.x { color: var(--x-color); }
+        .cell.o { color: var(--o-color); }
+        .cell.win { animation: pulse 0.5s ease infinite alternate; }
+        @keyframes pulse { to { transform: scale(1.05); } }
+        .status {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .difficulty-selector {
+            display: flex; gap: 8px; justify-content: center; padding: 10px;
+        }
+        .diff-btn {
+            padding: 8px 16px; border-radius: 8px;
+            font-size: 0.8rem; font-weight: 500;
+            cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
+            background: transparent; color: var(--text-secondary);
+        }
+        .diff-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .bottom-controls { padding: 20px 20px 36px; display: flex; gap: 12px; justify-content: center; }
+        .control-btn {
+            padding: 14px 28px; border-radius: 12px;
+            font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
+            cursor: pointer; border: none; background: var(--accent); color: white;
+        }
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--bg-card); border-radius: 20px; padding: 32px; text-align: center;
+            max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.75rem; margin-bottom: 8px; }
+        .modal p { color: var(--text-secondary); margin-bottom: 24px; }
+        .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+        .instructions-content { text-align: left; margin-bottom: 24px; }
+        .instructions-content p { color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
+        .instructions-content p strong { color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <a href="../../index.html" class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
+        <div class="game-title">Tic Tac Toe</div>
+        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
+        </button>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat"><div class="stat-value x" id="xWins">0</div><div class="stat-label">You (X)</div></div>
+        <div class="stat"><div class="stat-value" id="draws">0</div><div class="stat-label">Draws</div></div>
+        <div class="stat"><div class="stat-value o" id="oWins">0</div><div class="stat-label">AI (O)</div></div>
+    </div>
+
+    <div class="game-container">
+        <div class="board" id="board"></div>
+    </div>
+
+    <div class="status" id="status">Your turn (X)</div>
+
+    <div class="difficulty-selector">
+        <button class="diff-btn" data-diff="easy">Easy</button>
+        <button class="diff-btn active" data-diff="medium">Medium</button>
+        <button class="diff-btn" data-diff="hard">Unbeatable</button>
+    </div>
+
+    <div class="bottom-controls">
+        <button class="control-btn" onclick="newGame()">New Game</button>
+    </div>
+
+    <div class="modal-overlay" id="instructionsModal">
+        <div class="modal">
+            <h2>How to Play</h2>
+            <div class="instructions-content">
+                <p><strong>Goal:</strong> Get three in a row horizontally, vertically, or diagonally!</p>
+                <p><strong>Controls:</strong> Tap a cell to place your X. The AI plays O.</p>
+                <p><strong>Tips:</strong> Control the center and corners. Block the AI's winning moves!</p>
+            </div>
+            <div class="modal-actions">
+                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); localStorage.setItem('tictactoe_instructionsSeen', 'true');">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WINNING_COMBOS = [
+            [0,1,2], [3,4,5], [6,7,8], // rows
+            [0,3,6], [1,4,7], [2,5,8], // cols
+            [0,4,8], [2,4,6]           // diagonals
+        ];
+
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let gameOver = false;
+        let difficulty = 'medium';
+        let stats = JSON.parse(localStorage.getItem('tictactoe_stats')) || { x: 0, o: 0, draws: 0 };
+
+        function render() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            board.forEach((cell, i) => {
+                const cellEl = document.createElement('div');
+                cellEl.className = 'cell' + (cell ? ` taken ${cell.toLowerCase()}` : '');
+                cellEl.textContent = cell || '';
+                cellEl.addEventListener('click', () => handleClick(i));
+                boardEl.appendChild(cellEl);
+            });
+            updateStats();
+        }
+
+        function handleClick(i) {
+            if (board[i] || gameOver || currentPlayer !== 'X') return;
+            makeMove(i, 'X');
+            
+            if (!gameOver) {
+                currentPlayer = 'O';
+                setStatus("AI thinking...");
+                setTimeout(aiMove, 400);
+            }
+        }
+
+        function makeMove(i, player) {
+            board[i] = player;
+            render();
+            
+            const winner = checkWinner();
+            if (winner) {
+                gameOver = true;
+                highlightWinner(winner.combo);
+                if (winner.player === 'X') {
+                    stats.x++;
+                    setStatus("You win! 🎉");
+                } else {
+                    stats.o++;
+                    setStatus("AI wins!");
+                }
+                saveStats();
+            } else if (board.every(c => c)) {
+                gameOver = true;
+                stats.draws++;
+                setStatus("It's a draw!");
+                saveStats();
+            } else {
+                setStatus(currentPlayer === 'X' ? "Your turn (X)" : "AI's turn (O)");
+            }
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+            
+            let move;
+            if (difficulty === 'easy') {
+                move = getRandomMove();
+            } else if (difficulty === 'medium') {
+                move = Math.random() > 0.5 ? getBestMove() : getRandomMove();
+            } else {
+                move = getBestMove();
+            }
+            
+            makeMove(move, 'O');
+            currentPlayer = 'X';
+            if (!gameOver) setStatus("Your turn (X)");
+        }
+
+        function getRandomMove() {
+            const empty = board.map((c, i) => c ? null : i).filter(i => i !== null);
+            return empty[Math.floor(Math.random() * empty.length)];
+        }
+
+        function getBestMove() {
+            let bestScore = -Infinity;
+            let bestMove = 0;
+            
+            for (let i = 0; i < 9; i++) {
+                if (!board[i]) {
+                    board[i] = 'O';
+                    const score = minimax(board, 0, false);
+                    board[i] = null;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = i;
+                    }
+                }
+            }
+            return bestMove;
+        }
+
+        function minimax(board, depth, isMaximizing) {
+            const winner = checkWinner();
+            if (winner) return winner.player === 'O' ? 10 - depth : depth - 10;
+            if (board.every(c => c)) return 0;
+
+            if (isMaximizing) {
+                let best = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!board[i]) {
+                        board[i] = 'O';
+                        best = Math.max(best, minimax(board, depth + 1, false));
+                        board[i] = null;
+                    }
+                }
+                return best;
+            } else {
+                let best = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!board[i]) {
+                        board[i] = 'X';
+                        best = Math.min(best, minimax(board, depth + 1, true));
+                        board[i] = null;
+                    }
+                }
+                return best;
+            }
+        }
+
+        function checkWinner() {
+            for (const combo of WINNING_COMBOS) {
+                const [a, b, c] = combo;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { player: board[a], combo };
+                }
+            }
+            return null;
+        }
+
+        function highlightWinner(combo) {
+            const cells = document.querySelectorAll('.cell');
+            combo.forEach(i => cells[i].classList.add('win'));
+        }
+
+        function newGame() {
+            board = Array(9).fill(null);
+            currentPlayer = 'X';
+            gameOver = false;
+            setStatus("Your turn (X)");
+            render();
+        }
+
+        function setStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+
+        function updateStats() {
+            document.getElementById('xWins').textContent = stats.x;
+            document.getElementById('oWins').textContent = stats.o;
+            document.getElementById('draws').textContent = stats.draws;
+        }
+
+        function saveStats() {
+            localStorage.setItem('tictactoe_stats', JSON.stringify(stats));
+            updateStats();
+        }
+
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                difficulty = btn.dataset.diff;
+                newGame();
+            });
+        });
+
+        if (!localStorage.getItem('tictactoe_instructionsSeen')) {
+            document.getElementById('instructionsModal').classList.add('active');
+        }
+
+        render();
+    </script>
+</body>
+</html>
