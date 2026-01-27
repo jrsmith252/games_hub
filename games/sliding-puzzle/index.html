@@ -92,6 +92,12 @@
             justify-content: center;
             cursor: pointer;
             color: var(--text-secondary);
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .menu-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-primary);
         }
 
         .menu-btn svg {
@@ -312,8 +318,8 @@
             <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
         </a>
         <div class="game-title">Sliding Puzzle</div>
-        <button class="menu-btn" onclick="toggleMenu()">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
 
@@ -391,6 +397,34 @@
     </div>
 
     <script>
+        // Modal functions - defined first so buttons work immediately
+        function toggleMenu() {
+            document.getElementById('instructionsModal').classList.add('active');
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructionsModal').classList.remove('active');
+            localStorage.setItem('slidingPuzzle_instructionsSeen', 'true');
+        }
+
+        function closeModalAndNewGame() {
+            document.getElementById('winModal').classList.remove('active');
+            game.scene.scenes[0].newGame();
+        }
+
+        function closeModalAndGoHome() {
+            window.location.href = '../../index.html';
+        }
+
+        function showInstructionsIfFirstVisit() {
+            if (!localStorage.getItem('slidingPuzzle_instructionsSeen')) {
+                document.getElementById('instructionsModal').classList.add('active');
+            }
+        }
+
+        // Show instructions on first visit
+        document.addEventListener('DOMContentLoaded', showInstructionsIfFirstVisit);
+
         // Game state
         let gameState = {
             gridSize: 4,
@@ -816,33 +850,6 @@
                 });
             });
         }
-
-        function closeModalAndNewGame() {
-            document.getElementById('winModal').classList.remove('active');
-            game.scene.scenes[0].newGame();
-        }
-
-        function closeModalAndGoHome() {
-            window.location.href = '../../index.html';
-        }
-
-        function toggleMenu() {
-            document.getElementById('instructionsModal').classList.add('active');
-        }
-
-        function closeInstructions() {
-            document.getElementById('instructionsModal').classList.remove('active');
-            localStorage.setItem('slidingPuzzle_instructionsSeen', 'true');
-        }
-
-        function showInstructionsIfFirstVisit() {
-            if (!localStorage.getItem('slidingPuzzle_instructionsSeen')) {
-                document.getElementById('instructionsModal').classList.add('active');
-            }
-        }
-
-        // Show instructions on first visit
-        showInstructionsIfFirstVisit();
 
         // Handle window resize
         window.addEventListener('resize', () => {

@@ -152,17 +152,12 @@
             flex-shrink: 0;
         }
 
-        .game-icon.puzzle {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        }
-
-        .game-icon.word {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-
-        .game-icon.strategy {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        }
+        .game-icon.puzzle { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .game-icon.memory { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); }
+        .game-icon.twenty48 { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+        .game-icon.lights { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+        .game-icon.word { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .game-icon.mine { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
 
         .game-info {
             flex: 1;
@@ -223,27 +218,6 @@
             margin-left: 2px;
         }
 
-        /* Coming Soon */
-        .game-card.coming-soon {
-            opacity: 0.5;
-            cursor: default;
-        }
-
-        .game-card.coming-soon:hover {
-            transform: none;
-            background: var(--bg-card);
-            border-color: var(--border);
-        }
-
-        .game-card.coming-soon .play-btn {
-            background: var(--text-secondary);
-        }
-
-        .game-card.coming-soon:hover .play-btn {
-            transform: none;
-            box-shadow: none;
-        }
-
         /* Bottom Nav */
         .bottom-nav {
             position: fixed;
@@ -284,13 +258,6 @@
             fill: none;
             stroke-width: 1.5;
         }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-secondary);
-        }
     </style>
 </head>
 <body>
@@ -302,8 +269,8 @@
 
         <section class="continue-section">
             <div class="section-label">Continue Playing</div>
-            <a href="games/sliding-puzzle/index.html" class="continue-card" id="continueCard">
-                <div class="game-title">Sliding Puzzle</div>
+            <a href="#" class="continue-card" id="continueCard">
+                <div class="game-title" id="continueTitle">Sliding Puzzle</div>
                 <div class="game-progress" id="continueProgress">3 moves · 0:42</div>
             </a>
         </section>
@@ -318,7 +285,7 @@
                         <p>Classic tile-sliding challenge</p>
                         <div class="game-meta">
                             <span class="tag">Puzzle</span>
-                            <span class="tag">Easy → Hard</span>
+                            <span class="tag">3 Levels</span>
                         </div>
                     </div>
                     <div class="play-btn">
@@ -326,35 +293,80 @@
                     </div>
                 </a>
 
-                <div class="game-card coming-soon">
-                    <div class="game-icon word">📝</div>
+                <a href="games/memory-match/index.html" class="game-card">
+                    <div class="game-icon memory">🎴</div>
                     <div class="game-info">
-                        <h3>Word Paths</h3>
-                        <p>Connect letters, find words</p>
+                        <h3>Memory Match</h3>
+                        <p>Flip cards, find pairs</p>
+                        <div class="game-meta">
+                            <span class="tag">Memory</span>
+                            <span class="tag">3 Levels</span>
+                        </div>
+                    </div>
+                    <div class="play-btn">
+                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                    </div>
+                </a>
+
+                <a href="games/twenty48/index.html" class="game-card">
+                    <div class="game-icon twenty48">🔢</div>
+                    <div class="game-info">
+                        <h3>2048</h3>
+                        <p>Slide and merge to reach 2048</p>
+                        <div class="game-meta">
+                            <span class="tag">Puzzle</span>
+                            <span class="tag">Endless</span>
+                        </div>
+                    </div>
+                    <div class="play-btn">
+                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                    </div>
+                </a>
+
+                <a href="games/lights-out/index.html" class="game-card">
+                    <div class="game-icon lights">💡</div>
+                    <div class="game-info">
+                        <h3>Lights Out</h3>
+                        <p>Toggle lights to turn them all off</p>
+                        <div class="game-meta">
+                            <span class="tag">Logic</span>
+                            <span class="tag">3 Levels</span>
+                        </div>
+                    </div>
+                    <div class="play-btn">
+                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                    </div>
+                </a>
+
+                <a href="games/word-search/index.html" class="game-card">
+                    <div class="game-icon word">🔤</div>
+                    <div class="game-info">
+                        <h3>Word Search</h3>
+                        <p>Find hidden words in the grid</p>
                         <div class="game-meta">
                             <span class="tag">Word</span>
-                            <span class="tag">Coming Soon</span>
+                            <span class="tag">6 Themes</span>
                         </div>
                     </div>
                     <div class="play-btn">
                         <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
                     </div>
-                </div>
+                </a>
 
-                <div class="game-card coming-soon">
-                    <div class="game-icon strategy">♟️</div>
+                <a href="games/minesweeper/index.html" class="game-card">
+                    <div class="game-icon mine">💣</div>
                     <div class="game-info">
-                        <h3>Hex Tactics</h3>
-                        <p>Turn-based territory control</p>
+                        <h3>Minesweeper</h3>
+                        <p>Classic mine-finding logic</p>
                         <div class="game-meta">
-                            <span class="tag">Strategy</span>
-                            <span class="tag">Coming Soon</span>
+                            <span class="tag">Logic</span>
+                            <span class="tag">3 Levels</span>
                         </div>
                     </div>
                     <div class="play-btn">
                         <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
                     </div>
-                </div>
+                </a>
             </div>
         </section>
     </div>
@@ -375,24 +387,37 @@
     </nav>
 
     <script>
-        // Check for saved game state
+        // Check for saved game states and show continue card
         function updateContinueCard() {
-            const savedState = localStorage.getItem('slidingPuzzle_state');
             const continueCard = document.getElementById('continueCard');
+            const continueTitle = document.getElementById('continueTitle');
             const continueProgress = document.getElementById('continueProgress');
             
-            if (savedState) {
+            // Check sliding puzzle
+            const slidingState = localStorage.getItem('slidingPuzzle_state');
+            if (slidingState) {
                 try {
-                    const state = JSON.parse(savedState);
+                    const state = JSON.parse(slidingState);
                     if (state.moves > 0) {
                         continueCard.classList.add('active');
+                        continueCard.href = 'games/sliding-puzzle/index.html';
+                        continueTitle.textContent = 'Sliding Puzzle';
                         const minutes = Math.floor(state.time / 60);
                         const seconds = state.time % 60;
                         continueProgress.textContent = `${state.moves} moves · ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        return;
                     }
-                } catch (e) {
-                    console.error('Error parsing saved state:', e);
-                }
+                } catch (e) {}
+            }
+
+            // Check 2048
+            const twenty48Score = localStorage.getItem('twenty48_current');
+            if (twenty48Score && parseInt(twenty48Score) > 0) {
+                continueCard.classList.add('active');
+                continueCard.href = 'games/twenty48/index.html';
+                continueTitle.textContent = '2048';
+                continueProgress.textContent = `Score: ${twenty48Score}`;
+                return;
             }
         }
 
