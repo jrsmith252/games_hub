@@ -15,6 +15,8 @@
             --text-primary: #f0f4fc;
             --text-secondary: #8892a8;
             --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --success: #22c55e;
             --error: #ef4444;
         }
         body {
@@ -44,11 +46,32 @@
             border: none; display: flex; align-items: center; justify-content: center;
             cursor: pointer; color: var(--text-secondary);
         }
-        .stats-bar { display: flex; justify-content: center; gap: 32px; padding: 12px 20px; }
+
+        .puzzle-info {
+            text-align: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .puzzle-number {
+            font-family: 'Fraunces', serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .puzzle-number.random { color: var(--success); }
+        .puzzle-difficulty {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .stats-bar { display: flex; justify-content: center; gap: 32px; padding: 10px 20px; }
         .stat { text-align: center; }
-        .stat-value { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; }
-        .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
-        .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; gap: 15px; }
+        .stat-value { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700; }
+        .stat-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+
+        .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; gap: 12px; }
         .sudoku-grid {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
@@ -56,7 +79,7 @@
             background: var(--text-secondary);
             padding: 2px;
             border-radius: 8px;
-            max-width: 360px;
+            max-width: 340px;
             width: 100%;
         }
         .cell {
@@ -66,7 +89,7 @@
             align-items: center;
             justify-content: center;
             font-family: 'Fraunces', serif;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.1s;
@@ -78,59 +101,82 @@
         .cell.selected { background: rgba(99, 102, 241, 0.3); }
         .cell.error { color: var(--error); }
         .cell.highlight { background: rgba(99, 102, 241, 0.15); }
+
         .numpad {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            max-width: 280px;
+            gap: 6px;
+            max-width: 260px;
             width: 100%;
         }
         .num-btn {
             aspect-ratio: 1;
-            border-radius: 10px;
+            border-radius: 8px;
             background: var(--bg-card);
             border: 1px solid rgba(255,255,255,0.1);
             color: var(--text-primary);
             font-family: 'Fraunces', serif;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 600;
             cursor: pointer;
         }
         .num-btn:active { background: var(--accent); }
-        .num-btn.clear { font-size: 1rem; }
-        .difficulty-selector { display: flex; gap: 8px; justify-content: center; }
-        .diff-btn {
-            padding: 8px 14px; border-radius: 8px;
-            font-size: 0.75rem; font-weight: 500;
-            cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
-            background: transparent; color: var(--text-secondary);
+
+        .mode-selector {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            padding: 6px 20px;
         }
-        .diff-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-        .bottom-controls { padding: 15px 20px 30px; display: flex; gap: 12px; justify-content: center; }
+        .mode-btn, .mode-toggle {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .mode-btn.active, .mode-toggle.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        .mode-toggle[data-mode="random"].active {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .bottom-controls { padding: 10px 20px 24px; display: flex; gap: 10px; justify-content: center; }
         .control-btn {
-            padding: 12px 24px; border-radius: 12px;
-            font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
+            padding: 10px 20px; border-radius: 10px;
+            font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600;
             cursor: pointer; border: none; background: var(--accent); color: white;
         }
+        .control-btn.secondary { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); }
+
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.8);
             display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
         }
         .modal-overlay.active { display: flex; }
         .modal {
-            background: var(--bg-card); border-radius: 20px; padding: 32px; text-align: center;
+            background: var(--bg-card); border-radius: 20px; padding: 28px; text-align: center;
             max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.1);
         }
-        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.75rem; margin-bottom: 8px; }
-        .modal h2.win { background: linear-gradient(135deg, #22c55e, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .modal p { color: var(--text-secondary); margin-bottom: 24px; }
-        .modal-stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 24px; }
-        .modal-stat-value { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 700; }
-        .modal-stat-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.5rem; margin-bottom: 8px; }
+        .modal h2.win { color: var(--success); }
+        .modal p { color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem; }
+        .modal-stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 20px; }
+        .modal-stat-value { font-family: 'Fraunces', serif; font-size: 1.75rem; font-weight: 700; }
+        .modal-stat-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; }
         .modal-actions { display: flex; flex-direction: column; gap: 10px; }
-        .modal-actions .control-btn.secondary { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); }
-        .instructions-content { text-align: left; margin-bottom: 24px; }
-        .instructions-content p { color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
+        .next-puzzle-info { background: rgba(99,102,241,0.1); border-radius: 10px; padding: 12px; margin-bottom: 20px; }
+        .next-puzzle-info .label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; }
+        .next-puzzle-info .number { font-family: 'Fraunces', serif; font-size: 1.2rem; color: var(--accent); }
+        .instructions-content { text-align: left; margin-bottom: 20px; }
+        .instructions-content p { color: var(--text-secondary); margin-bottom: 10px; line-height: 1.5; font-size: 0.85rem; }
         .instructions-content p strong { color: var(--text-primary); }
     </style>
 </head>
@@ -138,9 +184,14 @@
     <div class="top-bar">
         <a href="../../index.html" class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
         <div class="game-title">Sudoku</div>
-        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+        <button class="menu-btn" onclick="showInstructions()">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
+    </div>
+
+    <div class="puzzle-info">
+        <div class="puzzle-number" id="puzzleNumber">#1</div>
+        <div class="puzzle-difficulty" id="puzzleDifficulty">Easy · Progressive</div>
     </div>
 
     <div class="stats-bar">
@@ -153,14 +204,20 @@
         <div class="numpad" id="numpad"></div>
     </div>
 
-    <div class="difficulty-selector">
-        <button class="diff-btn active" data-diff="easy">Easy</button>
-        <button class="diff-btn" data-diff="medium">Medium</button>
-        <button class="diff-btn" data-diff="hard">Hard</button>
+    <div class="mode-selector">
+        <button class="mode-btn active" data-diff="easy">Easy</button>
+        <button class="mode-btn" data-diff="medium">Medium</button>
+        <button class="mode-btn" data-diff="hard">Hard</button>
+    </div>
+
+    <div class="mode-selector">
+        <button class="mode-toggle active" data-mode="progressive">Progressive</button>
+        <button class="mode-toggle" data-mode="random">Random</button>
     </div>
 
     <div class="bottom-controls">
-        <button class="control-btn" onclick="newGame()">New Game</button>
+        <button class="control-btn secondary" onclick="resetPuzzle()">Reset</button>
+        <button class="control-btn" onclick="newPuzzle()">New Puzzle</button>
     </div>
 
     <div class="modal-overlay" id="instructionsModal">
@@ -169,10 +226,11 @@
             <div class="instructions-content">
                 <p><strong>Goal:</strong> Fill the grid so every row, column, and 3×3 box contains 1-9.</p>
                 <p><strong>Controls:</strong> Tap a cell, then tap a number. Gray numbers are given clues.</p>
-                <p><strong>Tips:</strong> Look for rows/columns missing only one number!</p>
+                <p><strong>Progressive:</strong> Complete puzzles in order. Each gets slightly harder!</p>
+                <p><strong>Random:</strong> Endless randomly-generated puzzles.</p>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); localStorage.setItem('sudoku_instructionsSeen', 'true');">Got it</button>
+                <button class="control-btn" onclick="closeInstructions()">Got it</button>
             </div>
         </div>
     </div>
@@ -180,59 +238,103 @@
     <div class="modal-overlay" id="winModal">
         <div class="modal">
             <h2 class="win">Puzzle Complete!</h2>
-            <p>Excellent work!</p>
+            <p id="winMessage">Great work!</p>
             <div class="modal-stats">
                 <div class="stat"><div class="modal-stat-value" id="finalTime">0:00</div><div class="modal-stat-label">Time</div></div>
+                <div class="stat"><div class="modal-stat-value" id="finalErrors">0</div><div class="modal-stat-label">Errors</div></div>
+            </div>
+            <div class="next-puzzle-info" id="nextPuzzleInfo">
+                <div class="label">Next Puzzle</div>
+                <div class="number" id="nextPuzzleNumber">#2</div>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('winModal').classList.remove('active'); newGame();">Play Again</button>
-                <button class="control-btn secondary" onclick="window.location.href='../../index.html'">Back to Hub</button>
+                <button class="control-btn" onclick="nextPuzzle()">Continue</button>
+                <button class="control-btn secondary" onclick="closeWinModal()">Stay Here</button>
             </div>
         </div>
     </div>
 
     <script>
+        // Seeded random
+        function seededRandom(seed) {
+            const m = 0x80000000, a = 1103515245, c = 12345;
+            let state = seed;
+            return function() {
+                state = (a * state + c) % m;
+                return state / m;
+            };
+        }
+
+        const DIFFICULTY = {
+            easy: { name: 'Easy', baseRemove: 35, removeIncrement: 0.5 },
+            medium: { name: 'Medium', baseRemove: 45, removeIncrement: 0.3 },
+            hard: { name: 'Hard', baseRemove: 52, removeIncrement: 0.2 }
+        };
+
+        let state = {
+            difficulty: 'easy',
+            puzzleId: 1,
+            isRandom: false,
+            time: 0,
+            errors: 0,
+            selected: null
+        };
+
         let solution = [];
         let puzzle = [];
         let given = [];
-        let selected = null;
-        let errors = 0;
-        let time = 0;
         let timerInterval = null;
-        let difficulty = 'easy';
-        const REMOVE = { easy: 35, medium: 45, hard: 55 };
+        let progress = loadProgress();
 
-        function generateSudoku() {
-            // Generate solved board
-            solution = Array(9).fill(null).map(() => Array(9).fill(0));
-            fillBoard(solution);
+        function loadProgress() {
+            const saved = localStorage.getItem('sudoku_progress');
+            return saved ? JSON.parse(saved) : { easy: 1, medium: 1, hard: 1 };
+        }
+
+        function saveProgress() {
+            localStorage.setItem('sudoku_progress', JSON.stringify(progress));
+        }
+
+        function getRemoveCount(difficulty, puzzleId) {
+            const diff = DIFFICULTY[difficulty];
+            return Math.min(58, Math.floor(diff.baseRemove + (puzzleId - 1) * diff.removeIncrement));
+        }
+
+        function generateSudoku(seed) {
+            const random = seededRandom(seed);
             
-            // Create puzzle by removing numbers
+            solution = Array(9).fill(null).map(() => Array(9).fill(0));
+            fillBoard(solution, random);
+            
             puzzle = solution.map(row => [...row]);
             given = Array(81).fill(true);
             
-            let toRemove = REMOVE[difficulty];
-            while (toRemove > 0) {
-                const i = Math.floor(Math.random() * 81);
+            const toRemove = getRemoveCount(state.difficulty, state.puzzleId);
+            let removed = 0;
+            let attempts = 0;
+            
+            while (removed < toRemove && attempts < 200) {
+                const i = Math.floor(random() * 81);
                 if (given[i]) {
                     given[i] = false;
                     puzzle[Math.floor(i / 9)][i % 9] = 0;
-                    toRemove--;
+                    removed++;
                 }
+                attempts++;
             }
         }
 
-        function fillBoard(board) {
+        function fillBoard(board, random) {
             const nums = [1,2,3,4,5,6,7,8,9];
             for (let i = 0; i < 81; i++) {
                 const row = Math.floor(i / 9);
                 const col = i % 9;
                 if (board[row][col] === 0) {
-                    shuffle(nums);
+                    shuffle(nums, random);
                     for (const num of nums) {
                         if (isValid(board, row, col, num)) {
                             board[row][col] = num;
-                            if (fillBoard(board)) return true;
+                            if (fillBoard(board, random)) return true;
                             board[row][col] = 0;
                         }
                     }
@@ -256,11 +358,33 @@
             return true;
         }
 
-        function shuffle(arr) {
+        function shuffle(arr, random) {
             for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
+                const j = Math.floor(random() * (i + 1));
                 [arr[i], arr[j]] = [arr[j], arr[i]];
             }
+        }
+
+        function initGame() {
+            clearInterval(timerInterval);
+            
+            const seed = state.isRandom 
+                ? Date.now() + Math.floor(Math.random() * 1000000)
+                : state.difficulty.charCodeAt(0) * 1000000 + state.puzzleId;
+            
+            generateSudoku(seed);
+            
+            state.time = 0;
+            state.errors = 0;
+            state.selected = null;
+            
+            timerInterval = setInterval(() => {
+                state.time++;
+                document.getElementById('time').textContent = formatTime(state.time);
+            }, 1000);
+            
+            updateUI();
+            render();
         }
 
         function render() {
@@ -285,16 +409,14 @@
                     }
                 }
                 
-                if (i === selected) cell.classList.add('selected');
+                if (i === state.selected) cell.classList.add('selected');
                 
-                // Highlight same row/col/box
-                if (selected !== null) {
-                    const selRow = Math.floor(selected / 9);
-                    const selCol = selected % 9;
+                if (state.selected !== null) {
+                    const selRow = Math.floor(state.selected / 9);
+                    const selCol = state.selected % 9;
                     if (row === selRow || col === selCol) cell.classList.add('highlight');
-                    const selBoxRow = Math.floor(selRow / 3);
-                    const selBoxCol = Math.floor(selCol / 3);
-                    if (Math.floor(row / 3) === selBoxRow && Math.floor(col / 3) === selBoxCol) {
+                    if (Math.floor(row / 3) === Math.floor(selRow / 3) && 
+                        Math.floor(col / 3) === Math.floor(selCol / 3)) {
                         cell.classList.add('highlight');
                     }
                 }
@@ -314,27 +436,27 @@
                 numpad.appendChild(btn);
             }
             const clearBtn = document.createElement('button');
-            clearBtn.className = 'num-btn clear';
+            clearBtn.className = 'num-btn';
             clearBtn.textContent = '✕';
             clearBtn.addEventListener('click', () => enterNumber(0));
             numpad.appendChild(clearBtn);
         }
 
         function selectCell(i) {
-            selected = i;
+            state.selected = i;
             render();
         }
 
         function enterNumber(num) {
-            if (selected === null || given[selected]) return;
+            if (state.selected === null || given[state.selected]) return;
             
-            const row = Math.floor(selected / 9);
-            const col = selected % 9;
+            const row = Math.floor(state.selected / 9);
+            const col = state.selected % 9;
             puzzle[row][col] = num;
             
             if (num && num !== solution[row][col]) {
-                errors++;
-                document.getElementById('errors').textContent = errors;
+                state.errors++;
+                document.getElementById('errors').textContent = state.errors;
             }
             
             render();
@@ -349,36 +471,102 @@
             }
             
             clearInterval(timerInterval);
-            document.getElementById('finalTime').textContent = formatTime(time);
+            
+            if (!state.isRandom && state.puzzleId >= progress[state.difficulty]) {
+                progress[state.difficulty] = state.puzzleId + 1;
+                saveProgress();
+            }
+            
+            document.getElementById('finalTime').textContent = formatTime(state.time);
+            document.getElementById('finalErrors').textContent = state.errors;
+            
+            if (state.isRandom) {
+                document.getElementById('winMessage').textContent = 'Nice solve!';
+                document.getElementById('nextPuzzleInfo').style.display = 'none';
+            } else {
+                document.getElementById('winMessage').textContent = `Puzzle #${state.puzzleId} complete!`;
+                document.getElementById('nextPuzzleInfo').style.display = 'block';
+                document.getElementById('nextPuzzleNumber').textContent = `#${state.puzzleId + 1}`;
+            }
+            
             document.getElementById('winModal').classList.add('active');
         }
 
-        function newGame() {
-            selected = null;
-            errors = 0;
-            time = 0;
-            document.getElementById('errors').textContent = '0';
+        function updateUI() {
+            const diff = DIFFICULTY[state.difficulty];
+            const puzzleNum = document.getElementById('puzzleNumber');
+            const puzzleDiff = document.getElementById('puzzleDifficulty');
             
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                time++;
-                document.getElementById('time').textContent = formatTime(time);
-            }, 1000);
+            if (state.isRandom) {
+                puzzleNum.textContent = 'Random';
+                puzzleNum.classList.add('random');
+            } else {
+                puzzleNum.textContent = `#${state.puzzleId}`;
+                puzzleNum.classList.remove('random');
+            }
             
-            generateSudoku();
-            render();
+            puzzleDiff.textContent = `${diff.name} · ${state.isRandom ? 'Random' : 'Progressive'}`;
+            document.getElementById('errors').textContent = state.errors;
+            document.getElementById('time').textContent = formatTime(state.time);
         }
 
         function formatTime(s) {
             return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
         }
 
-        document.querySelectorAll('.diff-btn').forEach(btn => {
+        function newPuzzle() {
+            if (!state.isRandom) {
+                state.puzzleId = progress[state.difficulty];
+            }
+            initGame();
+        }
+
+        function resetPuzzle() {
+            initGame();
+        }
+
+        function nextPuzzle() {
+            document.getElementById('winModal').classList.remove('active');
+            if (!state.isRandom) {
+                state.puzzleId++;
+            }
+            initGame();
+        }
+
+        function closeWinModal() {
+            document.getElementById('winModal').classList.remove('active');
+        }
+
+        function showInstructions() {
+            document.getElementById('instructionsModal').classList.add('active');
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructionsModal').classList.remove('active');
+            localStorage.setItem('sudoku_instructionsSeen', 'true');
+        }
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                difficulty = btn.dataset.diff;
-                newGame();
+                state.difficulty = btn.dataset.diff;
+                if (!state.isRandom) {
+                    state.puzzleId = progress[state.difficulty];
+                }
+                initGame();
+            });
+        });
+
+        document.querySelectorAll('.mode-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-toggle').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.isRandom = btn.dataset.mode === 'random';
+                if (!state.isRandom) {
+                    state.puzzleId = progress[state.difficulty];
+                }
+                initGame();
             });
         });
 
@@ -388,11 +576,12 @@
         });
 
         if (!localStorage.getItem('sudoku_instructionsSeen')) {
-            document.getElementById('instructionsModal').classList.add('active');
+            showInstructions();
         }
 
+        state.puzzleId = progress[state.difficulty];
         renderNumpad();
-        newGame();
+        initGame();
     </script>
 </body>
 </html>

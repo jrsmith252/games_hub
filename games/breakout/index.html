@@ -98,6 +98,7 @@
 
     <div class="stats-bar">
         <div class="stat"><div class="stat-value" id="score">0</div><div class="stat-label">Score</div></div>
+        <div class="stat"><div class="stat-value" id="best">0</div><div class="stat-label">Best</div></div>
         <div class="stat"><div class="stat-value" id="lives">3</div><div class="stat-label">Lives</div></div>
         <div class="stat"><div class="stat-value" id="level">1</div><div class="stat-label">Level</div></div>
     </div>
@@ -170,6 +171,7 @@
         
         let paddle, ball, bricks, score, lives, level, gameRunning, animationId;
         let leftPressed = false, rightPressed = false;
+        let best = parseInt(localStorage.getItem('brickbreaker_best')) || 0;
 
         function initGame() {
             paddle = { width: 80, height: 12, x: canvas.width / 2 - 40, speed: 8 };
@@ -317,6 +319,11 @@
             document.getElementById('score').textContent = score;
             document.getElementById('lives').textContent = lives;
             document.getElementById('level').textContent = level;
+            if (score > best) {
+                best = score;
+                localStorage.setItem('brickbreaker_best', best);
+            }
+            document.getElementById('best').textContent = best;
         }
 
         // Controls
@@ -352,10 +359,11 @@
 
         window.addEventListener('resize', resize);
 
-        if (!localStorage.getItem('breakout_instructionsSeen')) {
+        if (!localStorage.getItem('brickbreaker_instructionsSeen')) {
             document.getElementById('instructionsModal').classList.add('active');
         }
 
+        document.getElementById('best').textContent = best;
         initGame();
         draw();
     </script>

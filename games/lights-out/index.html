@@ -8,25 +8,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg-deep: #0a0f1a;
             --bg-card: #141b2d;
             --text-primary: #f0f4fc;
             --text-secondary: #8892a8;
             --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.3);
             --success: #22c55e;
             --light-on: #fbbf24;
-            --light-on-glow: rgba(251, 191, 36, 0.4);
             --light-off: #1e293b;
         }
-
         body {
             font-family: 'DM Sans', -apple-system, sans-serif;
             background: var(--bg-deep);
@@ -34,403 +26,260 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
-
         .top-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
             padding: 16px 20px;
             background: rgba(20, 27, 45, 0.8);
-            backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-
         .back-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: var(--bg-card);
-            border: 1px solid rgba(255,255,255,0.06);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text-primary);
-            text-decoration: none;
-            transition: background 0.2s ease;
+            width: 40px; height: 40px; border-radius: 10px;
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary); text-decoration: none;
         }
-
-        .back-btn:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .back-btn svg {
-            width: 20px;
-            height: 20px;
-            stroke: currentColor;
-            fill: none;
-            stroke-width: 2;
-        }
-
-        .game-title {
-            font-family: 'Fraunces', serif;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-
+        .back-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .game-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 600; }
         .menu-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: transparent;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text-secondary);
-            transition: background 0.2s ease, color 0.2s ease;
+            width: 40px; height: 40px; border-radius: 10px; background: transparent;
+            border: none; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-secondary);
         }
 
-        .menu-btn:hover {
-            background: rgba(255,255,255,0.1);
-            color: var(--text-primary);
-        }
-
-        .menu-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        .stats-bar {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            padding: 16px 20px;
-        }
-
-        .stat {
+        .puzzle-info {
             text-align: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-
-        .stat-value {
+        .puzzle-number {
             font-family: 'Fraunces', serif;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
-            color: var(--text-primary);
+            color: var(--accent);
         }
-
-        .stat-label {
+        .puzzle-number.random { color: var(--success); }
+        .puzzle-difficulty {
             font-size: 0.7rem;
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: var(--text-secondary);
-            margin-top: 2px;
         }
 
-        .game-container {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+        .stats-bar { display: flex; justify-content: center; gap: 32px; padding: 16px 20px; }
+        .stat { text-align: center; }
+        .stat-value { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
 
-        .game-board {
+        .game-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .grid {
             display: grid;
             gap: 8px;
-            max-width: 320px;
-            width: 100%;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: 16px;
         }
-
-        .game-board.size-3 { grid-template-columns: repeat(3, 1fr); }
-        .game-board.size-4 { grid-template-columns: repeat(4, 1fr); }
-        .game-board.size-5 { grid-template-columns: repeat(5, 1fr); }
-
-        .light {
-            aspect-ratio: 1;
-            border-radius: 12px;
+        .cell {
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.15s ease;
             background: var(--light-off);
-            border: 2px solid rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
         }
-
-        .light.on {
+        .cell.on {
             background: var(--light-on);
-            box-shadow: 0 0 20px var(--light-on-glow), 0 0 40px var(--light-on-glow);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
             border-color: var(--light-on);
         }
+        .cell:active { transform: scale(0.95); }
 
-        .light:active {
-            transform: scale(0.95);
-        }
-
-        .bottom-controls {
-            padding: 20px;
-            padding-bottom: 36px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .difficulty-selector {
+        .mode-selector {
             display: flex;
             gap: 8px;
             justify-content: center;
+            padding: 8px 20px;
         }
-
-        .diff-btn {
+        .mode-btn, .mode-toggle {
             padding: 8px 16px;
             border-radius: 8px;
-            font-size: 0.8rem;
-            font-weight: 500;
+            font-size: 0.75rem;
+            font-weight: 600;
             cursor: pointer;
             border: 1px solid rgba(255,255,255,0.1);
             background: transparent;
             color: var(--text-secondary);
-            transition: all 0.2s ease;
         }
-
-        .diff-btn.active {
+        .mode-btn.active, .mode-toggle.active {
             background: var(--accent);
             border-color: var(--accent);
             color: white;
         }
-
-        .diff-btn:hover:not(.active) {
-            background: rgba(255,255,255,0.05);
+        .mode-toggle[data-mode="random"].active {
+            background: var(--success);
+            border-color: var(--success);
         }
 
+        .bottom-controls { padding: 16px 20px 36px; display: flex; gap: 12px; justify-content: center; }
         .control-btn {
-            padding: 14px 28px;
-            border-radius: 12px;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: none;
-            background: var(--accent);
-            color: white;
+            padding: 12px 24px; border-radius: 12px;
+            font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; border: none; background: var(--accent); color: white;
         }
+        .control-btn.secondary { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); }
 
-        .control-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 20px var(--accent-glow);
-        }
-
-        .control-btn.secondary {
-            background: var(--bg-card);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        /* Modals */
         .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            padding: 20px;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
         }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
+        .modal-overlay.active { display: flex; }
         .modal {
-            background: var(--bg-card);
-            border-radius: 20px;
-            padding: 32px;
-            text-align: center;
-            max-width: 320px;
-            width: 100%;
-            border: 1px solid rgba(255,255,255,0.1);
+            background: var(--bg-card); border-radius: 20px; padding: 32px; text-align: center;
+            max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.1);
         }
-
-        .modal h2 {
-            font-family: 'Fraunces', serif;
-            font-size: 1.75rem;
-            margin-bottom: 8px;
-        }
-
-        .modal h2.win {
-            background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .modal p {
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-        }
-
-        .modal-stats {
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-
-        .modal-stat-value {
-            font-family: 'Fraunces', serif;
-            font-size: 2rem;
-            font-weight: 700;
-        }
-
-        .modal-stat-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .modal-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .instructions-content {
-            text-align: left;
-            margin-bottom: 24px;
-        }
-
-        .instructions-content p {
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-            line-height: 1.5;
-        }
-
-        .instructions-content p strong {
-            color: var(--text-primary);
-        }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.5rem; margin-bottom: 8px; }
+        .modal h2.win { color: var(--success); }
+        .modal p { color: var(--text-secondary); margin-bottom: 20px; }
+        .modal-stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 20px; }
+        .modal-stat-value { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 700; }
+        .modal-stat-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; }
+        .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+        .next-puzzle-info { background: rgba(99,102,241,0.1); border-radius: 10px; padding: 12px; margin-bottom: 20px; }
+        .next-puzzle-info .label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; }
+        .next-puzzle-info .number { font-family: 'Fraunces', serif; font-size: 1.2rem; color: var(--accent); }
+        .instructions-content { text-align: left; margin-bottom: 20px; }
+        .instructions-content p { color: var(--text-secondary); margin-bottom: 10px; line-height: 1.5; font-size: 0.9rem; }
+        .instructions-content p strong { color: var(--text-primary); }
     </style>
 </head>
 <body>
     <div class="top-bar">
-        <a href="../../index.html" class="back-btn">
-            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-        </a>
+        <a href="../../index.html" class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
         <div class="game-title">Light Switch</div>
-        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+        <button class="menu-btn" onclick="showInstructions()">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
 
+    <div class="puzzle-info">
+        <div class="puzzle-number" id="puzzleNumber">#1</div>
+        <div class="puzzle-difficulty" id="puzzleDifficulty">3×3 · Progressive</div>
+    </div>
+
     <div class="stats-bar">
-        <div class="stat">
-            <div class="stat-value" id="moves">0</div>
-            <div class="stat-label">Moves</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value" id="lightsOn">0</div>
-            <div class="stat-label">Lights On</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value" id="best">—</div>
-            <div class="stat-label">Best</div>
-        </div>
+        <div class="stat"><div class="stat-value" id="moves">0</div><div class="stat-label">Moves</div></div>
+        <div class="stat"><div class="stat-value" id="lights">0</div><div class="stat-label">Lights On</div></div>
     </div>
 
     <div class="game-container">
-        <div class="game-board size-5" id="gameBoard"></div>
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="mode-selector">
+        <button class="mode-btn active" data-size="3">3×3</button>
+        <button class="mode-btn" data-size="4">4×4</button>
+        <button class="mode-btn" data-size="5">5×5</button>
+    </div>
+
+    <div class="mode-selector">
+        <button class="mode-toggle active" data-mode="progressive">Progressive</button>
+        <button class="mode-toggle" data-mode="random">Random</button>
     </div>
 
     <div class="bottom-controls">
-        <div class="difficulty-selector">
-            <button class="diff-btn" data-size="3">3×3</button>
-            <button class="diff-btn" data-size="4">4×4</button>
-            <button class="diff-btn active" data-size="5">5×5</button>
-        </div>
-        <button class="control-btn" onclick="newGame()">New Game</button>
+        <button class="control-btn secondary" onclick="resetPuzzle()">Reset</button>
+        <button class="control-btn" onclick="newPuzzle()">New Puzzle</button>
     </div>
 
-    <!-- Instructions Modal -->
     <div class="modal-overlay" id="instructionsModal">
         <div class="modal">
             <h2>How to Play</h2>
             <div class="instructions-content">
                 <p><strong>Goal:</strong> Turn off all the lights!</p>
                 <p><strong>Controls:</strong> Tap a light to toggle it and its adjacent lights (up, down, left, right).</p>
-                <p><strong>Tips:</strong> Work systematically from top to bottom. The puzzle is always solvable!</p>
+                <p><strong>Progressive:</strong> Complete puzzles in order. They get trickier!</p>
+                <p><strong>Random:</strong> Endless randomly-generated puzzles.</p>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); localStorage.setItem('lightsOut_instructionsSeen', 'true');">Got it</button>
+                <button class="control-btn" onclick="closeInstructions()">Got it</button>
             </div>
         </div>
     </div>
 
-    <!-- Win Modal -->
     <div class="modal-overlay" id="winModal">
         <div class="modal">
             <h2 class="win">All Off!</h2>
-            <p>Darkness achieved!</p>
+            <p id="winMessage">Puzzle complete!</p>
             <div class="modal-stats">
-                <div class="stat">
-                    <div class="modal-stat-value" id="finalMoves">0</div>
-                    <div class="modal-stat-label">Moves</div>
-                </div>
+                <div class="stat"><div class="modal-stat-value" id="finalMoves">0</div><div class="modal-stat-label">Moves</div></div>
+            </div>
+            <div class="next-puzzle-info" id="nextPuzzleInfo">
+                <div class="label">Next Puzzle</div>
+                <div class="number" id="nextPuzzleNumber">#2</div>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('winModal').classList.remove('active'); newGame();">Play Again</button>
-                <button class="control-btn secondary" onclick="window.location.href='../../index.html'">Back to Hub</button>
+                <button class="control-btn" onclick="nextPuzzle()">Continue</button>
+                <button class="control-btn secondary" onclick="closeWinModal()">Stay Here</button>
             </div>
         </div>
     </div>
 
     <script>
-        let grid = [];
-        let gridSize = 5;
-        let moves = 0;
-
-        function initGame() {
-            const board = document.getElementById('gameBoard');
-            board.innerHTML = '';
-            board.className = `game-board size-${gridSize}`;
-            
-            moves = 0;
-            grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(false));
-
-            // Create solvable puzzle by making random moves
-            const numMoves = gridSize * gridSize;
-            for (let i = 0; i < numMoves; i++) {
-                const r = Math.floor(Math.random() * gridSize);
-                const c = Math.floor(Math.random() * gridSize);
-                toggleLight(r, c, true); // true = setup mode (no move counting)
-            }
-
-            // Ensure at least some lights are on
-            if (countLightsOn() === 0) {
-                toggleLight(Math.floor(gridSize / 2), Math.floor(gridSize / 2), true);
-            }
-
-            render();
-            updateStats();
+        function seededRandom(seed) {
+            const m = 0x80000000, a = 1103515245, c = 12345;
+            let state = seed;
+            return function() {
+                state = (a * state + c) % m;
+                return state / m;
+            };
         }
 
-        function render() {
-            const board = document.getElementById('gameBoard');
-            board.innerHTML = '';
-            
-            for (let r = 0; r < gridSize; r++) {
-                for (let c = 0; c < gridSize; c++) {
-                    const light = document.createElement('div');
-                    light.className = 'light' + (grid[r][c] ? ' on' : '');
-                    light.addEventListener('click', () => onLightClick(r, c));
-                    board.appendChild(light);
-                }
-            }
+        let state = {
+            gridSize: 3,
+            puzzleId: 1,
+            isRandom: false,
+            moves: 0,
+            grid: []
+        };
+
+        let initialGrid = [];
+        let progress = loadProgress();
+
+        function loadProgress() {
+            const saved = localStorage.getItem('lightswitch_progress');
+            return saved ? JSON.parse(saved) : { 3: 1, 4: 1, 5: 1 };
         }
 
-        function toggleLight(row, col, setupMode = false) {
+        function saveProgress() {
+            localStorage.setItem('lightswitch_progress', JSON.stringify(progress));
+        }
+
+        function getClickCount(gridSize, puzzleId) {
+            // More clicks = harder puzzle
+            const base = gridSize + 2;
+            return base + Math.floor((puzzleId - 1) * 0.5);
+        }
+
+        function generatePuzzle(seed) {
+            const size = state.gridSize;
+            const random = seededRandom(seed);
+            
+            // Start with all lights off
+            state.grid = Array(size).fill(null).map(() => Array(size).fill(false));
+            
+            // Make random clicks to create solvable puzzle
+            const clicks = getClickCount(size, state.puzzleId);
+            for (let i = 0; i < clicks; i++) {
+                const row = Math.floor(random() * size);
+                const col = Math.floor(random() * size);
+                toggleCell(row, col, true);
+            }
+            
+            // Store initial state for reset
+            initialGrid = state.grid.map(row => [...row]);
+        }
+
+        function toggleCell(row, col, setup = false) {
+            const size = state.gridSize;
             const positions = [
                 [row, col],
                 [row - 1, col],
@@ -438,80 +287,162 @@
                 [row, col - 1],
                 [row, col + 1]
             ];
-
+            
             positions.forEach(([r, c]) => {
-                if (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
-                    grid[r][c] = !grid[r][c];
+                if (r >= 0 && r < size && c >= 0 && c < size) {
+                    state.grid[r][c] = !state.grid[r][c];
                 }
             });
-
-            if (!setupMode) {
-                moves++;
+            
+            if (!setup) {
+                state.moves++;
+                updateStats();
+                render();
+                checkWin();
             }
         }
 
-        function onLightClick(row, col) {
-            toggleLight(row, col);
+        function initGame() {
+            const seed = state.isRandom
+                ? Date.now() + Math.floor(Math.random() * 1000000)
+                : state.gridSize * 1000000 + state.puzzleId;
+            
+            generatePuzzle(seed);
+            state.moves = 0;
+            
+            updateUI();
             render();
-            updateStats();
-
-            if (countLightsOn() === 0) {
-                onWin();
-            }
         }
 
-        function countLightsOn() {
-            let count = 0;
-            for (let r = 0; r < gridSize; r++) {
-                for (let c = 0; c < gridSize; c++) {
-                    if (grid[r][c]) count++;
+        function render() {
+            const grid = document.getElementById('grid');
+            const size = state.gridSize;
+            const cellSize = Math.min(70, (window.innerWidth - 80) / size);
+            
+            grid.style.gridTemplateColumns = `repeat(${size}, ${cellSize}px)`;
+            grid.innerHTML = '';
+            
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell' + (state.grid[row][col] ? ' on' : '');
+                    cell.style.width = cellSize + 'px';
+                    cell.style.height = cellSize + 'px';
+                    cell.addEventListener('click', () => toggleCell(row, col));
+                    grid.appendChild(cell);
                 }
             }
-            return count;
         }
 
-        function onWin() {
-            // Save best score
-            const key = `lightsOut_best_${gridSize}`;
-            const currentBest = localStorage.getItem(key);
-            if (!currentBest || moves < parseInt(currentBest)) {
-                localStorage.setItem(key, moves.toString());
+        function checkWin() {
+            const allOff = state.grid.every(row => row.every(cell => !cell));
+            if (allOff) {
+                if (!state.isRandom && state.puzzleId >= progress[state.gridSize]) {
+                    progress[state.gridSize] = state.puzzleId + 1;
+                    saveProgress();
+                }
+                
+                document.getElementById('finalMoves').textContent = state.moves;
+                
+                if (state.isRandom) {
+                    document.getElementById('winMessage').textContent = 'Nice work!';
+                    document.getElementById('nextPuzzleInfo').style.display = 'none';
+                } else {
+                    document.getElementById('winMessage').textContent = `Puzzle #${state.puzzleId} complete!`;
+                    document.getElementById('nextPuzzleInfo').style.display = 'block';
+                    document.getElementById('nextPuzzleNumber').textContent = `#${state.puzzleId + 1}`;
+                }
+                
+                document.getElementById('winModal').classList.add('active');
             }
+        }
 
-            document.getElementById('finalMoves').textContent = moves;
-            document.getElementById('winModal').classList.add('active');
+        function updateUI() {
+            const puzzleNum = document.getElementById('puzzleNumber');
+            const puzzleDiff = document.getElementById('puzzleDifficulty');
+            
+            if (state.isRandom) {
+                puzzleNum.textContent = 'Random';
+                puzzleNum.classList.add('random');
+            } else {
+                puzzleNum.textContent = `#${state.puzzleId}`;
+                puzzleNum.classList.remove('random');
+            }
+            
+            puzzleDiff.textContent = `${state.gridSize}×${state.gridSize} · ${state.isRandom ? 'Random' : 'Progressive'}`;
             updateStats();
         }
 
         function updateStats() {
-            document.getElementById('moves').textContent = moves;
-            document.getElementById('lightsOn').textContent = countLightsOn();
-            
-            const key = `lightsOut_best_${gridSize}`;
-            const best = localStorage.getItem(key);
-            document.getElementById('best').textContent = best || '—';
+            document.getElementById('moves').textContent = state.moves;
+            const lightsOn = state.grid.flat().filter(x => x).length;
+            document.getElementById('lights').textContent = lightsOn;
         }
 
-        function newGame() {
+        function newPuzzle() {
+            if (!state.isRandom) {
+                state.puzzleId = progress[state.gridSize];
+            }
             initGame();
         }
 
-        // Difficulty buttons
-        document.querySelectorAll('.diff-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                gridSize = parseInt(btn.dataset.size);
-                newGame();
-            });
-        });
+        function resetPuzzle() {
+            state.grid = initialGrid.map(row => [...row]);
+            state.moves = 0;
+            updateStats();
+            render();
+        }
 
-        // Show instructions on first visit
-        if (!localStorage.getItem('lightsOut_instructionsSeen')) {
+        function nextPuzzle() {
+            document.getElementById('winModal').classList.remove('active');
+            if (!state.isRandom) {
+                state.puzzleId++;
+            }
+            initGame();
+        }
+
+        function closeWinModal() {
+            document.getElementById('winModal').classList.remove('active');
+        }
+
+        function showInstructions() {
             document.getElementById('instructionsModal').classList.add('active');
         }
 
-        // Start game
+        function closeInstructions() {
+            document.getElementById('instructionsModal').classList.remove('active');
+            localStorage.setItem('lightswitch_instructionsSeen', 'true');
+        }
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.gridSize = parseInt(btn.dataset.size);
+                if (!state.isRandom) {
+                    state.puzzleId = progress[state.gridSize];
+                }
+                initGame();
+            });
+        });
+
+        document.querySelectorAll('.mode-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-toggle').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.isRandom = btn.dataset.mode === 'random';
+                if (!state.isRandom) {
+                    state.puzzleId = progress[state.gridSize];
+                }
+                initGame();
+            });
+        });
+
+        if (!localStorage.getItem('lightswitch_instructionsSeen')) {
+            showInstructions();
+        }
+
+        state.puzzleId = progress[state.gridSize];
         initGame();
     </script>
 </body>

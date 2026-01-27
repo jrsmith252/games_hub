@@ -111,6 +111,7 @@
 
     <div class="stats-bar">
         <div class="stat"><div class="stat-value" id="score">0</div><div class="stat-label">Score</div></div>
+        <div class="stat"><div class="stat-value" id="best">0</div><div class="stat-label">Best</div></div>
         <div class="stat"><div class="stat-value" id="lines">0</div><div class="stat-label">Lines</div></div>
         <div class="stat"><div class="stat-value" id="level">1</div><div class="stat-label">Level</div></div>
     </div>
@@ -184,6 +185,7 @@
         ];
 
         let board, piece, nextPiece, score, lines, level, gameLoop, gameRunning;
+        let best = parseInt(localStorage.getItem('blockdrop_best')) || 0;
 
         function createPiece() {
             const idx = Math.floor(Math.random() * SHAPES.length);
@@ -201,6 +203,7 @@
             nextPiece = createPiece();
             score = 0; lines = 0; level = 1;
             gameRunning = true;
+            document.getElementById('best').textContent = best;
             updateStats();
             if (gameLoop) clearInterval(gameLoop);
             gameLoop = setInterval(tick, 1000 - (level - 1) * 100);
@@ -344,6 +347,11 @@
             document.getElementById('score').textContent = score;
             document.getElementById('lines').textContent = lines;
             document.getElementById('level').textContent = level;
+            if (score > best) {
+                best = score;
+                localStorage.setItem('blockdrop_best', best);
+            }
+            document.getElementById('best').textContent = best;
         }
 
         function moveLeft() { if (gameRunning) move(-1, 0); }
@@ -360,10 +368,11 @@
             }
         });
 
-        if (!localStorage.getItem('tetris_instructionsSeen')) {
+        if (!localStorage.getItem('blockdrop_instructionsSeen')) {
             document.getElementById('instructionsModal').classList.add('active');
         }
 
+        document.getElementById('best').textContent = best;
         startGame();
     </script>
 </body>
