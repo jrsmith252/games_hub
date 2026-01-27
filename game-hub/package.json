@@ -1,0 +1,11 @@
+{
+  "name": "game-hub",
+  "version": "1.0.0",
+  "description": "A mobile-first game hub featuring puzzle games",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "npx serve ."
+  },
+  "keywords": ["games", "puzzle", "mobile"],
+  "license": "MIT"
+}

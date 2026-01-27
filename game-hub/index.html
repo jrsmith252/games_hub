@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Game Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deep: #0a0f1a;
+            --bg-card: #141b2d;
+            --bg-card-hover: #1a2340;
+            --text-primary: #f0f4fc;
+            --text-secondary: #8892a8;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --success: #22c55e;
+            --border: rgba(255, 255, 255, 0.06);
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .app {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 20px;
+            padding-bottom: 100px;
+        }
+
+        /* Header */
+        .header {
+            padding: 40px 0 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 6px;
+        }
+
+        /* Continue Playing */
+        .continue-section {
+            margin-bottom: 32px;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .continue-card {
+            background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
+            border-radius: 16px;
+            padding: 20px;
+            display: none;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .continue-card.active {
+            display: block;
+        }
+
+        .continue-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+
+        .continue-card .game-title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .continue-card .game-progress {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        /* Game Library */
+        .library-section {
+            margin-bottom: 32px;
+        }
+
+        .game-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .game-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .game-card:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .game-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .game-icon.puzzle {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .game-icon.word {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .game-icon.strategy {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .game-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .game-info h3 {
+            font-family: 'Fraunces', serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .game-info p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .game-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .tag {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-secondary);
+        }
+
+        .play-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .game-card:hover .play-btn {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .play-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+            margin-left: 2px;
+        }
+
+        /* Coming Soon */
+        .game-card.coming-soon {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .game-card.coming-soon:hover {
+            transform: none;
+            background: var(--bg-card);
+            border-color: var(--border);
+        }
+
+        .game-card.coming-soon .play-btn {
+            background: var(--text-secondary);
+        }
+
+        .game-card.coming-soon:hover .play-btn {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 15, 26, 0.9);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            padding: 12px 20px 24px;
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: color 0.2s ease;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <h1>Game Hub</h1>
+            <p>Your calm corner for puzzles</p>
+        </header>
+
+        <section class="continue-section">
+            <div class="section-label">Continue Playing</div>
+            <a href="games/sliding-puzzle/index.html" class="continue-card" id="continueCard">
+                <div class="game-title">Sliding Puzzle</div>
+                <div class="game-progress" id="continueProgress">3 moves · 0:42</div>
+            </a>
+        </section>
+
+        <section class="library-section">
+            <div class="section-label">All Games</div>
+            <div class="game-grid">
+                <a href="games/sliding-puzzle/index.html" class="game-card">
+                    <div class="game-icon puzzle">🧩</div>
+                    <div class="game-info">
+                        <h3>Sliding Puzzle</h3>
+                        <p>Classic tile-sliding challenge</p>
+                        <div class="game-meta">
+                            <span class="tag">Puzzle</span>
+                            <span class="tag">Easy → Hard</span>
+                        </div>
+                    </div>
+                    <div class="play-btn">
+                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                    </div>
+                </a>
+
+                <div class="game-card coming-soon">
+                    <div class="game-icon word">📝</div>
+                    <div class="game-info">
+                        <h3>Word Paths</h3>
+                        <p>Connect letters, find words</p>
+                        <div class="game-meta">
+                            <span class="tag">Word</span>
+                            <span class="tag">Coming Soon</span>
+                        </div>
+                    </div>
+                    <div class="play-btn">
+                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                    </div>
+                </div>
+
+                <div class="game-card coming-soon">
+                    <div class="game-icon strategy">♟️</div>
+                    <div class="game-info">
+                        <h3>Hex Tactics</h3>
+                        <p>Turn-based territory control</p>
+                        <div class="game-meta">
+                            <span class="tag">Strategy</span>
+                            <span class="tag">Coming Soon</span>
+                        </div>
+                    </div>
+                    <div class="play-btn">
+                        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item active">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </a>
+        <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Library
+        </a>
+        <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Profile
+        </a>
+    </nav>
+
+    <script>
+        // Check for saved game state
+        function updateContinueCard() {
+            const savedState = localStorage.getItem('slidingPuzzle_state');
+            const continueCard = document.getElementById('continueCard');
+            const continueProgress = document.getElementById('continueProgress');
+            
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    if (state.moves > 0) {
+                        continueCard.classList.add('active');
+                        const minutes = Math.floor(state.time / 60);
+                        const seconds = state.time % 60;
+                        continueProgress.textContent = `${state.moves} moves · ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                } catch (e) {
+                    console.error('Error parsing saved state:', e);
+                }
+            }
+        }
+
+        updateContinueCard();
+    </script>
+</body>
+</html>
