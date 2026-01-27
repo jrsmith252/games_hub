@@ -277,16 +277,16 @@
             if (!gameRunning) return;
             
             direction = nextDirection;
-            const head = {
+            let head = {
                 x: snake[0].x + direction.x,
                 y: snake[0].y + direction.y
             };
 
-            // Wall collision
-            if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) {
-                gameOver();
-                return;
-            }
+            // Wrap around edges
+            if (head.x < 0) head.x = GRID - 1;
+            if (head.x >= GRID) head.x = 0;
+            if (head.y < 0) head.y = GRID - 1;
+            if (head.y >= GRID) head.y = 0;
 
             // Self collision
             if (snake.some(s => s.x === head.x && s.y === head.y)) {
