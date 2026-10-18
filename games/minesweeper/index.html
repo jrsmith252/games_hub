@@ -639,15 +639,17 @@
             if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) cancelPress();
         });
 
-        ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
-            boardEl.addEventListener(type, () => {
-                cancelPress();
-                if (longPressFired) {
-                    suppressClickUntil = Date.now() + 350; // swallow the click that follows a long-press
-                    longPressFired = false;
-                }
-            });
-        });
+        // Listen on document: a long-press re-renders the board, so the original target may be gone by release
+        function endPress() {
+            cancelPress();
+            if (longPressFired) {
+                suppressClickUntil = Date.now() + 350; // swallow the click that follows a long-press
+                longPressFired = false;
+            }
+        }
+        document.addEventListener('pointerup', endPress);
+        document.addEventListener('pointercancel', endPress);
+        boardEl.addEventListener('pointerleave', cancelPress);
 
         boardEl.addEventListener('click', e => {
             if (Date.now() < suppressClickUntil) { suppressClickUntil = 0; return; }
