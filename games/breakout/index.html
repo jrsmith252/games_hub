@@ -98,34 +98,34 @@
 </head>
 <body>
     <div class="top-bar">
-        <a href="../../index.html" class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
+        <a href="../../index.html" class="back-btn" aria-label="Back to hub"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
         <div class="game-title">Brick Breaker</div>
-        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+        <button class="menu-btn" aria-label="How to play" onclick="openInstructions()">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
 
     <div class="stats-bar">
-        <div class="stat"><div class="stat-value" id="score">0</div><div class="stat-label">Score</div></div>
+        <div class="stat"><div class="stat-value" id="score" aria-live="polite">0</div><div class="stat-label">Score</div></div>
         <div class="stat"><div class="stat-value" id="best">0</div><div class="stat-label">Best</div></div>
-        <div class="stat"><div class="stat-value" id="lives">3</div><div class="stat-label">Lives</div></div>
+        <div class="stat"><div class="stat-value" id="lives" aria-live="polite">3</div><div class="stat-label">Lives</div></div>
         <div class="stat"><div class="stat-value" id="level">1</div><div class="stat-label">Level</div></div>
     </div>
 
     <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" aria-label="Brick Breaker board. Tap to start or resume."></canvas>
     </div>
 
     <div class="controls">
-        <button class="ctrl-btn" id="leftBtn">←</button>
-        <button class="ctrl-btn" id="rightBtn">→</button>
+        <button class="ctrl-btn" id="leftBtn" aria-label="Move paddle left">←</button>
+        <button class="ctrl-btn" id="rightBtn" aria-label="Move paddle right">→</button>
     </div>
 
     <div class="bottom-controls">
         <button class="control-btn" onclick="startGame()">New Game</button>
     </div>
 
-    <div class="modal-overlay" id="instructionsModal">
+    <div class="modal-overlay" id="instructionsModal" role="dialog" aria-modal="true" aria-label="How to play">
         <div class="modal">
             <h2>How to Play</h2>
             <div class="instructions-content">
@@ -134,12 +134,12 @@
                 <p><strong>Tips:</strong> Aim for the corners to clear more bricks faster!</p>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); localStorage.setItem('breakout_instructionsSeen', 'true');">Got it</button>
+                <button class="control-btn" onclick="closeInstructions()">Got it</button>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="gameOverModal">
+    <div class="modal-overlay" id="gameOverModal" role="dialog" aria-modal="true" aria-label="Game over">
         <div class="modal">
             <h2 class="lose">Game Over</h2>
             <p>You ran out of lives!</p>
@@ -147,13 +147,13 @@
                 <div class="stat"><div class="modal-stat-value" id="finalScore">0</div><div class="modal-stat-label">Score</div></div>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('gameOverModal').classList.remove('active'); startGame();">Play Again</button>
+                <button class="control-btn" onclick="startGame()">Play Again</button>
                 <button class="control-btn secondary" onclick="window.location.href='../../index.html'">Back to Hub</button>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="winModal">
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-label="Level complete">
         <div class="modal">
             <h2 class="win">Level Complete!</h2>
             <p>Great job!</p>
@@ -167,27 +167,65 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        const BEST_KEY = 'brickbreaker_best';
+        const INSTRUCTIONS_KEY = 'brickbreaker_instructionsSeen';
+        const FRAME_MS = 1000 / 60;   // all speeds below are "pixels per 60Hz frame"
+        const MAX_DT = 33;
+        const SERVE_MS = 1000;
+        const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
+
+        // Logical (CSS pixel) size of the playfield; the canvas backing store is scaled by devicePixelRatio
+        let W = 300, H = 300;
+
+        let paddle, ball, bricks, score, lives, level, animationId, lastTime = null, serveTimer = 0;
+        // state: 'ready' (tap to start) | 'running' | 'paused' | 'won' (level complete modal) | 'over'
+        let state = 'ready';
+        let leftPressed = false, rightPressed = false;
+        let best = HubStorage.getInt(BEST_KEY, 0, 0);
+
+        function modalOpen() {
+            return !!document.querySelector('.modal-overlay.active');
+        }
+
+        // Level speed-up (level 2+ is 10% faster), kept when the ball is reset after a lost life
+        function levelSpeed() {
+            return level > 1 ? 1.1 : 1;
+        }
+
         // Responsive canvas
         function resize() {
-            const maxW = Math.min(window.innerWidth - 20, 400);
-            const maxH = Math.min(window.innerHeight - 320, 500);
-            canvas.width = maxW;
-            canvas.height = maxH;
+            const dpr = window.devicePixelRatio || 1;
+            const h = sel => { const el = document.querySelector(sel); return el ? el.offsetHeight : 0; };
+            const used = h('.top-bar') + h('.stats-bar') + h('.controls') + h('.bottom-controls') + 20;
+            const newW = Math.max(240, Math.min(window.innerWidth - 20, 400));
+            const newH = Math.max(260, Math.min(window.innerHeight - used, 500));
+            const rx = newW / W, ry = newH / H;
+            const hadGame = !!(paddle && ball && bricks);
+            W = newW; H = newH;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            canvas.width = Math.round(W * dpr);
+            canvas.height = Math.round(H * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            if (hadGame) {
+                // Keep the game state: rescale positions and rebuild brick geometry with the same alive flags
+                paddle.x = Math.max(0, Math.min(W - paddle.width, paddle.x * rx));
+                ball.x *= rx;
+                ball.y *= ry;
+                const alive = bricks.map(b => b.alive);
+                createBricks();
+                bricks.forEach((b, i) => { b.alive = alive[i]; });
+                draw();
+            }
         }
-        resize();
-
-        const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
-        
-        let paddle, ball, bricks, score, lives, level, gameRunning, animationId;
-        let leftPressed = false, rightPressed = false;
-        let best = parseInt(localStorage.getItem('brickbreaker_best')) || 0;
 
         function initGame() {
-            paddle = { width: 80, height: 12, x: canvas.width / 2 - 40, speed: 8 };
-            ball = { radius: 8, x: canvas.width / 2, y: canvas.height - 40, dx: 4, dy: -4 };
+            paddle = { width: 80, height: 12, x: W / 2 - 40, speed: 8 };
+            ball = { radius: 8, x: W / 2, y: H - 40, dx: 4, dy: -4 };
             score = 0;
             lives = 3;
             level = 1;
+            serveTimer = 0;
             createBricks();
             updateStats();
         }
@@ -196,9 +234,9 @@
             bricks = [];
             const rows = Math.min(3 + level, 6);
             const cols = 8;
-            const brickW = (canvas.width - 20) / cols;
+            const brickW = (W - 20) / cols;
             const brickH = 20;
-            
+
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     bricks.push({
@@ -213,9 +251,24 @@
             }
         }
 
+        function drawOverlay(title, sub) {
+            ctx.fillStyle = 'rgba(10, 15, 26, 0.72)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#f0f4fc';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '700 ' + Math.max(16, Math.round(W / 14)) + 'px "DM Sans", sans-serif';
+            ctx.fillText(title, W / 2, H / 2);
+            if (sub) {
+                ctx.fillStyle = '#8892a8';
+                ctx.font = '500 ' + Math.max(12, Math.round(W / 24)) + 'px "DM Sans", sans-serif';
+                ctx.fillText(sub, W / 2, H / 2 + 26);
+            }
+        }
+
         function draw() {
             ctx.fillStyle = '#141b2d';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, W, H);
 
             // Bricks
             bricks.forEach(b => {
@@ -227,32 +280,50 @@
 
             // Paddle
             ctx.fillStyle = '#6366f1';
-            ctx.fillRect(paddle.x, canvas.height - 20, paddle.width, paddle.height);
+            ctx.fillRect(paddle.x, H - 20, paddle.width, paddle.height);
 
             // Ball
             ctx.fillStyle = '#f0f4fc';
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
             ctx.fill();
+
+            if (state === 'ready') drawOverlay('Tap to start', 'Drag, use the buttons or arrow keys');
+            else if (state === 'paused') drawOverlay('Paused – tap to resume');
+            else if (state === 'running' && serveTimer > 0) {
+                ctx.fillStyle = '#8892a8';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '600 ' + Math.max(12, Math.round(W / 22)) + 'px "DM Sans", sans-serif';
+                ctx.fillText('Get ready…', W / 2, H / 2 + 40);
+            }
         }
 
-        function update() {
-            if (!gameRunning) return;
+        function update(dt) {
+            // dt is clamped; f == 1 at 60Hz so speeds feel the same as the old per-frame stepping
+            const f = dt / FRAME_MS;
 
             // Move paddle
-            if (leftPressed && paddle.x > 0) paddle.x -= paddle.speed;
-            if (rightPressed && paddle.x < canvas.width - paddle.width) paddle.x += paddle.speed;
+            if (leftPressed && paddle.x > 0) paddle.x = Math.max(0, paddle.x - paddle.speed * f);
+            if (rightPressed && paddle.x < W - paddle.width) paddle.x = Math.min(W - paddle.width, paddle.x + paddle.speed * f);
+
+            // Short pause / relaunch after losing a life or starting a level
+            if (serveTimer > 0) {
+                serveTimer -= dt;
+                return;
+            }
 
             // Move ball
-            ball.x += ball.dx;
-            ball.y += ball.dy;
+            ball.x += ball.dx * f;
+            ball.y += ball.dy * f;
 
             // Wall collisions
-            if (ball.x < ball.radius || ball.x > canvas.width - ball.radius) ball.dx = -ball.dx;
-            if (ball.y < ball.radius) ball.dy = -ball.dy;
+            if (ball.x < ball.radius) { ball.x = ball.radius; ball.dx = Math.abs(ball.dx); }
+            else if (ball.x > W - ball.radius) { ball.x = W - ball.radius; ball.dx = -Math.abs(ball.dx); }
+            if (ball.y < ball.radius) { ball.y = ball.radius; ball.dy = Math.abs(ball.dy); }
 
             // Paddle collision
-            if (ball.y > canvas.height - 20 - ball.radius &&
+            if (ball.y > H - 20 - ball.radius &&
                 ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
                 ball.dy = -Math.abs(ball.dy);
                 // Angle based on hit position
@@ -261,19 +332,21 @@
             }
 
             // Bottom - lose life
-            if (ball.y > canvas.height) {
+            if (ball.y > H) {
                 lives--;
                 updateStats();
                 if (lives <= 0) {
                     gameOver();
-                } else {
-                    resetBall();
+                    return;
                 }
+                resetBall();
+                serveTimer = SERVE_MS;
+                return;
             }
 
             // Brick collisions
             bricks.forEach(b => {
-                if (b.alive && 
+                if (b.alive &&
                     ball.x > b.x && ball.x < b.x + b.width &&
                     ball.y > b.y && ball.y < b.y + b.height) {
                     b.alive = false;
@@ -285,41 +358,104 @@
 
             // Check win
             if (bricks.every(b => !b.alive)) {
-                gameRunning = false;
+                state = 'won';
                 document.getElementById('winModal').classList.add('active');
             }
+        }
 
+        function frame(ts) {
+            if (state !== 'running') return;
+            const dt = lastTime === null ? FRAME_MS : Math.min(MAX_DT, Math.max(0, ts - lastTime));
+            lastTime = ts;
+            update(dt);
             draw();
-            if (gameRunning) animationId = requestAnimationFrame(update);
+            if (state === 'running') animationId = requestAnimationFrame(frame);
         }
 
-        function resetBall() {
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height - 40;
-            ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
-            ball.dy = -4;
-        }
-
-        function startGame() {
+        function startLoop() {
             cancelAnimationFrame(animationId);
+            lastTime = null;
+            animationId = requestAnimationFrame(frame);
+        }
+
+        function stopLoop() {
+            cancelAnimationFrame(animationId);
+            lastTime = null;
+        }
+
+        function resetBall(fixedSign) {
+            const sp = levelSpeed();
+            ball.x = W / 2;
+            ball.y = H - 40;
+            ball.dx = 4 * sp * (fixedSign || (Math.random() > 0.5 ? 1 : -1));
+            ball.dy = -4 * sp;
+        }
+
+        // New game: board is reset and waits for a tap
+        function startGame() {
+            document.getElementById('gameOverModal').classList.remove('active');
+            document.getElementById('winModal').classList.remove('active');
+            if (modalOpen()) return;
+            stopLoop();
+            leftPressed = rightPressed = false;
             initGame();
-            gameRunning = true;
-            update();
+            state = 'ready';
+            draw();
+        }
+
+        // Launch from 'ready' or resume from 'paused' (explicit user action only)
+        function launch() {
+            if (modalOpen() || document.hidden) return;
+            if (state === 'ready') {
+                serveTimer = 0;
+                state = 'running';
+                startLoop();
+            } else if (state === 'paused') {
+                state = 'running';
+                startLoop();
+            }
+        }
+
+        function pauseGame() {
+            leftPressed = rightPressed = false;
+            if (state !== 'running') return;
+            state = 'paused';
+            stopLoop();
+            draw();
+        }
+
+        function togglePause() {
+            if (state === 'running') pauseGame();
+            else if (state === 'paused') launch();
+        }
+
+        function openInstructions() {
+            pauseGame();
+            document.getElementById('instructionsModal').classList.add('active');
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructionsModal').classList.remove('active');
+            HubStorage.setFlag(INSTRUCTIONS_KEY, true);
+            draw();
         }
 
         function nextLevel() {
+            document.getElementById('winModal').classList.remove('active');
+            if (state !== 'won') return;
             level++;
             createBricks();
             resetBall();
-            ball.dx *= 1.1;
-            ball.dy *= 1.1;
-            gameRunning = true;
+            serveTimer = SERVE_MS;
+            state = 'running';
             updateStats();
-            update();
+            startLoop();
         }
 
         function gameOver() {
-            gameRunning = false;
+            state = 'over';
+            stopLoop();
+            leftPressed = rightPressed = false;
             document.getElementById('finalScore').textContent = score;
             document.getElementById('gameOverModal').classList.add('active');
         }
@@ -330,49 +466,75 @@
             document.getElementById('level').textContent = level;
             if (score > best) {
                 best = score;
-                localStorage.setItem('brickbreaker_best', best);
+                HubStorage.setInt(BEST_KEY, best);
             }
             document.getElementById('best').textContent = best;
         }
 
         // Controls
+        function inputBlocked() {
+            return modalOpen() || state === 'over' || state === 'won';
+        }
+        function pressDir(dir, on) {
+            if (on) {
+                if (inputBlocked() || state === 'paused') return;
+                if (state === 'ready') launch();
+            }
+            if (dir < 0) leftPressed = on; else rightPressed = on;
+        }
+
         document.addEventListener('keydown', e => {
-            if (e.key === 'ArrowLeft') leftPressed = true;
-            if (e.key === 'ArrowRight') rightPressed = true;
+            if (modalOpen()) return;
+            if (e.key === 'ArrowLeft') { pressDir(-1, true); e.preventDefault(); }
+            else if (e.key === 'ArrowRight') { pressDir(1, true); e.preventDefault(); }
+            else if (e.key === 'p' || e.key === 'P') togglePause();
+            else if (e.key === ' ' || e.key === 'Spacebar') { launch(); e.preventDefault(); }
         });
         document.addEventListener('keyup', e => {
             if (e.key === 'ArrowLeft') leftPressed = false;
             if (e.key === 'ArrowRight') rightPressed = false;
         });
 
-        const leftBtn = document.getElementById('leftBtn');
-        const rightBtn = document.getElementById('rightBtn');
-        
-        leftBtn.addEventListener('mousedown', () => leftPressed = true);
-        leftBtn.addEventListener('mouseup', () => leftPressed = false);
-        leftBtn.addEventListener('touchstart', e => { e.preventDefault(); leftPressed = true; });
-        leftBtn.addEventListener('touchend', () => leftPressed = false);
-        
-        rightBtn.addEventListener('mousedown', () => rightPressed = true);
-        rightBtn.addEventListener('mouseup', () => rightPressed = false);
-        rightBtn.addEventListener('touchstart', e => { e.preventDefault(); rightPressed = true; });
-        rightBtn.addEventListener('touchend', () => rightPressed = false);
+        function bindButton(id, dir) {
+            const btn = document.getElementById(id);
+            const off = () => pressDir(dir, false);
+            btn.addEventListener('mousedown', () => pressDir(dir, true));
+            btn.addEventListener('mouseup', off);
+            btn.addEventListener('mouseleave', off);
+            btn.addEventListener('touchstart', e => { e.preventDefault(); pressDir(dir, true); });
+            btn.addEventListener('touchend', off);
+            btn.addEventListener('touchcancel', off);
+            btn.addEventListener('blur', off);
+        }
+        bindButton('leftBtn', -1);
+        bindButton('rightBtn', 1);
 
-        // Touch move on canvas
-        canvas.addEventListener('touchmove', e => {
-            const touch = e.touches[0];
+        // Touch on canvas: touchstart and touchmove both place the paddle; a tap also starts/resumes
+        function paddleToTouch(e) {
+            if (inputBlocked() || state === 'paused' || !e.touches.length) return;
             const rect = canvas.getBoundingClientRect();
-            paddle.x = touch.clientX - rect.left - paddle.width / 2;
-            paddle.x = Math.max(0, Math.min(canvas.width - paddle.width, paddle.x));
-        }, { passive: true });
+            paddle.x = e.touches[0].clientX - rect.left - paddle.width / 2;
+            paddle.x = Math.max(0, Math.min(W - paddle.width, paddle.x));
+            if (state !== 'running') draw();
+        }
+        canvas.addEventListener('touchstart', paddleToTouch, { passive: true });
+        canvas.addEventListener('touchmove', paddleToTouch, { passive: true });
+        canvas.addEventListener('touchcancel', () => { leftPressed = rightPressed = false; }, { passive: true });
+        canvas.addEventListener('mouseleave', () => { leftPressed = rightPressed = false; });
+        canvas.addEventListener('click', () => { if (!modalOpen()) launch(); });
+
+        HubPause.onChange(hidden => { if (hidden) pauseGame(); });
+        window.addEventListener('blur', pauseGame);
 
         window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', () => setTimeout(resize, 100));
 
-        if (!localStorage.getItem('brickbreaker_instructionsSeen')) {
+        if (!HubStorage.getFlag(INSTRUCTIONS_KEY)) {
             document.getElementById('instructionsModal').classList.add('active');
         }
 
         document.getElementById('best').textContent = best;
+        resize();
         initGame();
         draw();
     </script>
