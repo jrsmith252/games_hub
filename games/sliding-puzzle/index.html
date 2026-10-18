@@ -23,7 +23,6 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
         .top-bar {
             display: flex;
@@ -103,6 +102,7 @@
             font-weight: 700;
             color: white;
             cursor: pointer;
+            border: none;
             transition: transform 0.15s ease;
             user-select: none;
         }
@@ -217,11 +217,11 @@
 </head>
 <body>
     <div class="top-bar">
-        <a href="../../index.html" class="back-btn">
+        <a href="../../index.html" class="back-btn" aria-label="Back to hub">
             <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
         </a>
         <div class="game-title">Sliding Puzzle</div>
-        <button class="menu-btn" onclick="showInstructions()">
+        <button type="button" class="menu-btn" aria-label="How to play" onclick="showInstructions()">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
@@ -262,13 +262,13 @@
     </div>
 
     <div class="bottom-controls">
-        <button class="control-btn secondary" onclick="resetPuzzle()">Reset</button>
-        <button class="control-btn primary" onclick="newGame()">New Puzzle</button>
+        <button type="button" class="control-btn secondary" onclick="resetPuzzle()">Reset</button>
+        <button type="button" id="newBtn" class="control-btn primary" onclick="newGame()">New Puzzle</button>
     </div>
 
     <!-- Instructions Modal -->
     <div class="modal-overlay" id="instructionsModal">
-        <div class="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="How to play">
             <h2>How to Play</h2>
             <div class="instructions-content">
                 <p><strong>Goal:</strong> Arrange tiles in order (1, 2, 3...) with the empty space in the bottom-right.</p>
@@ -284,9 +284,9 @@
 
     <!-- Win Modal -->
     <div class="modal-overlay" id="winModal">
-        <div class="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Puzzle complete">
             <h2 class="win">Puzzle Complete!</h2>
-            <p id="winMessage">Great work!</p>
+            <p id="winMessage" aria-live="polite">Great work!</p>
             <div class="modal-stats">
                 <div class="stat">
                     <div class="modal-stat-value" id="finalMoves">0</div>
@@ -309,18 +309,6 @@
     </div>
 
     <script>
-        // Seeded random number generator
-        function seededRandom(seed) {
-            const m = 0x80000000;
-            const a = 1103515245;
-            const c = 12345;
-            let state = seed;
-            return function() {
-                state = (a * state + c) % m;
-                return state / m;
-            };
-        }
-
         // Game state
         const DIFFICULTY = {
             3: { name: 'Easy', baseShuffles: 15, shuffleIncrement: 2 },
@@ -335,21 +323,28 @@
             moves: 0,
             time: 0,
             isPlaying: false,
+            won: false,
             board: [],
             emptyPos: { row: 0, col: 0 },
-            solvedBoard: []
+            solvedBoard: [],
+            initialBoard: [],
+            initialEmptyIndex: 0
         };
 
         let timerInterval = null;
         let progress = loadProgress();
 
         function loadProgress() {
-            const saved = localStorage.getItem('slidingPuzzle_progress');
-            return saved ? JSON.parse(saved) : { 3: 1, 4: 1, 5: 1 };
+            const v = HubStorage.isPosInt;
+            return HubStorage.getObject('slidingPuzzle_progress', { 3: 1, 4: 1, 5: 1 }, { 3: v, 4: v, 5: v });
         }
 
         function saveProgress() {
-            localStorage.setItem('slidingPuzzle_progress', JSON.stringify(progress));
+            HubStorage.setObject('slidingPuzzle_progress', progress);
+        }
+
+        function bestKey() {
+            return `slidingPuzzle_best_${state.gridSize}_${state.isRandom ? 'random' : state.puzzleId}`;
         }
 
         function getShuffleCount(gridSize, puzzleId) {
@@ -357,136 +352,151 @@
             return diff.baseShuffles + (puzzleId - 1) * diff.shuffleIncrement;
         }
 
-        function generatePuzzle(gridSize, puzzleId) {
+        // Shuffle a solved board by making legal moves, driven by a seeded rnd()
+        function shuffleBySeed(gridSize, seed, shuffleCount) {
             const size = gridSize * gridSize;
             const board = [];
-            
-            // Create solved state
             for (let i = 0; i < size - 1; i++) {
                 board.push(i + 1);
             }
             board.push(0); // Empty space
-            
-            // Store solved board for reference
+
             state.solvedBoard = [...board];
-            
-            // Seed based on gridSize and puzzleId
-            const seed = gridSize * 1000000 + puzzleId;
-            const random = seededRandom(seed);
-            
-            // Shuffle by making legal moves
+
+            const random = HubRandom.create(seed);
             let emptyIndex = size - 1;
-            const shuffleCount = getShuffleCount(gridSize, puzzleId);
             let lastMove = -1;
-            
+
             for (let i = 0; i < shuffleCount; i++) {
                 const moves = getValidMoves(emptyIndex, gridSize);
                 // Filter out the move that would undo the last move
                 const filteredMoves = moves.filter(m => m !== lastMove);
                 const movesToUse = filteredMoves.length > 0 ? filteredMoves : moves;
-                
+
                 const moveIndex = Math.floor(random() * movesToUse.length);
                 const newEmpty = movesToUse[moveIndex];
-                
-                // Swap
+
                 board[emptyIndex] = board[newEmpty];
                 board[newEmpty] = 0;
                 lastMove = emptyIndex;
                 emptyIndex = newEmpty;
             }
-            
+
+            // Never hand out an already-solved board
+            let guard = 0;
+            while (board.every((v, i) => v === state.solvedBoard[i]) && guard++ < 4) {
+                const moves = getValidMoves(emptyIndex, gridSize);
+                const newEmpty = moves[Math.floor(random() * moves.length)];
+                board[emptyIndex] = board[newEmpty];
+                board[newEmpty] = 0;
+                emptyIndex = newEmpty;
+            }
+
             return { board, emptyIndex };
+        }
+
+        function generatePuzzle(gridSize, puzzleId) {
+            // Deterministic: seed depends only on gridSize and puzzleId
+            const seed = gridSize * 1000000 + puzzleId;
+            return shuffleBySeed(gridSize, seed, getShuffleCount(gridSize, puzzleId));
         }
 
         function generateRandomPuzzle(gridSize) {
             const seed = Date.now() + Math.floor(Math.random() * 1000000);
-            const size = gridSize * gridSize;
-            const board = [];
-            
-            for (let i = 0; i < size - 1; i++) {
-                board.push(i + 1);
-            }
-            board.push(0);
-            
-            state.solvedBoard = [...board];
-            
-            const random = seededRandom(seed);
-            let emptyIndex = size - 1;
-            const shuffleCount = getShuffleCount(gridSize, 50); // Medium difficulty for random
-            let lastMove = -1;
-            
-            for (let i = 0; i < shuffleCount; i++) {
-                const moves = getValidMoves(emptyIndex, gridSize);
-                const filteredMoves = moves.filter(m => m !== lastMove);
-                const movesToUse = filteredMoves.length > 0 ? filteredMoves : moves;
-                const moveIndex = Math.floor(random() * movesToUse.length);
-                const newEmpty = movesToUse[moveIndex];
-                
-                board[emptyIndex] = board[newEmpty];
-                board[newEmpty] = 0;
-                lastMove = emptyIndex;
-                emptyIndex = newEmpty;
-            }
-            
-            return { board, emptyIndex };
+            return shuffleBySeed(gridSize, seed, getShuffleCount(gridSize, 50)); // Medium difficulty for random
         }
 
         function getValidMoves(emptyIndex, gridSize) {
             const moves = [];
             const row = Math.floor(emptyIndex / gridSize);
             const col = emptyIndex % gridSize;
-            
+
             if (row > 0) moves.push(emptyIndex - gridSize); // Up
             if (row < gridSize - 1) moves.push(emptyIndex + gridSize); // Down
             if (col > 0) moves.push(emptyIndex - 1); // Left
             if (col < gridSize - 1) moves.push(emptyIndex + 1); // Right
-            
+
             return moves;
         }
 
-        function initGame() {
-            clearInterval(timerInterval);
-            
-            const { board, emptyIndex } = state.isRandom 
-                ? generateRandomPuzzle(state.gridSize)
-                : generatePuzzle(state.gridSize, state.puzzleId);
-            
-            state.board = board;
+        // fresh=true creates a new puzzle (and caches its start); fresh=false restores the cached start
+        function initGame(fresh = true) {
+            stopTimer();
+            document.getElementById('winModal').classList.remove('active');
+
+            if (fresh || state.initialBoard.length !== state.gridSize * state.gridSize) {
+                const { board, emptyIndex } = state.isRandom
+                    ? generateRandomPuzzle(state.gridSize)
+                    : generatePuzzle(state.gridSize, state.puzzleId);
+                state.initialBoard = [...board];
+                state.initialEmptyIndex = emptyIndex;
+            }
+
+            state.board = [...state.initialBoard];
             state.emptyPos = {
-                row: Math.floor(emptyIndex / state.gridSize),
-                col: emptyIndex % state.gridSize
+                row: Math.floor(state.initialEmptyIndex / state.gridSize),
+                col: state.initialEmptyIndex % state.gridSize
             };
             state.moves = 0;
             state.time = 0;
             state.isPlaying = false;
-            
+            state.won = false;
+
             updateUI();
             renderBoard();
         }
 
+        function anyModalOpen() {
+            return !!document.querySelector('.modal-overlay.active');
+        }
+
         function renderBoard() {
             const board = document.getElementById('board');
-            const containerWidth = Math.min(window.innerWidth - 50, 360);
-            const tileSize = Math.floor((containerWidth - (state.gridSize + 1) * 6) / state.gridSize);
-            
-            board.style.gridTemplateColumns = `repeat(${state.gridSize}, ${tileSize}px)`;
+            const hadFocus = board.contains(document.activeElement);
+            const n = state.gridSize;
+            const GAP = 6, PAD = 10;
+
+            // Size the board from available width AND height so controls are not pushed off short screens
+            let boardMax = Math.min(window.innerWidth - 50, 360);
+            let used = 0;
+            document.querySelectorAll('.top-bar, .puzzle-info, .stats-bar, .mode-selector, .bottom-controls').forEach(el => { used += el.offsetHeight; });
+            const bodyCs = getComputedStyle(document.body);
+            const availH = window.innerHeight - used - 30 - (parseFloat(bodyCs.paddingTop) || 0) - (parseFloat(bodyCs.paddingBottom) || 0);
+            boardMax = Math.min(boardMax, Math.max(availH, 200));
+            const tileSize = Math.max(36, Math.floor((boardMax - PAD * 2 - (n - 1) * GAP) / n));
+
+            board.style.gridTemplateColumns = `repeat(${n}, ${tileSize}px)`;
             board.innerHTML = '';
-            
+
+            let focusEl = null;
             state.board.forEach((value, index) => {
-                const tile = document.createElement('div');
-                tile.className = 'tile' + (value === 0 ? ' empty' : '');
+                const row = Math.floor(index / n) + 1;
+                const col = (index % n) + 1;
+                let tile;
+                if (value === 0) {
+                    tile = document.createElement('div');
+                    tile.className = 'tile empty';
+                    tile.setAttribute('aria-hidden', 'true');
+                } else {
+                    tile = document.createElement('button');
+                    tile.type = 'button';
+                    tile.className = 'tile';
+                    tile.textContent = value;
+                    tile.style.background = getTileColor(value, n);
+                    tile.setAttribute('aria-label', `Tile ${value}, row ${row} column ${col}`);
+                    tile.onclick = () => handleTileClick(index);
+                }
                 tile.style.width = tileSize + 'px';
                 tile.style.height = tileSize + 'px';
                 tile.style.fontSize = (tileSize * 0.4) + 'px';
-                
-                if (value !== 0) {
-                    tile.textContent = value;
-                    tile.style.background = getTileColor(value, state.gridSize);
-                    tile.onclick = () => handleTileClick(index);
-                }
-                
                 board.appendChild(tile);
             });
+
+            if (hadFocus && state.lastMovedIndex !== undefined) {
+                focusEl = board.children[state.lastMovedIndex];
+                if (focusEl && focusEl.tagName === 'BUTTON') focusEl.focus();
+                state.lastMovedIndex = undefined;
+            }
         }
 
         function getTileColor(value, gridSize) {
@@ -495,29 +505,32 @@
         }
 
         function handleTileClick(index) {
+            if (state.won || anyModalOpen()) return;
+
             const row = Math.floor(index / state.gridSize);
             const col = index % state.gridSize;
-            
+
             const rowDiff = Math.abs(row - state.emptyPos.row);
             const colDiff = Math.abs(col - state.emptyPos.col);
-            
+
             if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
                 // Start timer on first move
                 if (!state.isPlaying) {
                     state.isPlaying = true;
-                    startTimer();
+                    syncTimer();
                 }
-                
+
                 // Swap tiles
                 const emptyIndex = state.emptyPos.row * state.gridSize + state.emptyPos.col;
                 state.board[emptyIndex] = state.board[index];
                 state.board[index] = 0;
                 state.emptyPos = { row, col };
                 state.moves++;
-                
+                state.lastMovedIndex = emptyIndex; // the tile now lives where the gap was
+
                 updateStats();
                 renderBoard();
-                
+
                 if (checkWin()) {
                     onWin();
                 }
@@ -534,26 +547,28 @@
         }
 
         function onWin() {
-            clearInterval(timerInterval);
+            if (state.won) return;
+            state.won = true;
+            stopTimer();
             state.isPlaying = false;
-            
+
             // Save best score
-            const key = `slidingPuzzle_best_${state.gridSize}_${state.isRandom ? 'random' : state.puzzleId}`;
-            const currentBest = localStorage.getItem(key);
-            if (!currentBest || state.moves < parseInt(currentBest)) {
-                localStorage.setItem(key, state.moves.toString());
+            const key = bestKey();
+            const currentBest = HubStorage.getInt(key, 0, 1);
+            if (!currentBest || state.moves < currentBest) {
+                HubStorage.setInt(key, state.moves);
             }
-            
+
             // Update progress for numbered puzzles
             if (!state.isRandom && state.puzzleId >= progress[state.gridSize]) {
                 progress[state.gridSize] = state.puzzleId + 1;
                 saveProgress();
             }
-            
+
             // Show win modal
             document.getElementById('finalMoves').textContent = state.moves;
             document.getElementById('finalTime').textContent = formatTime(state.time);
-            
+
             if (state.isRandom) {
                 document.getElementById('winMessage').textContent = 'Nice solve!';
                 document.getElementById('nextPuzzleInfo').style.display = 'none';
@@ -562,17 +577,32 @@
                 document.getElementById('nextPuzzleInfo').style.display = 'block';
                 document.getElementById('nextPuzzleNumber').textContent = `#${state.puzzleId + 1}`;
             }
-            
+
             document.getElementById('winModal').classList.add('active');
             updateBestDisplay();
+            updateControls();
         }
 
+        // Timer: runs only while a game is in progress, the page is visible and no modal is open
         function startTimer() {
+            if (timerInterval) return;
             timerInterval = setInterval(() => {
                 state.time++;
                 document.getElementById('time').textContent = formatTime(state.time);
             }, 1000);
         }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        function syncTimer() {
+            if (state.isPlaying && !state.won && !document.hidden && !anyModalOpen()) startTimer();
+            else stopTimer();
+        }
+
+        HubPause.onChange(() => syncTimer());
 
         function formatTime(seconds) {
             const mins = Math.floor(seconds / 60);
@@ -583,7 +613,7 @@
         function updateUI() {
             const puzzleNum = document.getElementById('puzzleNumber');
             const puzzleDiff = document.getElementById('puzzleDifficulty');
-            
+
             if (state.isRandom) {
                 puzzleNum.textContent = 'Random';
                 puzzleNum.classList.add('random');
@@ -593,9 +623,25 @@
                 puzzleNum.classList.remove('random');
                 puzzleDiff.textContent = `${state.gridSize}×${state.gridSize} · Progressive`;
             }
-            
+
             updateStats();
             updateBestDisplay();
+            updateControls();
+        }
+
+        // "New Puzzle" only makes sense in Random mode. In Progressive mode it jumps to the
+        // furthest unlocked puzzle, and is hidden when you are already on it (Reset covers that).
+        function updateControls() {
+            const btn = document.getElementById('newBtn');
+            if (state.isRandom) {
+                btn.style.display = '';
+                btn.textContent = 'New Puzzle';
+            } else if (state.puzzleId !== progress[state.gridSize]) {
+                btn.style.display = '';
+                btn.textContent = `Go to #${progress[state.gridSize]}`;
+            } else {
+                btn.style.display = 'none';
+            }
         }
 
         function updateStats() {
@@ -604,8 +650,7 @@
         }
 
         function updateBestDisplay() {
-            const key = `slidingPuzzle_best_${state.gridSize}_${state.isRandom ? 'random' : state.puzzleId}`;
-            const best = localStorage.getItem(key);
+            const best = HubStorage.getInt(bestKey(), 0, 1);
             document.getElementById('best').textContent = best || '—';
         }
 
@@ -613,11 +658,11 @@
             if (!state.isRandom) {
                 state.puzzleId = progress[state.gridSize];
             }
-            initGame();
+            initGame(true);
         }
 
         function resetPuzzle() {
-            initGame();
+            initGame(false); // same starting board
         }
 
         function nextPuzzle() {
@@ -625,20 +670,23 @@
             if (!state.isRandom) {
                 state.puzzleId++;
             }
-            initGame();
+            initGame(true);
         }
 
         function closeWinModal() {
             document.getElementById('winModal').classList.remove('active');
+            syncTimer();
         }
 
         function showInstructions() {
             document.getElementById('instructionsModal').classList.add('active');
+            syncTimer();
         }
 
         function closeInstructions() {
             document.getElementById('instructionsModal').classList.remove('active');
-            localStorage.setItem('slidingPuzzle_instructionsSeen', 'true');
+            HubStorage.setFlag('slidingPuzzle_instructionsSeen', true);
+            syncTimer();
         }
 
         // Grid size selector buttons
@@ -646,13 +694,13 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
-                state.gridSize = parseInt(btn.dataset.size);
+
+                state.gridSize = parseInt(btn.dataset.size, 10);
                 if (!state.isRandom) {
                     state.puzzleId = progress[state.gridSize];
                 }
-                
-                initGame();
+
+                initGame(true);
             });
         });
 
@@ -661,24 +709,28 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.mode-toggle').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
+
                 state.isRandom = btn.dataset.mode === 'random';
                 if (!state.isRandom) {
                     state.puzzleId = progress[state.gridSize];
                 }
-                
-                initGame();
+
+                initGame(true);
             });
         });
 
-        // Show instructions on first visit
-        if (!localStorage.getItem('slidingPuzzle_instructionsSeen')) {
-            showInstructions();
-        }
+        // Re-fit the board on resize/rotation without touching game state
+        window.addEventListener('resize', renderBoard);
+        window.addEventListener('orientationchange', () => setTimeout(renderBoard, 100));
 
         // Initialize
         state.puzzleId = progress[state.gridSize];
-        initGame();
+        initGame(true);
+
+        // Show instructions on first visit
+        if (!HubStorage.getFlag('slidingPuzzle_instructionsSeen')) {
+            showInstructions();
+        }
     </script>
 </body>
 </html>

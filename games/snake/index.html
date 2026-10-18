@@ -170,18 +170,18 @@
 </head>
 <body>
     <div class="top-bar">
-        <a href="../../index.html" class="back-btn">
+        <a href="../../index.html" class="back-btn" aria-label="Back to hub">
             <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
         </a>
         <div class="game-title">Snake</div>
-        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+        <button class="menu-btn" aria-label="How to play" onclick="openInstructions()">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
 
     <div class="stats-bar">
         <div class="stat">
-            <div class="stat-value" id="score">0</div>
+            <div class="stat-value" id="score" aria-live="polite">0</div>
             <div class="stat-label">Score</div>
         </div>
         <div class="stat">
@@ -191,21 +191,21 @@
     </div>
 
     <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" aria-label="Snake game board. Tap to start or resume."></canvas>
     </div>
 
     <div class="controls">
-        <button class="ctrl-btn up" onclick="setDirection(0,-1)">↑</button>
-        <button class="ctrl-btn left" onclick="setDirection(-1,0)">←</button>
-        <button class="ctrl-btn down" onclick="setDirection(0,1)">↓</button>
-        <button class="ctrl-btn right" onclick="setDirection(1,0)">→</button>
+        <button class="ctrl-btn up" aria-label="Up" onclick="setDirection(0,-1)">↑</button>
+        <button class="ctrl-btn left" aria-label="Left" onclick="setDirection(-1,0)">←</button>
+        <button class="ctrl-btn down" aria-label="Down" onclick="setDirection(0,1)">↓</button>
+        <button class="ctrl-btn right" aria-label="Right" onclick="setDirection(1,0)">→</button>
     </div>
 
     <div class="bottom-controls">
         <button class="control-btn" onclick="startGame()">New Game</button>
     </div>
 
-    <div class="modal-overlay" id="instructionsModal">
+    <div class="modal-overlay" id="instructionsModal" role="dialog" aria-modal="true" aria-label="How to play">
         <div class="modal">
             <h2>How to Play</h2>
             <div class="instructions-content">
@@ -214,15 +214,15 @@
                 <p><strong>Tips:</strong> Plan ahead and don't trap yourself!</p>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); localStorage.setItem('snake_instructionsSeen', 'true');">Got it</button>
+                <button class="control-btn" onclick="closeInstructions()">Got it</button>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="gameOverModal">
+    <div class="modal-overlay" id="gameOverModal" role="dialog" aria-modal="true" aria-label="Game over">
         <div class="modal">
-            <h2 class="lose">Game Over</h2>
-            <p>You crashed!</p>
+            <h2 class="lose" id="overTitle">Game Over</h2>
+            <p id="overText">You crashed!</p>
             <div class="modal-stats">
                 <div class="stat">
                     <div class="modal-stat-value" id="finalScore">0</div>
@@ -230,7 +230,7 @@
                 </div>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('gameOverModal').classList.remove('active'); startGame();">Play Again</button>
+                <button class="control-btn" onclick="startGame()">Play Again</button>
                 <button class="control-btn secondary" onclick="window.location.href='../../index.html'">Back to Hub</button>
             </div>
         </div>
@@ -239,52 +239,118 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
+        const gameContainer = document.querySelector('.game-container');
+
         const GRID = 20;
-        let SIZE;
-        let snake, food, direction, nextDirection, score, gameLoop, gameRunning;
-        let best = parseInt(localStorage.getItem('snake_best')) || 0;
+        const BEST_KEY = 'snake_best';
+        const INSTRUCTIONS_KEY = 'snake_instructionsSeen';
+        let SIZE = 0;
+        let snake, food, direction, nextDirection, score, gameLoop;
+        // state: 'ready' (tap to start) | 'running' | 'paused' | 'over'
+        let state = 'ready';
+        let best = HubStorage.getInt(BEST_KEY, 0, 0);
         document.getElementById('best').textContent = best;
 
-        function resize() {
-            const maxSize = Math.min(window.innerWidth - 40, 360);
-            SIZE = Math.floor(maxSize / GRID) * GRID;
-            canvas.width = SIZE;
-            canvas.height = SIZE;
+        function modalOpen() {
+            return !!document.querySelector('.modal-overlay.active');
         }
 
-        function startGame() {
-            resize();
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const used = ['.top-bar', '.stats-bar', '.controls', '.bottom-controls'].reduce((sum, sel) => {
+                const el = document.querySelector(sel);
+                return sum + (el ? el.offsetHeight : 0);
+            }, 0);
+            const availH = window.innerHeight - used - 40;
+            const maxSize = Math.min(window.innerWidth - 40, availH, 360);
+            SIZE = Math.max(Math.floor(maxSize / GRID) * GRID, GRID * 8);
+            canvas.style.width = SIZE + 'px';
+            canvas.style.height = SIZE + 'px';
+            canvas.width = Math.round(SIZE * dpr);
+            canvas.height = Math.round(SIZE * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            draw();
+        }
+
+        function resetGame() {
             snake = [{x: 10, y: 10}];
             direction = {x: 1, y: 0};
             nextDirection = {x: 1, y: 0};
             score = 0;
-            gameRunning = true;
             placeFood();
             updateStats();
+        }
+
+        function startTimer() {
             if (gameLoop) clearInterval(gameLoop);
             gameLoop = setInterval(update, 120);
         }
 
+        function startGame() {
+            document.getElementById('gameOverModal').classList.remove('active');
+            if (modalOpen()) return;
+            resetGame();
+            state = 'running';
+            startTimer();
+            draw();
+        }
+
+        function pauseGame() {
+            if (state !== 'running') return;
+            state = 'paused';
+            clearInterval(gameLoop);
+            draw();
+        }
+
+        function resumeGame() {
+            if (state !== 'paused' || modalOpen() || document.hidden) return;
+            state = 'running';
+            startTimer();
+            draw();
+        }
+
+        // Tap/click on the board: start or resume
+        function activate() {
+            if (modalOpen()) return;
+            if (state === 'ready') startGame();
+            else if (state === 'paused') resumeGame();
+        }
+
+        function openInstructions() {
+            pauseGame();
+            document.getElementById('instructionsModal').classList.add('active');
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructionsModal').classList.remove('active');
+            HubStorage.setFlag(INSTRUCTIONS_KEY, true);
+            draw();
+        }
+
         function placeFood() {
-            const cells = GRID;
-            do {
-                food = {
-                    x: Math.floor(Math.random() * cells),
-                    y: Math.floor(Math.random() * cells)
-                };
-            } while (snake.some(s => s.x === food.x && s.y === food.y));
+            const free = [];
+            for (let x = 0; x < GRID; x++) {
+                for (let y = 0; y < GRID; y++) {
+                    if (!snake.some(s => s.x === x && s.y === y)) free.push({x, y});
+                }
+            }
+            if (!free.length) { food = null; return; }
+            food = free[Math.floor(Math.random() * free.length)];
         }
 
         function setDirection(x, y) {
-            if (!gameRunning) return;
+            if (modalOpen() || state === 'over') return;
+            if (state === 'ready') startGame();
+            else if (state === 'paused') resumeGame();
+            if (state !== 'running') return;
             if (direction.x === -x && direction.y === -y) return;
+            if (nextDirection.x === -x && nextDirection.y === -y) return;
             nextDirection = {x, y};
         }
 
         function update() {
-            if (!gameRunning) return;
-            
+            if (state !== 'running') return;
+
             direction = nextDirection;
             let head = {
                 x: snake[0].x + direction.x,
@@ -299,7 +365,7 @@
 
             // Self collision
             if (snake.some(s => s.x === head.x && s.y === head.y)) {
-                gameOver();
+                gameOver(false);
                 return;
             }
 
@@ -309,6 +375,11 @@
             if (head.x === food.x && head.y === food.y) {
                 score += 10;
                 updateStats();
+                if (snake.length >= GRID * GRID) {
+                    draw();
+                    gameOver(true);
+                    return;
+                }
                 placeFood();
             } else {
                 snake.pop();
@@ -317,21 +388,39 @@
             draw();
         }
 
+        function drawOverlay(title, sub) {
+            ctx.fillStyle = 'rgba(10, 15, 26, 0.72)';
+            ctx.fillRect(0, 0, SIZE, SIZE);
+            ctx.fillStyle = '#f0f4fc';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '700 ' + Math.round(SIZE / 12) + 'px "DM Sans", sans-serif';
+            ctx.fillText(title, SIZE / 2, SIZE / 2 - SIZE / 24);
+            if (sub) {
+                ctx.fillStyle = '#8892a8';
+                ctx.font = '500 ' + Math.round(SIZE / 20) + 'px "DM Sans", sans-serif';
+                ctx.fillText(sub, SIZE / 2, SIZE / 2 + SIZE / 14);
+            }
+        }
+
         function draw() {
+            if (!SIZE || !snake) return;
             const cellSize = SIZE / GRID;
             ctx.fillStyle = '#141b2d';
             ctx.fillRect(0, 0, SIZE, SIZE);
 
             // Draw food
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath();
-            ctx.arc(
-                food.x * cellSize + cellSize / 2,
-                food.y * cellSize + cellSize / 2,
-                cellSize / 2 - 2,
-                0, Math.PI * 2
-            );
-            ctx.fill();
+            if (food) {
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(
+                    food.x * cellSize + cellSize / 2,
+                    food.y * cellSize + cellSize / 2,
+                    cellSize / 2 - 2,
+                    0, Math.PI * 2
+                );
+                ctx.fill();
+            }
 
             // Draw snake
             snake.forEach((segment, i) => {
@@ -344,17 +433,24 @@
                     cellSize - 2
                 );
             });
+
+            if (state === 'ready') drawOverlay('Tap to start', 'or press an arrow key');
+            else if (state === 'paused') drawOverlay('Paused', 'Tap to resume');
         }
 
-        function gameOver() {
-            gameRunning = false;
+        function gameOver(won) {
+            state = 'over';
             clearInterval(gameLoop);
-            
+
             if (score > best) {
                 best = score;
-                localStorage.setItem('snake_best', best);
+                HubStorage.setInt(BEST_KEY, best);
             }
-            
+
+            const title = document.getElementById('overTitle');
+            title.textContent = won ? 'You Win!' : 'Game Over';
+            title.className = won ? 'win' : 'lose';
+            document.getElementById('overText').textContent = won ? 'You filled the whole board!' : 'You crashed!';
             document.getElementById('finalScore').textContent = score;
             document.getElementById('gameOverModal').classList.add('active');
             updateStats();
@@ -374,13 +470,16 @@
             }
         });
 
-        // Touch swipe
+        canvas.addEventListener('click', activate);
+
+        // Touch swipe (attached to the game container, not document, so buttons/modals never steer)
         let touchStart = null;
-        document.addEventListener('touchstart', e => {
+        gameContainer.addEventListener('touchstart', e => {
+            if (modalOpen() || !e.touches.length) { touchStart = null; return; }
             touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
         }, {passive: true});
-        document.addEventListener('touchend', e => {
-            if (!touchStart) return;
+        gameContainer.addEventListener('touchend', e => {
+            if (!touchStart || modalOpen()) { touchStart = null; return; }
             const dx = e.changedTouches[0].clientX - touchStart.x;
             const dy = e.changedTouches[0].clientY - touchStart.y;
             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
@@ -390,13 +489,19 @@
             }
             touchStart = null;
         }, {passive: true});
+        gameContainer.addEventListener('touchcancel', () => { touchStart = null; }, {passive: true});
 
-        if (!localStorage.getItem('snake_instructionsSeen')) {
+        HubPause.onChange(hidden => { if (hidden) pauseGame(); });
+        window.addEventListener('blur', pauseGame);
+
+        if (!HubStorage.getFlag(INSTRUCTIONS_KEY)) {
             document.getElementById('instructionsModal').classList.add('active');
         }
 
         window.addEventListener('resize', resize);
-        startGame();
+        window.addEventListener('orientationchange', () => setTimeout(resize, 100));
+        resetGame();
+        resize();
     </script>
 </body>
 </html>
