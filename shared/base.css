@@ -1,0 +1,30 @@
+/* Shared mobile hardening for every page. Loaded AFTER each page's own <style>
+   is not required: these rules are deliberately low-specificity / additive. */
+html { -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
+body {
+    /* Let short screens scroll instead of clipping controls */
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+button, a, [role="button"], .cell, .tile, .card, .key {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+/* Comfortable tap targets for the common control classes */
+.back-btn, .menu-btn, .icon-btn, .header button { min-width: 44px; min-height: 44px; }
+.mode-btn, .diff-btn, .control-btn, .btn, .size-btn, .theme-btn { min-height: 44px; }
+/* Keyboard focus visibility */
+:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
