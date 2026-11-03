@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+*.log
+.idea/
+.vscode/
+# Native wrapper build output (Capacitor)
+android/app/build/
+ios/App/Pods/
+ios/App/build/
+dist/

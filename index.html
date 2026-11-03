@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Game Hub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared/fonts.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -30,7 +28,7 @@
             max-width: 600px;
             margin: 0 auto;
             padding: 0 20px;
-            padding-bottom: 100px;
+            padding-bottom: 40px;
         }
         .header {
             padding: 40px 0 30px;
@@ -187,7 +185,20 @@
             fill: none;
             stroke-width: 1.5;
         }
+        .footer { text-align: center; color: var(--text-secondary); font-size: 0.78rem; padding: 8px 0 24px; }
+        .footer a { color: var(--text-secondary); }
     </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="./">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="shared/base.css">
+    <script src="shared/hub.js"></script>
 </head>
 <body>
     <div class="app">
@@ -260,7 +271,7 @@
                     <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
                 </a>
                 <a href="games/simon/index.html" class="game-card">
-                    <div class="game-icon icon-simon">🔴</div>
+                    <div class="game-icon icon-simon">🎨</div>
                     <div class="game-info">
                         <h3>Color Sequence</h3>
                         <p>Repeat the color pattern</p>
@@ -271,8 +282,8 @@
                 <a href="games/minesweeper/index.html" class="game-card">
                     <div class="game-icon icon-mine">💣</div>
                     <div class="game-info">
-                        <h3>Minesweeper</h3>
-                        <p>Classic mine-finding logic</p>
+                        <h3>Mine Finder</h3>
+                        <p>Clear the field, avoid the mines</p>
                         <div class="game-meta"><span class="tag">3 Levels</span></div>
                     </div>
                     <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
@@ -345,21 +356,10 @@
                 </a>
             </div>
         </section>
-    </div>
 
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item active">
-            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            Home
-        </a>
-        <a href="#" class="nav-item">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Library
-        </a>
-        <a href="#" class="nav-item">
-            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Profile
-        </a>
-    </nav>
+        <footer class="footer">
+            <a href="privacy.html">Privacy</a> · Saved on this device only · v1.0
+        </footer>
+    </div>
 </body>
 </html>

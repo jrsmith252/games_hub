@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Color Sequence — Game Hub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../shared/fonts.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -78,6 +76,8 @@
         .simon-btn.blue { background: #3b82f6; }
         .simon-btn.blue.active { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
         .simon-btn:disabled { cursor: not-allowed; }
+        .simon-btn.wrong { opacity: 1; outline: 4px solid #f0f4fc; animation: simon-shake 0.35s linear; }
+        @keyframes simon-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
         .status {
             text-align: center;
             padding: 20px;
@@ -111,37 +111,48 @@
         .instructions-content p { color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
         .instructions-content p strong { color: var(--text-primary); }
     </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
 </head>
 <body>
     <div class="top-bar">
-        <a href="../../index.html" class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
+        <a href="../../index.html" class="back-btn" aria-label="Back to hub"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
         <div class="game-title">Color Sequence</div>
-        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+        <button class="menu-btn" aria-label="How to play" onclick="openInstructions()">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
 
     <div class="stats-bar">
-        <div class="stat"><div class="stat-value" id="score">0</div><div class="stat-label">Score</div></div>
+        <div class="stat"><div class="stat-value" id="score" aria-live="polite">0</div><div class="stat-label">Score</div></div>
         <div class="stat"><div class="stat-value" id="best">0</div><div class="stat-label">Best</div></div>
     </div>
 
     <div class="game-container">
         <div class="simon-board">
-            <button class="simon-btn green" data-color="green" disabled></button>
-            <button class="simon-btn red" data-color="red" disabled></button>
-            <button class="simon-btn yellow" data-color="yellow" disabled></button>
-            <button class="simon-btn blue" data-color="blue" disabled></button>
+            <button class="simon-btn green" data-color="green" role="button" aria-label="Green" disabled></button>
+            <button class="simon-btn red" data-color="red" role="button" aria-label="Red" disabled></button>
+            <button class="simon-btn yellow" data-color="yellow" role="button" aria-label="Yellow" disabled></button>
+            <button class="simon-btn blue" data-color="blue" role="button" aria-label="Blue" disabled></button>
         </div>
     </div>
 
-    <div class="status" id="status">Press Start to play</div>
+    <div class="status" id="status" role="status" aria-live="polite">Press Start to play</div>
 
     <div class="bottom-controls">
-        <button class="control-btn" onclick="startGame()">Start</button>
+        <button class="control-btn" id="mainBtn" onclick="onMainButton()">Start</button>
     </div>
 
-    <div class="modal-overlay" id="instructionsModal">
+    <div class="modal-overlay" id="instructionsModal" role="dialog" aria-modal="true" aria-label="How to play">
         <div class="modal">
             <h2>How to Play</h2>
             <div class="instructions-content">
@@ -150,12 +161,12 @@
                 <p><strong>Tips:</strong> Focus on one color at a time. Say the colors in your head!</p>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); localStorage.setItem('simon_instructionsSeen', 'true');">Got it</button>
+                <button class="control-btn" onclick="closeInstructions()">Got it</button>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="gameOverModal">
+    <div class="modal-overlay" id="gameOverModal" role="dialog" aria-modal="true" aria-label="Game over">
         <div class="modal">
             <h2 class="lose">Game Over</h2>
             <p>Wrong color!</p>
@@ -163,7 +174,7 @@
                 <div class="stat"><div class="modal-stat-value" id="finalScore">0</div><div class="modal-stat-label">Score</div></div>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('gameOverModal').classList.remove('active'); startGame();">Play Again</button>
+                <button class="control-btn" onclick="startGame()">Play Again</button>
                 <button class="control-btn secondary" onclick="window.location.href='../../index.html'">Back to Hub</button>
             </div>
         </div>
@@ -173,98 +184,221 @@
         const colors = ['green', 'red', 'yellow', 'blue'];
         const frequencies = { green: 329.63, red: 261.63, yellow: 220.00, blue: 164.81 };
         const buttons = document.querySelectorAll('.simon-btn');
-        
+        const BEST_KEY = 'simon_best';
+        const INSTRUCTIONS_KEY = 'simon_instructionsSeen';
+
         let sequence = [];
         let playerIndex = 0;
         let score = 0;
-        let best = parseInt(localStorage.getItem('simon_best')) || 0;
+        let best = HubStorage.getInt(BEST_KEY, 0, 0);
         let isPlaying = false;
         let audioCtx;
+        // Run token: bumping it cancels any in-flight sequence / next-round wait
+        let runToken = 0;
+        // phase: 'idle' | 'showing' | 'input' | 'between'
+        let phase = 'idle';
+        let paused = false;
+        let statusBeforePause = '';
 
         document.getElementById('best').textContent = best;
 
-        function playTone(color, duration = 300) {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = frequencies[color];
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration / 1000);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration / 1000);
+        function modalOpen() {
+            return !!document.querySelector('.modal-overlay.active');
         }
 
-        function flash(color, duration = 300) {
+        // Must be called synchronously from a user gesture (iOS)
+        function ensureAudio() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } catch (e) { /* audio unavailable: game still works silently */ }
+            return audioCtx;
+        }
+
+        function playTone(color, duration = 300) {
+            if (!ensureAudio()) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = frequencies[color];
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration / 1000);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration / 1000);
+            } catch (e) { /* ignore */ }
+        }
+
+        // Low descending buzz, clearly different from the four pure tones
+        function playBuzz() {
+            if (!ensureAudio()) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sawtooth';
+                const t = audioCtx.currentTime;
+                osc.frequency.setValueAtTime(140, t);
+                osc.frequency.exponentialRampToValueAtTime(70, t + 0.5);
+                gain.gain.setValueAtTime(0.25, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                osc.start();
+                osc.stop(t + 0.5);
+            } catch (e) { /* ignore */ }
+        }
+
+        function flash(color, duration = 300, silent = false) {
             const btn = document.querySelector(`[data-color="${color}"]`);
             btn.classList.add('active');
-            playTone(color, duration);
+            if (!silent) playTone(color, duration);
             setTimeout(() => btn.classList.remove('active'), duration);
         }
 
-        async function playSequence() {
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Sleep that holds while paused and returns false if this run was cancelled
+        async function wait(ms, token) {
+            let remaining = ms;
+            while (remaining > 0) {
+                if (token !== runToken) return false;
+                if (paused) { await sleep(100); continue; }
+                const step = Math.min(remaining, 25);
+                await sleep(step);
+                remaining -= step;
+            }
+            return token === runToken;
+        }
+
+        async function playSequence(token) {
+            phase = 'showing';
             setStatus('Watch carefully...');
             disableButtons();
-            
-            await sleep(500);
-            
+
+            // Modestly faster as the sequence grows
+            const step = Math.max(360, 600 - (sequence.length - 1) * 15);
+            const lit = Math.max(200, step - 200);
+
+            if (!(await wait(500, token))) return;
+
             for (let i = 0; i < sequence.length; i++) {
-                flash(sequence[i], 400);
-                await sleep(600);
+                if (!(await wait(0, token))) return;
+                flash(sequence[i], lit);
+                if (!(await wait(step, token))) return;
             }
-            
+
+            phase = 'input';
             setStatus('Your turn!');
-            enableButtons();
             playerIndex = 0;
+            if (!paused) enableButtons();
         }
 
         function startGame() {
+            document.getElementById('gameOverModal').classList.remove('active');
+            if (document.getElementById('instructionsModal').classList.contains('active')) return;
+            ensureAudio(); // create/resume synchronously inside the tap handler for iOS
+            const token = ++runToken;
+            buttons.forEach(btn => btn.classList.remove('active', 'wrong'));
+            paused = false;
+            setMainLabel();
             sequence = [];
             score = 0;
             isPlaying = true;
             updateStats();
-            addToSequence();
+            addToSequence(token);
         }
 
-        function addToSequence() {
+        function addToSequence(token) {
+            if (token !== runToken) return;
             sequence.push(colors[Math.floor(Math.random() * 4)]);
-            playSequence();
+            playSequence(token);
+        }
+
+        async function nextRound(token) {
+            if (!(await wait(1000, token))) return;
+            addToSequence(token);
         }
 
         function handleClick(color) {
-            if (!isPlaying) return;
-            
-            flash(color, 200);
-            
+            if (!isPlaying || phase !== 'input' || paused || modalOpen()) return;
+
             if (color === sequence[playerIndex]) {
+                flash(color, 200);
                 playerIndex++;
-                
+
                 if (playerIndex === sequence.length) {
                     score++;
                     updateStats();
                     disableButtons();
+                    phase = 'between';
                     setStatus('Correct! Next round...');
-                    setTimeout(() => addToSequence(), 1000);
+                    nextRound(runToken);
                 }
             } else {
+                flash(color, 200, true);
+                const btn = document.querySelector(`[data-color="${color}"]`);
+                btn.classList.add('wrong');
+                setTimeout(() => btn.classList.remove('wrong'), 400);
+                playBuzz();
                 gameOver();
             }
         }
 
         function gameOver() {
             isPlaying = false;
+            phase = 'idle';
+            runToken++;
             disableButtons();
-            
+
             if (score > best) {
                 best = score;
-                localStorage.setItem('simon_best', best);
+                HubStorage.setInt(BEST_KEY, best);
             }
-            
+
             document.getElementById('finalScore').textContent = score;
             document.getElementById('gameOverModal').classList.add('active');
             updateStats();
+        }
+
+        // Pause / resume (explicit resume only)
+        function setMainLabel() {
+            document.getElementById('mainBtn').textContent = paused ? 'Resume' : 'Start';
+        }
+
+        function pauseGame() {
+            if (!isPlaying || paused) return;
+            paused = true;
+            statusBeforePause = document.getElementById('status').textContent;
+            disableButtons();
+            setStatus('Paused – tap Resume');
+            setMainLabel();
+        }
+
+        function resumeGame() {
+            if (!paused || modalOpen() || document.hidden) return;
+            paused = false;
+            setStatus(statusBeforePause);
+            if (phase === 'input') enableButtons();
+            setMainLabel();
+        }
+
+        function onMainButton() {
+            if (paused) resumeGame();
+            else startGame();
+        }
+
+        function openInstructions() {
+            pauseGame();
+            document.getElementById('instructionsModal').classList.add('active');
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructionsModal').classList.remove('active');
+            HubStorage.setFlag(INSTRUCTIONS_KEY, true);
         }
 
         function enableButtons() {
@@ -284,15 +418,14 @@
             document.getElementById('best').textContent = best;
         }
 
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
         buttons.forEach(btn => {
             btn.addEventListener('click', () => handleClick(btn.dataset.color));
         });
 
-        if (!localStorage.getItem('simon_instructionsSeen')) {
+        HubPause.onChange(hidden => { if (hidden) pauseGame(); });
+        window.addEventListener('blur', pauseGame);
+
+        if (!HubStorage.getFlag(INSTRUCTIONS_KEY)) {
             document.getElementById('instructionsModal').classList.add('active');
         }
     </script>

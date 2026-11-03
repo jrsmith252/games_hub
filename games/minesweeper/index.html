@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minesweeper — Game Hub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mine Finder — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -58,11 +56,15 @@
 
         .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; gap: 10px; }
         .grid { display: grid; gap: 2px; background: var(--bg-card); padding: 8px; border-radius: 12px; }
+        .grid-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+        .grid-scroll .grid { width: max-content; }
         .cell {
             display: flex; align-items: center; justify-content: center;
             background: #334155; border-radius: 4px;
             font-family: 'Fraunces', serif; font-weight: 700; font-size: 0.9rem;
             cursor: pointer; transition: all 0.1s;
+            border: 0; padding: 0; min-width: 0; color: var(--text-primary);
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         .cell.revealed { background: var(--bg-card); cursor: default; }
         .cell.mine { background: var(--error); }
@@ -120,12 +122,23 @@
         .instructions-content p { color: var(--text-secondary); margin-bottom: 10px; line-height: 1.5; font-size: 0.85rem; }
         .instructions-content p strong { color: var(--text-primary); }
     </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
 </head>
 <body>
     <div class="top-bar">
-        <a href="../../index.html" class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
-        <div class="game-title">Minesweeper</div>
-        <button class="menu-btn" onclick="showInstructions()">
+        <a href="../../index.html" class="back-btn" aria-label="Back to hub"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
+        <div class="game-title">Mine Finder</div>
+        <button type="button" class="menu-btn" aria-label="How to play" onclick="showInstructions()">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
@@ -142,8 +155,8 @@
     </div>
 
     <div class="game-container">
-        <button class="flag-toggle" id="flagToggle" onclick="toggleFlagMode()">🚩 Flag Mode: OFF</button>
-        <div class="grid" id="grid"></div>
+        <button type="button" class="flag-toggle" id="flagToggle" onclick="toggleFlagMode()">🚩 Flag Mode: OFF</button>
+        <div class="grid-scroll"><div class="grid" id="grid"></div></div>
     </div>
 
     <div class="mode-selector">
@@ -158,16 +171,16 @@
     </div>
 
     <div class="bottom-controls">
-        <button class="control-btn secondary" onclick="resetPuzzle()">Reset</button>
-        <button class="control-btn" onclick="newPuzzle()">New Puzzle</button>
+        <button type="button" class="control-btn secondary" onclick="resetPuzzle()">Reset</button>
+        <button type="button" id="newBtn" class="control-btn" onclick="newPuzzle()">New Puzzle</button>
     </div>
 
     <div class="modal-overlay" id="instructionsModal">
-        <div class="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="How to play">
             <h2>How to Play</h2>
             <div class="instructions-content">
                 <p><strong>Goal:</strong> Reveal all cells without hitting a mine!</p>
-                <p><strong>Controls:</strong> Tap to reveal. Use Flag Mode to mark suspected mines.</p>
+                <p><strong>Controls:</strong> Tap to reveal. Long-press a cell (or right-click) to flag a suspected mine, or use Flag Mode. Your first tap and the cells around it are always safe.</p>
                 <p><strong>Numbers:</strong> Show how many mines are adjacent to that cell.</p>
                 <p><strong>Progressive:</strong> Complete puzzles in order. Mine count increases!</p>
             </div>
@@ -178,9 +191,9 @@
     </div>
 
     <div class="modal-overlay" id="winModal">
-        <div class="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="You win">
             <h2 class="win">You Win!</h2>
-            <p id="winMessage">All mines found!</p>
+            <p id="winMessage" aria-live="polite">All mines found!</p>
             <div class="modal-stats">
                 <div class="stat"><div class="modal-stat-value" id="finalTime">0:00</div><div class="modal-stat-label">Time</div></div>
             </div>
@@ -196,23 +209,17 @@
     </div>
 
     <div class="modal-overlay" id="loseModal">
-        <div class="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Game over">
             <h2 class="lose">Game Over</h2>
-            <p>You hit a mine!</p>
+            <p aria-live="polite">You hit a mine!</p>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('loseModal').classList.remove('active'); resetPuzzle();">Try Again</button>
-                <button class="control-btn secondary" onclick="document.getElementById('loseModal').classList.remove('active'); newPuzzle();">New Puzzle</button>
+                <button type="button" class="control-btn" onclick="resetPuzzle()">Try Again</button>
+                <button type="button" id="loseNewBtn" class="control-btn secondary" onclick="newPuzzle()">New Puzzle</button>
             </div>
         </div>
     </div>
 
     <script>
-        function seededRandom(seed) {
-            const m = 0x80000000, a = 1103515245, c = 12345;
-            let state = seed;
-            return function() { state = (a * state + c) % m; return state / m; };
-        }
-
         const DIFFICULTY = {
             easy: { rows: 8, cols: 8, baseMines: 8, mineIncrement: 0.3 },
             medium: { rows: 10, cols: 10, baseMines: 15, mineIncrement: 0.4 },
@@ -227,6 +234,7 @@
             revealed: [],
             flagged: [],
             mines: [],
+            mineCount: 0,
             time: 0,
             flagMode: false,
             gameOver: false,
@@ -234,16 +242,25 @@
         };
 
         let timerInterval = null;
+        let loseTimeout = null;
         let currentSeed = 0;
         let progress = loadProgress();
 
+        // Long-press (flag) bookkeeping
+        const LONG_PRESS_MS = 400;
+        let pressTimer = null;
+        let pressStart = null;
+        let longPressFired = false;
+        let suppressClickUntil = 0;
+        let lastPointerType = 'mouse';
+
         function loadProgress() {
-            const saved = localStorage.getItem('minesweeper_progress');
-            return saved ? JSON.parse(saved) : { easy: 1, medium: 1, hard: 1 };
+            const v = HubStorage.isPosInt;
+            return HubStorage.getObject('minesweeper_progress', { easy: 1, medium: 1, hard: 1 }, { easy: v, medium: v, hard: v });
         }
 
         function saveProgress() {
-            localStorage.setItem('minesweeper_progress', JSON.stringify(progress));
+            HubStorage.setObject('minesweeper_progress', progress);
         }
 
         function getMineCount(diff, puzzleId) {
@@ -251,46 +268,86 @@
             return Math.min(Math.floor(d.rows * d.cols * 0.35), Math.floor(d.baseMines + (puzzleId - 1) * d.mineIncrement));
         }
 
-        function initGame() {
+        function anyModalOpen() {
+            return !!document.querySelector('.modal-overlay.active');
+        }
+
+        // Timer: runs only after the first tap, while the game is live, the page is visible and no modal is open
+        function startTimer() {
+            if (timerInterval) return;
+            timerInterval = setInterval(() => {
+                state.time++;
+                document.getElementById('time').textContent = formatTime(state.time);
+            }, 1000);
+        }
+
+        function stopTimer() {
             clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        function syncTimer() {
+            if (!state.firstClick && !state.gameOver && !document.hidden && !anyModalOpen()) startTimer();
+            else stopTimer();
+        }
+
+        HubPause.onChange(() => { cancelPress(); syncTimer(); });
+
+        // fresh=true picks a new seed; fresh=false keeps the current seed so Reset gives the same board
+        function initGame(fresh = true) {
+            stopTimer();
+            clearTimeout(loseTimeout);
+            loseTimeout = null;
+            cancelPress();
+            document.getElementById('winModal').classList.remove('active');
+            document.getElementById('loseModal').classList.remove('active');
+
             const d = DIFFICULTY[state.difficulty];
             const mineCount = getMineCount(state.difficulty, state.puzzleId);
-            
-            currentSeed = state.isRandom
-                ? Date.now() + Math.floor(Math.random() * 1000000)
-                : state.difficulty.charCodeAt(0) * 1000000 + state.puzzleId;
-            
+
+            if (fresh || !currentSeed) {
+                currentSeed = state.isRandom
+                    ? Date.now() + Math.floor(Math.random() * 1000000)
+                    : state.difficulty.charCodeAt(0) * 1000000 + state.puzzleId;
+            }
+
             state.grid = Array(d.rows).fill(null).map(() => Array(d.cols).fill(0));
             state.revealed = Array(d.rows).fill(null).map(() => Array(d.cols).fill(false));
             state.flagged = Array(d.rows).fill(null).map(() => Array(d.cols).fill(false));
             state.mines = [];
+            state.mineCount = mineCount;
             state.time = 0;
             state.gameOver = false;
             state.firstClick = true;
             state.flagMode = false;
-            
+
             document.getElementById('flagToggle').classList.remove('active');
             document.getElementById('flagToggle').textContent = '🚩 Flag Mode: OFF';
-            document.getElementById('mines').textContent = mineCount;
-            
+
             updateUI();
             render();
         }
 
+        // Mine layout comes from the seed alone (a seeded shuffle of every cell). The first-tap
+        // cell and its 8 neighbours are skipped, so only mines that would land there move on.
         function placeMines(excludeRow, excludeCol) {
             const d = DIFFICULTY[state.difficulty];
-            const mineCount = getMineCount(state.difficulty, state.puzzleId);
-            const random = seededRandom(currentSeed + excludeRow * 100 + excludeCol);
-            
+            const mineCount = state.mineCount;
+            const random = HubRandom.create(currentSeed);
+
+            const all = [];
+            for (let i = 0; i < d.rows * d.cols; i++) all.push(i);
+            const order = HubRandom.shuffle(all, random);
+
             state.mines = [];
-            while (state.mines.length < mineCount) {
-                const r = Math.floor(random() * d.rows);
-                const c = Math.floor(random() * d.cols);
-                if ((r === excludeRow && c === excludeCol) || state.mines.some(m => m[0] === r && m[1] === c)) continue;
+            for (const idx of order) {
+                if (state.mines.length >= mineCount) break;
+                const r = Math.floor(idx / d.cols), c = idx % d.cols;
+                if (Math.abs(r - excludeRow) <= 1 && Math.abs(c - excludeCol) <= 1) continue;
                 state.mines.push([r, c]);
                 state.grid[r][c] = -1;
             }
-            
+
             // Calculate numbers
             for (let r = 0; r < d.rows; r++) {
                 for (let c = 0; c < d.cols; c++) {
@@ -307,23 +364,45 @@
             }
         }
 
+        function cellLabel(r, c) {
+            const pos = `Row ${r + 1}, column ${c + 1}`;
+            if (state.revealed[r][c]) {
+                const v = state.grid[r][c];
+                if (v === -1) return `${pos}, mine`;
+                return v > 0 ? `${pos}, ${v} adjacent mine${v === 1 ? '' : 's'}` : `${pos}, empty`;
+            }
+            return state.flagged[r][c] ? `${pos}, flagged` : `${pos}, hidden`;
+        }
+
         function render() {
             const grid = document.getElementById('grid');
             const d = DIFFICULTY[state.difficulty];
-            const cellSize = Math.min(32, Math.floor((window.innerWidth - 60) / d.cols));
-            
+            const hadFocus = grid.contains(document.activeElement);
+            const focusIdx = hadFocus ? Array.prototype.indexOf.call(grid.children, document.activeElement) : -1;
+
+            // Subtract container padding (20), grid padding (16) and gaps (2px each); never shrink below 28px.
+            // If the board is wider than the screen it scrolls horizontally inside its wrapper.
+            const cs = getComputedStyle(document.body);
+            const sides = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+            const avail = window.innerWidth - sides - 20 - 16 - 2 * (d.cols - 1);
+            const cellSize = Math.max(28, Math.min(32, Math.floor(avail / d.cols)));
+
             grid.style.gridTemplateColumns = `repeat(${d.cols}, ${cellSize}px)`;
             grid.innerHTML = '';
-            
+
             for (let r = 0; r < d.rows; r++) {
                 for (let c = 0; c < d.cols; c++) {
-                    const cell = document.createElement('div');
+                    const cell = document.createElement('button');
+                    cell.type = 'button';
                     cell.className = 'cell';
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
                     cell.style.width = cellSize + 'px';
                     cell.style.height = cellSize + 'px';
-                    
+
                     if (state.revealed[r][c]) {
                         cell.classList.add('revealed');
+                        cell.tabIndex = -1;
                         if (state.grid[r][c] === -1) {
                             cell.classList.add('mine');
                             cell.textContent = '💣';
@@ -335,39 +414,44 @@
                         cell.classList.add('flagged');
                         cell.textContent = '🚩';
                     }
-                    
-                    cell.addEventListener('click', () => handleClick(r, c));
+
+                    cell.setAttribute('aria-label', cellLabel(r, c));
                     grid.appendChild(cell);
                 }
             }
-            
+
+            if (focusIdx >= 0 && grid.children[focusIdx]) grid.children[focusIdx].focus();
+
             const flagCount = state.flagged.flat().filter(x => x).length;
             document.getElementById('flags').textContent = flagCount;
+            document.getElementById('mines').textContent = state.mineCount - flagCount;
+        }
+
+        function toggleFlag(row, col) {
+            if (state.gameOver || state.revealed[row][col]) return;
+            state.flagged[row][col] = !state.flagged[row][col];
+            render();
         }
 
         function handleClick(row, col) {
-            if (state.gameOver || state.revealed[row][col]) return;
-            
+            if (state.gameOver || state.revealed[row][col] || anyModalOpen()) return;
+
             if (state.flagMode) {
-                state.flagged[row][col] = !state.flagged[row][col];
-                render();
+                toggleFlag(row, col);
                 return;
             }
-            
+
             if (state.flagged[row][col]) return;
-            
+
             if (state.firstClick) {
                 state.firstClick = false;
                 placeMines(row, col);
-                timerInterval = setInterval(() => {
-                    state.time++;
-                    document.getElementById('time').textContent = formatTime(state.time);
-                }, 1000);
+                syncTimer();
             }
-            
+
             reveal(row, col);
             render();
-            
+
             if (state.grid[row][col] === -1) {
                 gameOver(false);
             } else if (checkWin()) {
@@ -379,9 +463,9 @@
             const d = DIFFICULTY[state.difficulty];
             if (row < 0 || row >= d.rows || col < 0 || col >= d.cols) return;
             if (state.revealed[row][col] || state.flagged[row][col]) return;
-            
+
             state.revealed[row][col] = true;
-            
+
             if (state.grid[row][col] === 0) {
                 for (let dr = -1; dr <= 1; dr++) {
                     for (let dc = -1; dc <= 1; dc++) {
@@ -402,15 +486,16 @@
         }
 
         function gameOver(won) {
-            clearInterval(timerInterval);
+            if (state.gameOver) return;
+            stopTimer();
             state.gameOver = true;
-            
+
             if (won) {
                 if (!state.isRandom && state.puzzleId >= progress[state.difficulty]) {
                     progress[state.difficulty] = state.puzzleId + 1;
                     saveProgress();
                 }
-                
+
                 document.getElementById('finalTime').textContent = formatTime(state.time);
                 if (state.isRandom) {
                     document.getElementById('winMessage').textContent = 'Nice work!';
@@ -420,12 +505,18 @@
                     document.getElementById('nextPuzzleInfo').style.display = 'block';
                     document.getElementById('nextPuzzleNumber').textContent = `#${state.puzzleId + 1}`;
                 }
+                updateControls();
                 document.getElementById('winModal').classList.add('active');
             } else {
                 // Reveal all mines
                 state.mines.forEach(([r, c]) => state.revealed[r][c] = true);
                 render();
-                setTimeout(() => document.getElementById('loseModal').classList.add('active'), 500);
+                updateControls();
+                clearTimeout(loseTimeout);
+                loseTimeout = setTimeout(() => {
+                    loseTimeout = null;
+                    document.getElementById('loseModal').classList.add('active');
+                }, 500);
             }
         }
 
@@ -444,31 +535,50 @@
             const d = DIFFICULTY[state.difficulty];
             const puzzleNum = document.getElementById('puzzleNumber');
             const puzzleDiff = document.getElementById('puzzleDifficulty');
-            
+
             puzzleNum.textContent = state.isRandom ? 'Random' : `#${state.puzzleId}`;
             puzzleNum.classList.toggle('random', state.isRandom);
             puzzleDiff.textContent = `${d.name || state.difficulty.charAt(0).toUpperCase() + state.difficulty.slice(1)} · ${state.isRandom ? 'Random' : 'Progressive'}`;
             document.getElementById('time').textContent = '0:00';
+            updateControls();
+        }
+
+        // "New Puzzle" only makes sense in Random mode. In Progressive it jumps to the furthest
+        // unlocked puzzle and is hidden when you are already there (Reset / Try Again cover that).
+        function updateControls() {
+            ['newBtn', 'loseNewBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (state.isRandom) {
+                    btn.style.display = '';
+                    btn.textContent = 'New Puzzle';
+                } else if (state.puzzleId !== progress[state.difficulty]) {
+                    btn.style.display = '';
+                    btn.textContent = `Go to #${progress[state.difficulty]}`;
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
         }
 
         function newPuzzle() {
             if (!state.isRandom) state.puzzleId = progress[state.difficulty];
-            initGame();
+            initGame(true);
         }
 
-        function resetPuzzle() { initGame(); }
+        function resetPuzzle() { initGame(false); }
 
         function nextPuzzle() {
             document.getElementById('winModal').classList.remove('active');
             if (!state.isRandom) state.puzzleId++;
-            initGame();
+            initGame(true);
         }
 
-        function closeWinModal() { document.getElementById('winModal').classList.remove('active'); }
-        function showInstructions() { document.getElementById('instructionsModal').classList.add('active'); }
+        function closeWinModal() { document.getElementById('winModal').classList.remove('active'); syncTimer(); }
+        function showInstructions() { document.getElementById('instructionsModal').classList.add('active'); syncTimer(); }
         function closeInstructions() {
             document.getElementById('instructionsModal').classList.remove('active');
-            localStorage.setItem('minesweeper_instructionsSeen', 'true');
+            HubStorage.setFlag('minesweeper_instructionsSeen', true);
+            syncTimer();
         }
 
         document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -477,7 +587,7 @@
                 btn.classList.add('active');
                 state.difficulty = btn.dataset.diff;
                 if (!state.isRandom) state.puzzleId = progress[state.difficulty];
-                initGame();
+                initGame(true);
             });
         });
 
@@ -487,13 +597,81 @@
                 btn.classList.add('active');
                 state.isRandom = btn.dataset.mode === 'random';
                 if (!state.isRandom) state.puzzleId = progress[state.difficulty];
-                initGame();
+                initGame(true);
             });
         });
 
-        if (!localStorage.getItem('minesweeper_instructionsSeen')) showInstructions();
+        // ---- Board input: delegated click, long-press to flag, right-click to flag ----
+        function cellFromEvent(e) {
+            const el = e.target.closest ? e.target.closest('.cell') : null;
+            if (!el) return null;
+            return { el, r: parseInt(el.dataset.r, 10), c: parseInt(el.dataset.c, 10) };
+        }
+
+        function cancelPress() {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+            pressStart = null;
+        }
+
+        const boardEl = document.getElementById('grid');
+
+        boardEl.addEventListener('pointerdown', e => {
+            lastPointerType = e.pointerType || 'mouse';
+            if (e.button !== 0) return;
+            const hit = cellFromEvent(e);
+            if (!hit) return;
+            longPressFired = false;
+            cancelPress();
+            pressStart = { x: e.clientX, y: e.clientY };
+            pressTimer = setTimeout(() => {
+                pressTimer = null;
+                longPressFired = true;
+                if (!anyModalOpen()) {
+                    toggleFlag(hit.r, hit.c);
+                    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (err) { /* ignore */ } }
+                }
+            }, LONG_PRESS_MS);
+        });
+
+        boardEl.addEventListener('pointermove', e => {
+            if (!pressStart) return;
+            if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) cancelPress();
+        });
+
+        // Listen on document: a long-press re-renders the board, so the original target may be gone by release
+        function endPress() {
+            cancelPress();
+            if (longPressFired) {
+                suppressClickUntil = Date.now() + 350; // swallow the click that follows a long-press
+                longPressFired = false;
+            }
+        }
+        document.addEventListener('pointerup', endPress);
+        document.addEventListener('pointercancel', endPress);
+        boardEl.addEventListener('pointerleave', cancelPress);
+
+        boardEl.addEventListener('click', e => {
+            if (Date.now() < suppressClickUntil) { suppressClickUntil = 0; return; }
+            const hit = cellFromEvent(e);
+            if (hit) handleClick(hit.r, hit.c);
+        });
+
+        boardEl.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            // Touch long-press already flagged via the timer; only mouse/pen right-click flags here
+            if (lastPointerType === 'touch') return;
+            const hit = cellFromEvent(e);
+            if (hit && !anyModalOpen()) toggleFlag(hit.r, hit.c);
+        });
+
+        // Re-fit on resize/rotation without touching game state
+        window.addEventListener('resize', render);
+        window.addEventListener('orientationchange', () => setTimeout(render, 100));
+
+        if (!HubStorage.getFlag('minesweeper_instructionsSeen')) showInstructions();
         state.puzzleId = progress[state.difficulty];
-        initGame();
+        initGame(true);
     </script>
 </body>
 </html>

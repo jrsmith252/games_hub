@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>2048 — Game Hub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../shared/fonts.css">
     <style>
         * {
             margin: 0;
@@ -161,12 +159,15 @@
             transition: transform 0.1s ease;
         }
 
-        .tile[data-value="2"] { background: #3b82f6; color: white; }
-        .tile[data-value="4"] { background: #6366f1; color: white; }
-        .tile[data-value="8"] { background: #8b5cf6; color: white; }
-        .tile[data-value="16"] { background: #a855f7; color: white; }
-        .tile[data-value="32"] { background: #d946ef; color: white; }
-        .tile[data-value="64"] { background: #ec4899; color: white; }
+        /* Default for any value above 2048 (4096, 8192, ...); specific rules below override it */
+        .tile[data-value] { background: #0ea5e9; color: white; font-size: 1rem; }
+        .tile[data-value="16384"], .tile[data-value="32768"], .tile[data-value="65536"], .tile[data-value="131072"] { background: #0284c7; font-size: 0.85rem; }
+        .tile[data-value="2"] { background: #3b82f6; color: white; font-size: 1.5rem; }
+        .tile[data-value="4"] { background: #6366f1; color: white; font-size: 1.5rem; }
+        .tile[data-value="8"] { background: #8b5cf6; color: white; font-size: 1.5rem; }
+        .tile[data-value="16"] { background: #a855f7; color: white; font-size: 1.5rem; }
+        .tile[data-value="32"] { background: #d946ef; color: white; font-size: 1.5rem; }
+        .tile[data-value="64"] { background: #ec4899; color: white; font-size: 1.5rem; }
         .tile[data-value="128"] { background: #f43f5e; color: white; font-size: 1.3rem; }
         .tile[data-value="256"] { background: #ef4444; color: white; font-size: 1.3rem; }
         .tile[data-value="512"] { background: #f97316; color: white; font-size: 1.3rem; }
@@ -315,21 +316,32 @@
             color: var(--text-primary);
         }
     </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
 </head>
 <body>
     <div class="top-bar">
-        <a href="../../index.html" class="back-btn">
+        <a href="../../index.html" class="back-btn" aria-label="Back to hub">
             <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
         </a>
         <div class="game-title">2048</div>
-        <button class="menu-btn" onclick="document.getElementById('instructionsModal').classList.add('active')">
+        <button class="menu-btn" aria-label="How to play" onclick="document.getElementById('instructionsModal').classList.add('active')">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
         </button>
     </div>
 
     <div class="stats-bar">
         <div class="stat">
-            <div class="stat-value" id="score">0</div>
+            <div class="stat-value" id="score" aria-live="polite">0</div>
             <div class="stat-label">Score</div>
         </div>
         <div class="stat">
@@ -339,7 +351,7 @@
     </div>
 
     <div class="game-container">
-        <div class="game-board" id="gameBoard"></div>
+        <div class="game-board" id="gameBoard" aria-label="2048 board"></div>
     </div>
 
     <div class="bottom-controls">
@@ -347,7 +359,7 @@
     </div>
 
     <!-- Instructions Modal -->
-    <div class="modal-overlay" id="instructionsModal">
+    <div class="modal-overlay" id="instructionsModal" role="dialog" aria-modal="true" aria-label="How to play">
         <div class="modal">
             <h2>How to Play</h2>
             <div class="instructions-content">
@@ -356,13 +368,13 @@
                 <p><strong>Tips:</strong> When two tiles with the same number touch, they merge. Keep your highest tile in a corner!</p>
             </div>
             <div class="modal-actions">
-                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); localStorage.setItem('twenty48_instructionsSeen', 'true');">Got it</button>
+                <button class="control-btn" onclick="document.getElementById('instructionsModal').classList.remove('active'); HubStorage.setFlag(INSTRUCTIONS_KEY, true);">Got it</button>
             </div>
         </div>
     </div>
 
     <!-- Game Over Modal -->
-    <div class="modal-overlay" id="gameOverModal">
+    <div class="modal-overlay" id="gameOverModal" role="dialog" aria-modal="true" aria-label="Game over">
         <div class="modal">
             <h2 class="lose">Game Over</h2>
             <p>No more moves available</p>
@@ -380,7 +392,7 @@
     </div>
 
     <!-- Win Modal -->
-    <div class="modal-overlay" id="winModal">
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-label="You win">
         <div class="modal">
             <h2 class="win">You Win!</h2>
             <p>You reached 2048!</p>
@@ -400,11 +412,72 @@
     <script>
         let grid = [];
         let score = 0;
-        let best = parseInt(localStorage.getItem('twenty48_best')) || 0;
+        const BEST_KEY = 'twenty48_best';
+        const STATE_KEY = 'twenty48_state';
+        const INSTRUCTIONS_KEY = 'twenty48_instructionsSeen';
+        let best = HubStorage.getInt(BEST_KEY, 0, 0);
         let continueGame = false;
         let hasWon = false;
+        let isOver = false;
+        let pendingTimers = [];
+
+        function modalOpen() {
+            return !!document.querySelector('.modal-overlay.active');
+        }
+
+        function schedule(fn, ms) {
+            const id = setTimeout(() => {
+                pendingTimers = pendingTimers.filter(t => t !== id);
+                fn();
+            }, ms);
+            pendingTimers.push(id);
+        }
+
+        function clearPending() {
+            pendingTimers.forEach(clearTimeout);
+            pendingTimers = [];
+        }
+
+        // Valid saved grid: 4x4 of numbers that are 0 or a power of two (>= 2), with at least one tile
+        function validGrid(g) {
+            if (!Array.isArray(g) || g.length !== 4) return false;
+            let tiles = 0;
+            for (const row of g) {
+                if (!Array.isArray(row) || row.length !== 4) return false;
+                for (const v of row) {
+                    if (typeof v !== 'number' || !isFinite(v) || Math.floor(v) !== v || v < 0) return false;
+                    if (v === 0) continue;
+                    if (v < 2 || (v & (v - 1)) !== 0 || v > 131072) return false;
+                    tiles++;
+                }
+            }
+            return tiles > 0;
+        }
+
+        function saveState() {
+            HubStorage.setObject(STATE_KEY, { grid: isOver ? [] : grid, score: isOver ? 0 : score });
+        }
+
+        function loadState() {
+            const saved = HubStorage.getObject(STATE_KEY, { grid: [], score: 0 }, {
+                grid: validGrid,
+                score: HubStorage.isNonNegInt
+            });
+            if (!validGrid(saved.grid)) return false;
+            grid = saved.grid.map(row => row.slice());
+            if (!canMove()) return false;
+            score = saved.score;
+            isOver = false;
+            hasWon = grid.some(row => row.some(v => v >= 2048));
+            continueGame = hasWon;
+            render();
+            updateStats();
+            return true;
+        }
 
         function initGame() {
+            clearPending();
+            isOver = false;
             grid = Array(4).fill(null).map(() => Array(4).fill(0));
             score = 0;
             hasWon = false;
@@ -413,6 +486,7 @@
             addNewTile();
             render();
             updateStats();
+            saveState();
         }
 
         function addNewTile() {
@@ -452,6 +526,7 @@
         }
 
         function move(direction) {
+            if (isOver || modalOpen()) return;
             let moved = false;
             let mergedTiles = [];
             
@@ -485,7 +560,7 @@
                         
                         if (row[i] === 2048 && !hasWon && !continueGame) {
                             hasWon = true;
-                            setTimeout(() => {
+                            schedule(() => {
                                 document.getElementById('winScore').textContent = score;
                                 document.getElementById('winModal').classList.add('active');
                             }, 200);
@@ -509,13 +584,15 @@
                 const newTile = addNewTile();
                 render(newTile, mergedTiles);
                 updateStats();
-                
+
                 if (!canMove()) {
-                    setTimeout(() => {
+                    isOver = true;
+                    schedule(() => {
                         document.getElementById('finalScore').textContent = score;
                         document.getElementById('gameOverModal').classList.add('active');
                     }, 300);
                 }
+                saveState();
             }
         }
 
@@ -534,7 +611,7 @@
             document.getElementById('score').textContent = score;
             if (score > best) {
                 best = score;
-                localStorage.setItem('twenty48_best', best);
+                HubStorage.setInt(BEST_KEY, best);
             }
             document.getElementById('best').textContent = best;
         }
@@ -547,26 +624,30 @@
         document.addEventListener('keydown', (e) => {
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 e.preventDefault();
+                if (isOver || modalOpen()) return;
                 const dir = e.key.replace('Arrow', '').toLowerCase();
                 move(dir);
             }
         });
 
-        // Touch controls
-        let touchStartX, touchStartY;
-        document.addEventListener('touchstart', (e) => {
+        // Touch controls (attached to the game container, not document, so buttons/modals never move tiles)
+        const swipeArea = document.querySelector('.game-container');
+        let touchStartX = null, touchStartY = null;
+        swipeArea.addEventListener('touchstart', (e) => {
+            if (!e.touches.length || modalOpen()) { touchStartX = touchStartY = null; return; }
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
         }, { passive: true });
 
-        document.addEventListener('touchend', (e) => {
-            if (!touchStartX || !touchStartY) return;
-            
+        swipeArea.addEventListener('touchend', (e) => {
+            if (touchStartX === null || touchStartY === null) return;
             const dx = e.changedTouches[0].clientX - touchStartX;
             const dy = e.changedTouches[0].clientY - touchStartY;
+            touchStartX = touchStartY = null;
+            if (isOver || modalOpen()) return;
             const absDx = Math.abs(dx);
             const absDy = Math.abs(dy);
-            
+
             if (Math.max(absDx, absDy) < 30) return; // Too small
 
             if (absDx > absDy) {
@@ -574,19 +655,18 @@
             } else {
                 move(dy > 0 ? 'down' : 'up');
             }
-            
-            touchStartX = null;
-            touchStartY = null;
         }, { passive: true });
 
+        swipeArea.addEventListener('touchcancel', () => { touchStartX = touchStartY = null; }, { passive: true });
+
         // Show instructions on first visit
-        if (!localStorage.getItem('twenty48_instructionsSeen')) {
+        if (!HubStorage.getFlag(INSTRUCTIONS_KEY)) {
             document.getElementById('instructionsModal').classList.add('active');
         }
 
         // Load best score and start
         document.getElementById('best').textContent = best;
-        initGame();
+        if (!loadState()) initGame();
     </script>
 </body>
 </html>
