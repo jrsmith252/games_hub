@@ -90,6 +90,31 @@
         .stop.expanded .queue-all { display: block; }
         .queue-all .runs { display: flex; flex-wrap: wrap; gap: 6px; }
         .queue-all .hint { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; }
+        /* Platform levels: waiting passengers in the middle, a queue on each side */
+        .plat-row { display: none; flex: 1; align-items: center; gap: 8px; min-width: 0; }
+        .stop.pmode { padding: 8px 8px; }
+        .stop.pmode .stop-sign, .stop.pmode .queue, .stop.pmode .queue-count { display: none; }
+        .stop.pmode .plat-row { display: flex; }
+        .platform {
+            flex: 1; display: grid; grid-template-columns: repeat(var(--pcols, 5), 1fr); gap: 4px 2px;
+            justify-items: center; align-items: end; min-height: 80px; padding: 4px 2px;
+            border-radius: 10px; background: rgba(255,255,255,0.035);
+        }
+        .fig { position: relative; width: 28px; height: 36px; color: var(--c); display: block; }
+        .fig svg.person { width: 100%; height: 100%; fill: currentColor; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45)); }
+        .fig .shape { position: absolute; left: 50%; top: 21px; width: 11px; height: 11px; margin-left: -5.5px; color: var(--ink); display: none; }
+        .shapes .fig .shape { display: block; }
+        .fig.flying { position: fixed; z-index: 60; pointer-events: none; margin: 0; }
+        .feeder {
+            flex: none; width: 52px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+            font-size: 0.7rem; color: var(--text-secondary);
+        }
+        .feeder b { color: var(--text-primary); font-size: 0.95rem; line-height: 1; }
+        .feeder.empty { opacity: 0.35; }
+        .feeder .run { height: 20px; padding: 0 6px 0 5px; font-size: 10px; }
+        .feeder .run .n { font-size: 10px; }
+        .feeder .run .shape { width: 10px; height: 10px; }
+        .queue-all h4 { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin: 8px 0 6px; }
         .queue-count { flex: none; text-align: right; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; }
         .queue-count b { display: block; color: var(--text-primary); font-size: 1rem; }
 
@@ -254,9 +279,14 @@
             <div class="stop-sign" aria-hidden="true">BUS</div>
             <div class="queue" id="queue"></div>
             <div class="queue-count"><b id="paxLeft">0</b>waiting</div>
+            <div class="plat-row" id="platRow">
+                <div class="feeder left" id="feedL" aria-label="Left queue"></div>
+                <div class="platform" id="platform" aria-label="Platform"></div>
+                <div class="feeder right" id="feedR" aria-label="Right queue"></div>
+            </div>
             <div class="queue-all" id="queueAll">
-                <div class="hint">The whole queue, in boarding order. Tap again to close.</div>
-                <div class="runs" id="queueRuns"></div>
+                <div class="hint">Everyone waiting, in the order they'll step up. Tap again to close.</div>
+                <div id="queueRuns"></div>
             </div>
         </section>
 
@@ -290,7 +320,7 @@
         <div class="modal">
             <h2 id="helpTitle">How to play</h2>
             <ol>
-                <li>Passengers queue at the <b>bus stop</b> in colour groups. The next to board is on the left. <b>Tap the queue</b> to see everyone who's waiting.</li>
+                <li>Passengers wait on the <b>platform</b>. Anyone whose colour matches a parked bus walks on. Gaps fill from the <b>left queue</b>, then the <b>right</b>. On <b>Single file</b> levels they board strictly in order. <b>Tap the stop</b> to see everyone who's waiting.</li>
                 <li><b>Tap a bus</b> to drive it out of the depot. It can only leave if nothing is in the way of its arrow.</li>
                 <li>Buses wait in the <b>bays</b>. Passengers board the bus of their colour, and a full bus departs.</li>
                 <li>Bays are limited, and some levels lock a few. Fill them with the wrong colours and you're <b>stuck</b>, so plan ahead.</li>
@@ -506,19 +536,61 @@
         }
         // The queue as runs of the same colour: [green x6][orange x3]...
         function queueRuns() {
-            var Q = level.queue, runs = [];
-            for (var i = st.q; i < Q.length; i++) {
-                var last = runs[runs.length - 1];
-                if (last && last.c === Q[i]) last.n++; else runs.push({ c: Q[i], n: 1 });
-            }
-            return runs;
+            var Q = level.queue;
+            return runsOf(st.platform.map(function (pid) { return Q[pid]; }).concat(Q.slice(st.q)));
         }
         function runHtml(r, front) {
             var pal = E.PALETTE[r.c];
             return '<span class="run' + (front ? ' front' : '') + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + '" aria-label="' +
                 r.n + ' ' + pal.name + '">' + shapeSvg(r.c) + '<span class="n">×' + r.n + '</span></span>';
         }
-        function renderQueue() {
+        var PERSON = '<svg class="person" viewBox="0 0 24 30" aria-hidden="true"><circle cx="12" cy="6.5" r="5.5"/><path d="M3 29v-8a9 9 0 0 1 18 0v8z"/></svg>';
+        function figHtml(pid) {
+            var pal = E.PALETTE[level.queue[pid]];
+            return '<span class="fig" data-pid="' + pid + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + '">' + PERSON + shapeSvg(level.queue[pid]) + '</span>';
+        }
+        // Where the waiting queue splits into a left and a right line (left empties first)
+        function feederSplit() { var W = level.platform || 1; return W + Math.ceil((level.queue.length - W) / 2); }
+        function runsOf(list) {
+            var runs = [];
+            list.forEach(function (c) { var last = runs[runs.length - 1]; if (last && last.c === c) last.n++; else runs.push({ c: c, n: 1 }); });
+            return runs;
+        }
+        function feederLists() {
+            var Q = level.queue, split = feederSplit();
+            return { left: Q.slice(Math.min(st.q, split), split), right: Q.slice(Math.max(st.q, split)) };
+        }
+        function renderFeeder(el, list) {
+            var runs = runsOf(list), html = '<b>' + list.length + '</b>';
+            runs.slice(0, 3).forEach(function (r) { html += runHtml(r, false); });
+            el.innerHTML = html;
+            el.classList.toggle('empty', list.length === 0);
+        }
+        // Platform with FLIP so passengers slide to their new spots; newcomers walk in from their side.
+        function renderPlatform(newPid) {
+            var plat = $('platform');
+            var before = {};
+            plat.querySelectorAll('.fig').forEach(function (f) { before[f.dataset.pid] = f.getBoundingClientRect(); });
+            plat.style.setProperty('--pcols', Math.ceil((level.platform || 1) / 2));
+            plat.innerHTML = st.platform.map(figHtml).join('');
+            plat.querySelectorAll('.fig').forEach(function (f) {
+                var b = before[f.dataset.pid];
+                if (b) {
+                    var a = f.getBoundingClientRect(), dx = b.left - a.left, dy = b.top - a.top;
+                    if (dx || dy) animate(f, [{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 200, easing: 'ease-out' });
+                } else if (+f.dataset.pid === newPid) {
+                    var fromLeft = newPid < feederSplit();
+                    animate(f, [{ transform: 'translateX(' + (fromLeft ? -46 : 46) + 'px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'ease-out' });
+                }
+            });
+            var fl = feederLists();
+            renderFeeder($('feedL'), fl.left);
+            renderFeeder($('feedR'), fl.right);
+        }
+        function renderQueue(newPid) {
+            var pmode = level.mode === 'platform';
+            $('stop').classList.toggle('pmode', pmode);
+            if (pmode) renderPlatform(newPid);
             var Q = level.queue, runs = queueRuns();
             var fit = Math.max(3, Math.floor((queueEl.clientWidth - 30) / 50));
             var html = '';
@@ -526,10 +598,23 @@
             if (runs.length > fit) html += '<span class="queue-more">+' + (runs.length - fit) + '</span>';
             queueEl.innerHTML = html;
             var all = '';
-            runs.forEach(function (r, i) { all += runHtml(r, i === 0); });
-            $('queueRuns').innerHTML = all || '<span class="hint">Everyone has boarded.</span>';
-            queueEl.setAttribute('aria-label', Q.length > st.q ? 'Next passenger: ' + E.PALETTE[Q[st.q]].name : 'Queue empty');
-            $('paxLeft').textContent = Q.length - st.q;
+            if (pmode) {
+                var fl = feederLists();
+                var sec = function (title, list) {
+                    var h = '<h4>' + title + ' (' + list.length + ')</h4><div class="runs">';
+                    runsOf(list).forEach(function (r) { h += runHtml(r, false); });
+                    return h + '</div>';
+                };
+                all = sec('On the platform', st.platform.map(function (pid) { return Q[pid]; })) +
+                      sec('Left queue, boards next', fl.left) + sec('Right queue', fl.right);
+                $('queueRuns').innerHTML = all;
+            } else {
+                runs.forEach(function (r, i) { all += runHtml(r, i === 0); });
+                $('queueRuns').innerHTML = all ? '<div class="runs">' + all + '</div>' : '<span class="hint">Everyone has boarded.</span>';
+            }
+            var waiting = st.platform.length + Q.length - st.q;
+            queueEl.setAttribute('aria-label', st.platform.length ? 'Next passenger: ' + E.PALETTE[Q[st.platform[0]]].name : 'Queue empty');
+            $('paxLeft').textContent = waiting;
         }
         function renderControls() {
             $('undoLeft').textContent = st.undoLeft;
@@ -539,7 +624,7 @@
             document.body.dataset.moving = active() ? '1' : '0';
         }
         function renderLevelLabel() {
-            var t = level.tough ? ' · <span class="tough">Tough</span>' : '';
+            var t = (level.mode === 'single' ? ' · Single file' : '') + (level.tough ? ' · <span class="tough">Tough</span>' : '');
             $('levelBtn').innerHTML = 'Level ' + levelNo + t + ' ▾';
         }
         function renderAll() {
@@ -664,10 +749,19 @@
                     if (myGen !== gen) return;
                     var t = E.peekBoard(st);
                     if (t === -1 || arriving[t]) break;
+                    // Where the passenger stands right now (platform figure, or the front of a single-file queue)
+                    var ps = E.peekStep(st);
+                    var srcEl = level.mode === 'platform'
+                        ? $('platform').querySelector('.fig[data-pid="' + st.platform[ps.slot] + '"]')
+                        : queueEl.querySelector('.run.front');
+                    var srcRect = srcEl ? srcEl.getBoundingClientRect() : null;
                     var step = E.boardOne(st);
-                    renderQueue();
-                    updatePips(step.bay, step.filled);
+                    renderQueue(step.added);
+                    var landed = walkToBus(step, srcRect, myGen);
                     if (step.departed) {
+                        await landed;
+                        if (myGen !== gen) return;
+                        updatePips(step.bay, step.filled);
                         await sleep(110);
                         if (myGen !== gen) return;
                         var slot = baysEl.querySelector('[data-bay="' + step.bay + '"]');
@@ -685,12 +779,33 @@
                         }
                         await sleep(120);
                     } else {
-                        await sleep(70);
+                        landed.then(function (s) { return function () { if (myGen === gen && st.bays[s.bay] && st.bays[s.bay].bus === s.bus) updatePips(s.bay, Math.max(s.filled, 0)); }; }(step));
+                        await sleep(level.mode === 'platform' ? 85 : 70);
                     }
                 }
             } while (settleAgain);
             settling = false;
             maybeIdle();
+        }
+        // Animate one passenger from where they stood to their bus; resolves when they arrive.
+        function walkToBus(step, srcRect, myGen) {
+            var slot = baysEl.querySelector('[data-bay="' + step.bay + '"]');
+            if (!srcRect || !slot) return Promise.resolve();
+            var dst = slot.getBoundingClientRect();
+            var f = document.createElement('span');
+            f.innerHTML = figHtml(step.passenger);
+            f = f.firstChild;
+            f.classList.add('flying');
+            f.style.left = (srcRect.left + srcRect.width / 2 - 14) + 'px';
+            f.style.top = (srcRect.top + srcRect.height / 2 - 18) + 'px';
+            document.body.appendChild(f);
+            var dx = dst.left + dst.width / 2 - (srcRect.left + srcRect.width / 2);
+            var dy = dst.top + dst.height / 2 - (srcRect.top + srcRect.height / 2);
+            return animate(f, [
+                { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                { transform: 'translate(' + dx * 0.5 + 'px,' + (dy * 0.5 - 14) + 'px) scale(0.9)', opacity: 1, offset: 0.5 },
+                { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(0.5)', opacity: 0.2 }
+            ], { duration: 280, easing: 'ease-in-out', fill: 'forwards' }).then(function () { f.remove(); });
         }
         // Everything has stopped moving: check for win / stuck and refresh.
         function maybeIdle() {
