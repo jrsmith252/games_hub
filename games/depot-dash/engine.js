@@ -5,7 +5,7 @@
 
     var PALETTE = [
         { name: 'Red',    hex: '#ef4444', sym: '●', ink: '#ffffff' },
-        { name: 'Blue',   hex: '#3b82f6', sym: '▲', ink: '#ffffff' },
+        { name: 'Blue',   hex: '#3b82f6', sym: '♥', ink: '#ffffff' },
         { name: 'Yellow', hex: '#facc15', sym: '■', ink: '#1f2937' },
         { name: 'Green',  hex: '#22c55e', sym: '◆', ink: '#052e16' },
         { name: 'Purple', hex: '#a855f7', sym: '★', ink: '#ffffff' },
