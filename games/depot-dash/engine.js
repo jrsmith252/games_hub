@@ -142,15 +142,20 @@
         return { type: 'exit', bay: free, dist: ex.dist };
     }
     // Board the next passenger onto the left-most bay bus of their colour.
-    function boardOne(st) {
+    // Which bay the next passenger would board (-1 if none): the left-most bus of their colour.
+    function peekBoard(st) {
         var Q = st.level.queue;
-        if (st.q >= Q.length) return null;
+        if (st.q >= Q.length) return -1;
         var c = Q[st.q];
-        var bi = -1;
         for (var i = 0; i < st.bays.length; i++) {
-            if (st.bays[i] && st.bays[i].colour === c) { bi = i; break; }
+            if (st.bays[i] && st.bays[i].colour === c) return i;
         }
+        return -1;
+    }
+    function boardOne(st) {
+        var bi = peekBoard(st);
         if (bi === -1) return null;
+        var c = st.level.queue[st.q];
         var bay = st.bays[bi];
         bay.filled++; st.q++;
         var departed = bay.filled >= bay.cap;
@@ -466,7 +471,7 @@
     var api = {
         PALETTE: PALETTE, BASE_BAYS: BASE_BAYS, UNDO_PER_LEVEL: UNDO_PER_LEVEL,
         params: params, generate: generate, exitInfo: exitInfo, cellsOf: cellsOf,
-        createState: createState, tap: tap, boardOne: boardOne, isWon: isWon, isStuck: isStuck,
+        createState: createState, tap: tap, boardOne: boardOne, peekBoard: peekBoard, isWon: isWon, isStuck: isStuck,
         undo: undo, addBay: addBay, starsFor: starsFor, simulate: simulate,
         naiveWinRate: naiveWinRate, targetBand: targetBand, isTough: isTough, spareBays: spareBays,
         minBays: minBays, solveWith: solveWith, smartWinRate: smartWinRate, smartBand: smartBand

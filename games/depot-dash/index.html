@@ -101,6 +101,7 @@
         .bay.locked { border: 2px solid transparent; background: repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 6px, transparent 6px 12px); }
         .bay.locked svg { width: 16px; height: 16px; stroke: rgba(255,255,255,0.25); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .bay-empty { color: rgba(255,255,255,0.22); font-weight: 700; font-size: 0.9rem; }
+        .bay .bay-bus + .bay-bus { pointer-events: none; }
         .bay-bus {
             position: absolute; inset: 3px; border-radius: 9px;
             background: var(--c); color: var(--ink);
@@ -342,7 +343,14 @@
 
         // ---------- state ----------
         var levelNo = progress.level, level = null, st = null;
-        var cell = 44, busy = false, pendingLayout = false;
+        var cell = 44, pendingLayout = false;
+        // Taps take effect at once; several buses can be on the move together.
+        var building = false;      // a level is being generated
+        var inflight = 0;          // buses currently driving out of the depot
+        var arriving = {};         // bay index -> true while its bus is still on the way
+        var settling = false, settleAgain = false;
+        var gen = 0;               // bumps on every new level/restart so stale animations stop
+        function active() { return building || inflight > 0 || settling; }
 
         // ---------- helpers ----------
         function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
@@ -411,33 +419,42 @@
             return '<div class="bay-bus" style="--c:' + pal.hex + ';--ink:' + pal.ink + '">' +
                 '<span class="sym" aria-hidden="true">' + pal.sym + '</span><span class="pips">' + pips + '</span></div>';
         }
-        function renderBays(arrivedIndex) {
+        var LOCK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+        function fillSlot(slot, i) {
+            var b = st.bays[i];
+            slot.dataset.bay = i;
+            if (i >= st.bays.length) {
+                slot.className = 'bay locked';
+                slot.innerHTML = LOCK_SVG;
+                slot.setAttribute('aria-label', 'Locked bay');
+                return;
+            }
+            slot.className = 'bay' + (i >= level.bays ? ' extra' : '');
+            if (b && !arriving[i]) {
+                slot.innerHTML = bayBusHtml(b);
+                slot.setAttribute('aria-label', E.PALETTE[b.colour].name + ' bus, ' + b.filled + ' of ' + b.cap + ' seats taken');
+            } else {
+                slot.innerHTML = '<span class="bay-empty" aria-hidden="true">' + (b ? '…' : 'P') + '</span>';
+                slot.setAttribute('aria-label', b ? 'Bus on its way' : 'Empty bay');
+            }
+        }
+        function renderBays() {
             baysEl.innerHTML = '';
             var slots = Math.max(E.BASE_BAYS, st.bays.length);
             for (var i = 0; i < slots; i++) {
-                var b = st.bays[i];
                 var slot = document.createElement('div');
-                slot.dataset.bay = i;
-                if (i >= st.bays.length) {
-                    slot.className = 'bay locked';
-                    slot.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
-                    slot.setAttribute('aria-label', 'Locked bay');
-                    baysEl.appendChild(slot);
-                    continue;
-                }
-                slot.className = 'bay' + (i >= level.bays ? ' extra' : '');
-                if (b) {
-                    slot.innerHTML = bayBusHtml(b);
-                    slot.setAttribute('aria-label', E.PALETTE[b.colour].name + ' bus, ' + b.filled + ' of ' + b.cap + ' seats taken');
-                } else {
-                    slot.innerHTML = '<span class="bay-empty" aria-hidden="true">P</span>';
-                    slot.setAttribute('aria-label', 'Empty bay');
-                }
+                fillSlot(slot, i);
                 baysEl.appendChild(slot);
             }
-            if (arrivedIndex !== undefined) {
-                var nb = baysEl.querySelector('[data-bay="' + arrivedIndex + '"] .bay-bus');
-                animate(nb, [{ transform: 'translateY(26px) scale(0.85)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+        }
+        // Redraw one bay only, so other bays' animations carry on undisturbed
+        function renderSlot(i, arrived) {
+            var slot = baysEl.querySelector('[data-bay="' + i + '"]');
+            if (!slot || baysEl.children.length < Math.max(E.BASE_BAYS, st.bays.length)) { renderBays(); slot = baysEl.querySelector('[data-bay="' + i + '"]'); }
+            if (!slot) return;
+            fillSlot(slot, i);
+            if (arrived) {
+                animate(slot.querySelector('.bay-bus'), [{ transform: 'translateY(26px) scale(0.85)', opacity: 0 }, { transform: 'none', opacity: 1 }],
                     { duration: 220, easing: 'cubic-bezier(.2,.8,.3,1)' });
             }
         }
@@ -474,9 +491,10 @@
         }
         function renderControls() {
             $('undoLeft').textContent = st.undoLeft;
-            $('undoBtn').disabled = busy || st.undoLeft <= 0 || st.history.length === 0;
-            $('bayBtn').disabled = busy || st.extraUsed;
-            $('restartBtn').disabled = busy;
+            $('undoBtn').disabled = active() || st.undoLeft <= 0 || st.history.length === 0;
+            $('bayBtn').disabled = active() || st.extraUsed;
+            $('restartBtn').disabled = building;
+            document.body.dataset.moving = active() ? '1' : '0';
         }
         function renderLevelLabel() {
             var t = level.tough ? ' · <span class="tough">Tough</span>' : '';
@@ -490,14 +508,15 @@
         // ---------- level flow ----------
         function startLevel(n) {
             levelNo = n;
-            busy = true;
+            gen++; inflight = 0; arriving = {}; settling = false; settleAgain = false;
+            building = true;
             setStatus('Building level ' + n + '…');
             setTimeout(function () { buildLevel(n); }, 30);
         }
         function buildLevel(n) {
             level = E.generate(n);
             st = E.createState(level);
-            busy = false;
+            building = false;
             ['winModal', 'stuckModal', 'levelModal'].forEach(closeModal);
             renderAll();
             var baysTxt = level.bays + ' bay' + (level.bays === 1 ? '' : 's');
@@ -539,16 +558,18 @@
             setTimeout(function () { openModal('winModal'); }, 350);
         }
 
-        // ---------- taps ----------
+        // ---------- taps (several buses can move at once) ----------
         function busEl(id) { return yard.querySelector('.bus[data-id="' + id + '"]'); }
+        var DV = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
         async function onTap(id) {
-            if (busy || anyModalOpen()) return;
-            var b = level.buses[id];
-            var res = E.tap(st, id);
+            if (building || anyModalOpen()) return;
             var node = busEl(id);
-            var v = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] }[b.dir];
+            if (!node || node.dataset.leaving || node.dataset.bumping) return;
+            var b = level.buses[id], v = DV[b.dir];
+            var res = E.tap(st, id);   // takes effect immediately: the bay is reserved now
             if (res.type === 'blocked') {
-                busy = true; renderControls(); buzz(18);
+                buzz(18);
+                node.dataset.bumping = '1';
                 var nudge = res.dist * cell + 7;
                 var blocker = busEl(res.blocker);
                 if (blocker) animate(blocker.querySelector('.body'), [{ filter: 'brightness(1)' }, { filter: 'brightness(1.6)' }, { filter: 'brightness(1)' }], { duration: 380 });
@@ -557,7 +578,7 @@
                     { transform: 'translate(' + v[0] * nudge + 'px,' + v[1] * nudge + 'px)', offset: 0.45 },
                     { transform: 'translate(0,0)' }
                 ], { duration: 260 + res.dist * 40, easing: 'ease-in-out' });
-                busy = false; renderControls();
+                delete node.dataset.bumping;
                 return;
             }
             if (res.type === 'full') {
@@ -567,54 +588,90 @@
                 return;
             }
             if (res.type !== 'exit') return;
-            busy = true; renderControls();
+            var myGen = gen;
+            node.dataset.leaving = '1';
+            node.style.pointerEvents = 'none';
+            inflight++;
+            arriving[res.bay] = true;
+            renderSlot(res.bay);
+            renderControls();
             var cells = res.dist + b.len + 1;
             await animate(node, [
                 { transform: 'translate(0,0)' },
                 { transform: 'translate(' + v[0] * cells * cell + 'px,' + v[1] * cells * cell + 'px)' }
             ], { duration: 150 + cells * 32, easing: 'cubic-bezier(.55,0,.9,.55)', fill: 'forwards' });
-            if (node) node.remove();
-            renderBays(res.bay);
-            await sleep(170);
-            await settle();
-            busy = false;
-            afterMove();
+            if (myGen !== gen) return;
+            node.remove();
+            delete arriving[res.bay];
+            inflight--;
+            renderSlot(res.bay, true);
+            await sleep(150);
+            if (myGen !== gen) return;
+            settle();
         }
+        // One boarding loop at a time. Passengers board in queue order onto the left-most bus of their
+        // colour (the engine's rule), and wait if that bus is still on its way.
         async function settle() {
-            var step;
-            while ((step = E.boardOne(st))) {
-                renderQueue();
-                updatePips(step.bay, step.filled);
-                if (step.departed) {
-                    await sleep(110);
-                    var leaving = baysEl.querySelector('[data-bay="' + step.bay + '"] .bay-bus');
-                    await animate(leaving, [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-30px)', opacity: 0 }],
-                        { duration: 240, easing: 'ease-in', fill: 'forwards' });
-                    renderBays();
-                } else {
-                    await sleep(70);
+            if (settling) { settleAgain = true; return; }
+            settling = true;
+            renderControls();
+            var myGen = gen;
+            do {
+                settleAgain = false;
+                for (;;) {
+                    if (myGen !== gen) return;
+                    var t = E.peekBoard(st);
+                    if (t === -1 || arriving[t]) break;
+                    var step = E.boardOne(st);
+                    renderQueue();
+                    updatePips(step.bay, step.filled);
+                    if (step.departed) {
+                        await sleep(110);
+                        if (myGen !== gen) return;
+                        var slot = baysEl.querySelector('[data-bay="' + step.bay + '"]');
+                        var leaving = slot && slot.querySelector('.bay-bus');
+                        if (leaving) {
+                            // Detach the old bus so a newly assigned bus can take the bay straight away
+                            var ghost = leaving;
+                            ghost.style.zIndex = 2;
+                            fillSlot(slot, step.bay);
+                            slot.appendChild(ghost);
+                            animate(ghost, [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-30px)', opacity: 0 }],
+                                { duration: 240, easing: 'ease-in', fill: 'forwards' }).then(function () { ghost.remove(); });
+                        } else {
+                            renderSlot(step.bay);
+                        }
+                        await sleep(120);
+                    } else {
+                        await sleep(70);
+                    }
                 }
-            }
+            } while (settleAgain);
+            settling = false;
+            maybeIdle();
+        }
+        // Everything has stopped moving: check for win / stuck and refresh.
+        function maybeIdle() {
+            if (inflight > 0 || settling || building) { renderControls(); return; }
             if (pendingLayout) { pendingLayout = false; layout(); renderYard(); }
+            afterMove();
         }
 
         // ---------- boosters ----------
         function doUndo() {
-            if (busy || !E.undo(st)) return;
+            if (active() || !E.undo(st)) return;
             closeModal('stuckModal');
+            arriving = {};
             renderAll();
             toast('Undone, ' + st.undoLeft + ' left');
             afterMove();
         }
-        async function doExtraBay() {
-            if (busy || st.bays.length >= E.BASE_BAYS + 1 || !E.addBay(st)) return;
+        function doExtraBay() {
+            if (active() || st.bays.length >= E.BASE_BAYS + 1 || !E.addBay(st)) return;
             closeModal('stuckModal');
             renderBays(); renderControls();
             toast('Extra bay opened');
-            busy = true;
-            await settle();
-            busy = false;
-            afterMove();
+            settle();
         }
 
         // ---------- level picker ----------
@@ -654,7 +711,7 @@
         }, true);
         $('undoBtn').addEventListener('click', doUndo);
         $('bayBtn').addEventListener('click', doExtraBay);
-        $('restartBtn').addEventListener('click', function () { if (!busy) startLevel(levelNo); });
+        $('restartBtn').addEventListener('click', function () { if (!building) startLevel(levelNo); });
         $('stuckUndo').addEventListener('click', doUndo);
         $('stuckBay').addEventListener('click', doExtraBay);
         $('stuckRestart').addEventListener('click', function () { startLevel(levelNo); });
@@ -677,7 +734,7 @@
         window.addEventListener('resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
-                if (busy) { pendingLayout = true; return; }
+                if (active()) { pendingLayout = true; return; }
                 layout(); renderYard(); renderQueue();
             }, 120);
         });
