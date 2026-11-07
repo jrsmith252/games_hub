@@ -1,6 +1,6 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
    Bump CACHE_VERSION whenever any file changes so players get the update. */
-const CACHE_VERSION = 'v1.1.0';
+const CACHE_VERSION = 'v1.1.1';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [

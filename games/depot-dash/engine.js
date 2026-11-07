@@ -100,11 +100,13 @@
         var maxBuses = Math.floor(cols * rows / 2.5);
         var buses = Math.max(3, Math.min(maxBuses, 3 + Math.floor(n * 0.8)));
         // How many buses the intended solution parks at once (bays are 5)
-        var maxPark = n <= 1 ? 1 : n <= 3 ? 2 : n <= 9 ? 3 : n <= 30 ? 4 : 5;
-        var removeBias = Math.min(0.8, 0.3 + n * 0.015);
+        var maxPark = n <= 1 ? 1 : n <= 3 ? 2 : n <= 6 ? 3 : n <= 15 ? 4 : 5;
+        // The solution must genuinely need this many bays at its busiest moment
+        var minPeak = n <= 2 ? 1 : n <= 5 ? 2 : n <= 12 ? 3 : 4;
+        var removeBias = Math.min(0.85, 0.4 + n * 0.03);
         var longChance = n <= 2 ? 0 : Math.min(0.5, 0.15 + n * 0.012);
         var minBlocked = n <= 2 ? 0 : 0.3;
-        return { cols: cols, rows: rows, colours: colours, buses: buses, maxPark: maxPark,
+        return { cols: cols, rows: rows, colours: colours, buses: buses, maxPark: maxPark, minPeak: minPeak,
                  removeBias: removeBias, longChance: longChance, minBlocked: minBlocked, bays: BASE_BAYS };
     }
 
@@ -255,7 +257,7 @@
         });
 
         var sim = simulate(lvl, plan);
-        if (!sim.ok) return null;
+        if (!sim.ok || sim.peak < p.minPeak) return null;
         lvl.plan = plan;       // a known solution (removal order), kept for future hints
         lvl.peak = sim.peak;
         return lvl;
@@ -289,18 +291,26 @@
         return Math.round(100 * wins / runs);
     }
 
-    function isTough(n) { return n >= 10 && n % 10 === 0; }
+    function isTough(n) { return n >= 5 && n % 5 === 0; }
     // Target band for the naive player's win rate (%): lower = harder.
     function targetBand(n) {
-        if (isTough(n)) return [0, 25];
-        if (n <= 5) return [70, 100];
-        if (n <= 12) return [50, 100];
-        if (n <= 25) return [30, 85];
-        if (n <= 50) return [15, 65];
-        return [5, 50];
+        if (isTough(n)) return n <= 10 ? [5, 35] : [0, 25];
+        if (n <= 2) return [80, 100];
+        if (n <= 4) return [45, 90];
+        if (n <= 9) return [30, 70];
+        if (n <= 19) return [20, 60];
+        if (n <= 40) return [10, 50];
+        return [5, 40];
     }
 
     var NAIVE_RUNS = 12;
+    function spareBays(n) { return isTough(n) ? 0 : n <= 2 ? 2 : 1; }
+    // Shrink the bays to the solution's peak plus the spare allowance, then re-prove it.
+    function fitBays(lvl, n) {
+        lvl.bays = Math.max(2, Math.min(BASE_BAYS, lvl.peak + spareBays(n)));
+        var sim = simulate(lvl, lvl.plan);
+        if (!sim.ok) { lvl.bays = BASE_BAYS; } // cannot happen (same strategy, same peak), but never ship an unsolvable level
+    }
     function generate(n) {
         n = Math.max(1, Math.floor(n) || 1);
         var p = params(n), band = targetBand(n);
@@ -309,6 +319,7 @@
             var lvl = tryGenerate(n, p, rng(Math.imul(n, 7919) + Math.imul(attempt, 104729) + 17));
             if (!lvl) continue;
             lvl.attempt = attempt;
+            fitBays(lvl, n);
             lvl.naive = naiveWinRate(lvl, NAIVE_RUNS);
             var gap = lvl.naive < band[0] ? band[0] - lvl.naive : lvl.naive > band[1] ? lvl.naive - band[1] : 0;
             if (gap < bestGap) { best = lvl; bestGap = gap; }
@@ -319,7 +330,7 @@
             var easy = params(Math.max(1, Math.floor(n / 2)));
             for (var a2 = 0; a2 < 200 && !best; a2++) {
                 best = tryGenerate(n, easy, rng(Math.imul(n, 31337) + a2));
-                if (best) best.attempt = 1000 + a2;
+                if (best) { best.attempt = 1000 + a2; fitBays(best, n); }
             }
         }
         if (!best) throw new Error('Could not generate level ' + n);
@@ -332,7 +343,7 @@
         params: params, generate: generate, exitInfo: exitInfo, cellsOf: cellsOf,
         createState: createState, tap: tap, boardOne: boardOne, isWon: isWon, isStuck: isStuck,
         undo: undo, addBay: addBay, starsFor: starsFor, simulate: simulate,
-        naiveWinRate: naiveWinRate, targetBand: targetBand, isTough: isTough
+        naiveWinRate: naiveWinRate, targetBand: targetBand, isTough: isTough, spareBays: spareBays
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.DepotEngine = api;

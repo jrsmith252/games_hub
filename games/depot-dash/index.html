@@ -80,6 +80,8 @@
             display: flex; align-items: center; justify-content: center; position: relative;
         }
         .bay.extra { border-color: rgba(251,191,36,0.45); }
+        .bay.locked { border: 2px solid transparent; background: repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 6px, transparent 6px 12px); }
+        .bay.locked svg { width: 16px; height: 16px; stroke: rgba(255,255,255,0.25); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .bay-empty { color: rgba(255,255,255,0.22); font-weight: 700; font-size: 0.9rem; }
         .bay-bus {
             position: absolute; inset: 3px; border-radius: 9px;
@@ -246,7 +248,7 @@
                 <li>Passengers queue at the <b>bus stop</b>. The next to board is on the left.</li>
                 <li><b>Tap a bus</b> to drive it out of the depot. It can only leave if nothing is in the way of its arrow.</li>
                 <li>Buses wait in the <b>bays</b>. Passengers board the bus of their colour, and a full bus departs.</li>
-                <li>There are only 5 bays. Fill them with the wrong colours and you're <b>stuck</b>, so plan ahead.</li>
+                <li>Bays are limited, and some levels lock a few. Fill them with the wrong colours and you're <b>stuck</b>, so plan ahead.</li>
             </ol>
             <p>Undo and Extra bay can get you out of trouble, but each one used costs you a star.</p>
             <button class="btn" id="helpClose">Let's go</button>
@@ -389,10 +391,19 @@
         }
         function renderBays(arrivedIndex) {
             baysEl.innerHTML = '';
-            st.bays.forEach(function (b, i) {
+            var slots = Math.max(E.BASE_BAYS, st.bays.length);
+            for (var i = 0; i < slots; i++) {
+                var b = st.bays[i];
                 var slot = document.createElement('div');
-                slot.className = 'bay' + (i >= E.BASE_BAYS ? ' extra' : '');
                 slot.dataset.bay = i;
+                if (i >= st.bays.length) {
+                    slot.className = 'bay locked';
+                    slot.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+                    slot.setAttribute('aria-label', 'Locked bay');
+                    baysEl.appendChild(slot);
+                    continue;
+                }
+                slot.className = 'bay' + (i >= level.bays ? ' extra' : '');
                 if (b) {
                     slot.innerHTML = bayBusHtml(b);
                     slot.setAttribute('aria-label', E.PALETTE[b.colour].name + ' bus, ' + b.filled + ' of ' + b.cap + ' seats taken');
@@ -401,7 +412,7 @@
                     slot.setAttribute('aria-label', 'Empty bay');
                 }
                 baysEl.appendChild(slot);
-            });
+            }
             if (arrivedIndex !== undefined) {
                 var nb = baysEl.querySelector('[data-bay="' + arrivedIndex + '"] .bay-bus');
                 animate(nb, [{ transform: 'translateY(26px) scale(0.85)', opacity: 0 }, { transform: 'none', opacity: 1 }],
@@ -447,9 +458,10 @@
             busy = false;
             ['winModal', 'stuckModal', 'levelModal'].forEach(closeModal);
             renderAll();
+            var baysTxt = level.bays + ' bay' + (level.bays === 1 ? '' : 's');
             if (n === 1) setStatus('Tap a bus whose arrow has a clear road out.');
-            else if (level.tough) setStatus('Tough level: think before you tap!');
-            else setStatus(level.buses.length + ' buses · ' + level.queue.length + ' passengers');
+            else if (level.tough) setStatus('Tough level · ' + baysTxt + ', no spare. Think before you tap!');
+            else setStatus(level.buses.length + ' buses · ' + baysTxt);
         }
         function afterMove() {
             renderControls();
@@ -553,7 +565,7 @@
             afterMove();
         }
         async function doExtraBay() {
-            if (busy || !E.addBay(st)) return;
+            if (busy || st.bays.length >= E.BASE_BAYS + 1 || !E.addBay(st)) return;
             closeModal('stuckModal');
             renderBays(); renderControls();
             toast('Extra bay opened');
