@@ -263,6 +263,65 @@
         return lvl;
     }
 
+    // ---------- exact solver ----------
+    function cloneState(st) {
+        return { level: st.level, removed: st.removed.slice(),
+                 bays: st.bays.map(function (b) { return b ? { bus: b.bus, colour: b.colour, cap: b.cap, filled: b.filled } : null; }),
+                 q: st.q, moves: st.moves, undoLeft: 0, extraUsed: true, boostsUsed: 0, history: [] };
+    }
+    function freeBuses(st) {
+        var occ = occupancy(st.level, st.removed), out = [];
+        for (var i = 0; i < st.level.buses.length; i++) {
+            if (!st.removed[i] && exitInfo(st.level, st.removed, i, occ).clear) out.push(i);
+        }
+        return out;
+    }
+    function nextNeed(st, colour) {
+        var Q = st.level.queue;
+        for (var i = st.q; i < Q.length; i++) if (Q[i] === colour) return i - st.q;
+        return 1e9;
+    }
+    // Find a winning tap sequence with K bays (depth-first, memo of dead states, node cap).
+    // Returns { ok: true, taps } / { ok: false } / { ok: null } when the cap is hit.
+    function solveWith(level, K, cap) {
+        var L = {}; for (var k in level) L[k] = level[k];
+        L.bays = K;
+        var failed = {}, nodes = 0, path = [];
+        function dfs(st) {
+            while (boardOne(st)) { /* board */ }
+            if (isWon(st)) return true;
+            if (isStuck(st) || st.bays.indexOf(null) === -1) return false;
+            if (++nodes > cap) throw new Error('cap');
+            var key = st.removed.map(function (r) { return r ? 1 : 0; }).join('') + '|' +
+                st.bays.map(function (b) { return b ? b.colour + ':' + b.cap + ':' + b.filled : '-'; }).join(',') + '|' + st.q;
+            if (failed[key]) return false;
+            var moves = freeBuses(st).sort(function (a, b) {
+                return nextNeed(st, L.buses[a].colour) - nextNeed(st, L.buses[b].colour) || a - b;
+            });
+            for (var m = 0; m < moves.length; m++) {
+                var s2 = cloneState(st);
+                tap(s2, moves[m]);
+                path.push(moves[m]);
+                if (dfs(s2)) return true;
+                path.pop();
+            }
+            failed[key] = true;
+            return false;
+        }
+        try { return dfs(createState(L)) ? { ok: true, taps: path.slice(), nodes: nodes } : { ok: false, nodes: nodes }; }
+        catch (e) { return { ok: null, nodes: nodes }; }
+    }
+    // Fewest bays the level can be solved with (null if the search was too big to finish).
+    var SOLVER_CAP = 25000;
+    function minBays(level) {
+        for (var K = 1; K <= BASE_BAYS; K++) {
+            var r = solveWith(level, K, SOLVER_CAP);
+            if (r.ok === true) return { K: K, taps: r.taps };
+            if (r.ok === null) return null;
+        }
+        return null;
+    }
+
     // A deliberately simple player: taps a free bus matching the next passenger if
     // there is one, otherwise any free bus. Its win rate is our difficulty gauge.
     function naiveWinRate(level, runs) {
@@ -291,6 +350,45 @@
         return Math.round(100 * wins / runs);
     }
 
+    // A human-like player: boards the next passenger if a free bus matches; otherwise goes for the
+    // bus whose colour is needed soonest, clearing whatever blocks it. Random tie-breaks.
+    function smartWinRate(level, runs) {
+        var wins = 0;
+        for (var s = 1; s <= runs; s++) {
+            var a = (Math.imul(level.number, 40503) + s * 2654435761) >>> 0 || 1;
+            var r = function () { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; };
+            var st = createState(level), ok = false;
+            for (var g = 0; g < 500; g++) {
+                while (boardOne(st)) { /* board */ }
+                if (isWon(st)) { ok = true; break; }
+                if (isStuck(st)) break;
+                var free = freeBuses(st), front = level.queue[st.q];
+                var pick = free.filter(function (i) { return level.buses[i].colour === front; });
+                if (!pick.length) {
+                    var rem = [];
+                    for (var i = 0; i < level.buses.length; i++) if (!st.removed[i]) rem.push({ i: i, need: nextNeed(st, level.buses[i].colour), t: r() });
+                    rem.sort(function (x, y) { return x.need - y.need || x.t - y.t; });
+                    var target = rem[0].i, guard = 0;
+                    while (free.indexOf(target) === -1 && guard++ < 30) target = exitInfo(level, st.removed, target).blocker;
+                    pick = free.indexOf(target) !== -1 ? [target] : free;
+                }
+                if (tap(st, pick[Math.floor(r() * pick.length)]).type !== 'exit') break;
+            }
+            if (ok) wins++;
+        }
+        return Math.round(100 * wins / runs);
+    }
+    // Target win rate (%) for the human-like player at the level's actual bays: lower = harder.
+    function smartBand(n) {
+        if (isTough(n)) return n <= 10 ? [10, 55] : [0, 30];
+        if (n <= 2) return [80, 100];
+        if (n <= 4) return [50, 100];
+        if (n <= 9) return [35, 85];
+        if (n <= 19) return [20, 60];
+        if (n <= 40) return [10, 50];
+        return [5, 45];
+    }
+
     function isTough(n) { return n >= 5 && n % 5 === 0; }
     // Target band for the naive player's win rate (%): lower = harder.
     function targetBand(n) {
@@ -304,17 +402,34 @@
     }
 
     var NAIVE_RUNS = 12;
-    function spareBays(n) { return isTough(n) ? 0 : n <= 2 ? 2 : 1; }
-    // Shrink the bays to the solution's peak plus the spare allowance, then re-prove it.
+    // Spare bays on top of the exact minimum: generous while learning, none once you know the game.
+    function spareBays(n) {
+        if (n <= 2) return 2;
+        if (isTough(n)) return 0;
+        if (n <= 8) return 1;
+        if (n <= 14) return n % 2 ? 0 : 1;
+        return n % 4 === 1 ? 1 : 0;
+    }
+    // Levels must need at least this many bays even when played perfectly (so parking matters).
+    function minNeeded(n) { return n <= 2 ? 1 : n <= 9 ? 2 : 3; }
+    // Coarse fit from the generator's own plan (always valid); refined later by the exact solver.
     function fitBays(lvl, n) {
         lvl.bays = Math.max(2, Math.min(BASE_BAYS, lvl.peak + spareBays(n)));
-        var sim = simulate(lvl, lvl.plan);
-        if (!sim.ok) { lvl.bays = BASE_BAYS; } // cannot happen (same strategy, same peak), but never ship an unsolvable level
+        if (!simulate(lvl, lvl.plan).ok) lvl.bays = BASE_BAYS;
+    }
+    // Exact fit: bays = true minimum + spare. The solver's tap sequence proves it is solvable.
+    function exactFit(lvl, n) {
+        var m = minBays(lvl);
+        if (!m) return false;
+        lvl.minBays = m.K;
+        lvl.solution = m.taps;
+        lvl.bays = Math.max(2, Math.min(BASE_BAYS, m.K + spareBays(n)));
+        return true;
     }
     function generate(n) {
         n = Math.max(1, Math.floor(n) || 1);
         var p = params(n), band = targetBand(n);
-        var best = null, bestGap = Infinity;
+        var best = null, bestScore = Infinity, solverCalls = 0;
         for (var attempt = 0; attempt < 60; attempt++) {
             var lvl = tryGenerate(n, p, rng(Math.imul(n, 7919) + Math.imul(attempt, 104729) + 17));
             if (!lvl) continue;
@@ -322,8 +437,18 @@
             fitBays(lvl, n);
             lvl.naive = naiveWinRate(lvl, NAIVE_RUNS);
             var gap = lvl.naive < band[0] ? band[0] - lvl.naive : lvl.naive > band[1] ? lvl.naive - band[1] : 0;
-            if (gap < bestGap) { best = lvl; bestGap = gap; }
-            if (gap === 0) break;
+            if (gap > 0 && solverCalls === 0 && attempt < 40) { if (gap < bestScore) { best = lvl; bestScore = gap + 1000; } continue; }
+            // Candidate is in band (or we're running out of attempts): measure it exactly
+            if (solverCalls >= 7) break;
+            solverCalls++;
+            if (!exactFit(lvl, n)) { if (bestScore > 500) { best = lvl; bestScore = 500; } continue; }
+            var short = Math.max(0, minNeeded(n) - lvl.minBays);
+            var sb = smartBand(n);
+            lvl.smart = smartWinRate(lvl, 16);
+            var sgap = lvl.smart < sb[0] ? sb[0] - lvl.smart : lvl.smart > sb[1] ? lvl.smart - sb[1] : 0;
+            var score = short * 100 + sgap;
+            if (score < bestScore) { best = lvl; bestScore = score; }
+            if (score === 0) break;
         }
         if (!best) {
             // Fallback: an easier recipe (still verified by simulate)
@@ -343,7 +468,8 @@
         params: params, generate: generate, exitInfo: exitInfo, cellsOf: cellsOf,
         createState: createState, tap: tap, boardOne: boardOne, isWon: isWon, isStuck: isStuck,
         undo: undo, addBay: addBay, starsFor: starsFor, simulate: simulate,
-        naiveWinRate: naiveWinRate, targetBand: targetBand, isTough: isTough, spareBays: spareBays
+        naiveWinRate: naiveWinRate, targetBand: targetBand, isTough: isTough, spareBays: spareBays,
+        minBays: minBays, solveWith: solveWith, smartWinRate: smartWinRate, smartBand: smartBand
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.DepotEngine = api;
