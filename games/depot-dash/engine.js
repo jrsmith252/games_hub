@@ -106,17 +106,25 @@
         var removeBias = Math.min(0.85, 0.4 + n * 0.03);
         var longChance = n <= 2 ? 0 : Math.min(0.5, 0.15 + n * 0.012);
         var minBlocked = n <= 2 ? 0 : 0.3;
+        // Level type: "single" = strict single-file queue; "platform" = pick from a platform of waiting passengers
+        var mode = (n <= 2 || n % 4 === 0) ? 'single' : 'platform';
+        var platform = mode === 'single' ? 1 : n <= 8 ? 10 : n <= 20 ? 8 : 7;
         return { cols: cols, rows: rows, colours: colours, buses: buses, maxPark: maxPark, minPeak: minPeak,
+                 mode: mode, platform: platform,
                  removeBias: removeBias, longChance: longChance, minBlocked: minBlocked, bays: BASE_BAYS };
     }
 
     // ---------- game state (shared by the UI and by level verification) ----------
+    // The platform holds the passengers who can board right now (queue indices, left to right).
+    // A single-file level is simply a platform with room for one.
     function createState(level) {
+        var W = level.platform || 1, plat = [], q = 0;
+        while (plat.length < W && q < level.queue.length) plat.push(q++);
         return {
             level: level,
             removed: new Array(level.buses.length).fill(false),
             bays: new Array(level.bays).fill(null),
-            q: 0, moves: 0,
+            platform: plat, q: q, moves: 0,
             undoLeft: UNDO_PER_LEVEL, extraUsed: false, boostsUsed: 0,
             history: []
         };
@@ -125,7 +133,7 @@
         return {
             removed: st.removed.slice(),
             bays: st.bays.map(function (b) { return b ? { bus: b.bus, colour: b.colour, cap: b.cap, filled: b.filled } : null; }),
-            q: st.q, moves: st.moves
+            platform: st.platform.slice(), q: st.q, moves: st.moves
         };
     }
     function tap(st, i) {
@@ -141,38 +149,44 @@
         st.moves++;
         return { type: 'exit', bay: free, dist: ex.dist };
     }
-    // Board the next passenger onto the left-most bay bus of their colour.
-    // Which bay the next passenger would board (-1 if none): the left-most bus of their colour.
-    function peekBoard(st) {
+    // Who boards next: the left-most platform passenger whose colour has a bus in the bays,
+    // onto the left-most bus of that colour. Returns { slot, bay } or null.
+    function peekStep(st) {
         var Q = st.level.queue;
-        if (st.q >= Q.length) return -1;
-        var c = Q[st.q];
-        for (var i = 0; i < st.bays.length; i++) {
-            if (st.bays[i] && st.bays[i].colour === c) return i;
+        for (var s = 0; s < st.platform.length; s++) {
+            var c = Q[st.platform[s]];
+            for (var i = 0; i < st.bays.length; i++) {
+                if (st.bays[i] && st.bays[i].colour === c) return { slot: s, bay: i };
+            }
         }
-        return -1;
+        return null;
     }
+    function peekBoard(st) { var p = peekStep(st); return p ? p.bay : -1; }
     function boardOne(st) {
-        var bi = peekBoard(st);
-        if (bi === -1) return null;
-        var c = st.level.queue[st.q];
-        var bay = st.bays[bi];
-        bay.filled++; st.q++;
+        var p = peekStep(st);
+        if (!p) return null;
+        var Q = st.level.queue;
+        var pid = st.platform[p.slot], c = Q[pid];
+        var bay = st.bays[p.bay];
+        bay.filled++;
+        st.platform.splice(p.slot, 1);
+        var added = null;
+        if (st.q < Q.length) { added = st.q; st.platform.push(st.q++); }  // the next passenger steps up
         var departed = bay.filled >= bay.cap;
-        if (departed) st.bays[bi] = null;
-        return { bay: bi, colour: c, departed: departed, bus: bay.bus, filled: bay.filled, cap: bay.cap };
+        if (departed) st.bays[p.bay] = null;
+        return { bay: p.bay, colour: c, departed: departed, bus: bay.bus, filled: bay.filled, cap: bay.cap,
+                 passenger: pid, slot: p.slot, added: added };
     }
-    function isWon(st) { return st.q >= st.level.queue.length; }
+    function isWon(st) { return st.platform.length === 0 && st.q >= st.level.queue.length; }
     function isStuck(st) {
         if (isWon(st) || st.bays.indexOf(null) !== -1) return false;
-        var c = st.level.queue[st.q];
-        return !st.bays.some(function (b) { return b && b.colour === c; });
+        return !peekStep(st);
     }
     function undo(st) {
         if (!st.history.length || st.undoLeft <= 0) return false;
         var s = st.history.pop();
         var n = st.bays.length;
-        st.removed = s.removed; st.bays = s.bays; st.q = s.q; st.moves = s.moves;
+        st.removed = s.removed; st.bays = s.bays; st.platform = s.platform; st.q = s.q; st.moves = s.moves;
         while (st.bays.length < n) st.bays.push(null);
         st.undoLeft--; st.boostsUsed++;
         return true;
@@ -202,7 +216,7 @@
 
     // ---------- generation ----------
     function tryGenerate(n, p, r) {
-        var lvl = { number: n, cols: p.cols, rows: p.rows, bays: p.bays, buses: [], queue: [] };
+        var lvl = { number: n, cols: p.cols, rows: p.rows, bays: p.bays, mode: p.mode, platform: p.platform, buses: [], queue: [] };
         var occ = new Array(p.cols * p.rows).fill(-1);
         var tries = 0;
         while (lvl.buses.length < p.buses && tries < 900) {
@@ -257,9 +271,25 @@
                 service.push(parked.splice(Math.floor(r() * parked.length), 1)[0]);
             }
         }
-        service.forEach(function (id) {
-            for (var s = 0; s < lvl.buses[id].cap; s++) lvl.queue.push(lvl.buses[id].colour);
-        });
+        if (p.mode === 'single') {
+            service.forEach(function (id) {
+                for (var s = 0; s < lvl.buses[id].cap; s++) lvl.queue.push(lvl.buses[id].colour);
+            });
+        } else {
+            // Platform levels: passengers for the next few buses arrive mixed together in short runs,
+            // so several colours are on the platform at once and the player chooses what to serve.
+            for (var g = 0; g < service.length; g += 3) {
+                var pools = service.slice(g, g + 3).map(function (id) { return { c: lvl.buses[id].colour, n: lvl.buses[id].cap }; });
+                for (;;) {
+                    var avail = pools.filter(function (x) { return x.n > 0; });
+                    if (!avail.length) break;
+                    var pk = avail[Math.floor(r() * avail.length)];
+                    var run = Math.min(pk.n, 1 + Math.floor(r() * 3));
+                    for (var t = 0; t < run; t++) lvl.queue.push(pk.c);
+                    pk.n -= run;
+                }
+            }
+        }
 
         var sim = simulate(lvl, plan);
         if (!sim.ok || sim.peak < p.minPeak) return null;
@@ -272,7 +302,7 @@
     function cloneState(st) {
         return { level: st.level, removed: st.removed.slice(),
                  bays: st.bays.map(function (b) { return b ? { bus: b.bus, colour: b.colour, cap: b.cap, filled: b.filled } : null; }),
-                 q: st.q, moves: st.moves, undoLeft: 0, extraUsed: true, boostsUsed: 0, history: [] };
+                 platform: st.platform.slice(), q: st.q, moves: st.moves, undoLeft: 0, extraUsed: true, boostsUsed: 0, history: [] };
     }
     function freeBuses(st) {
         var occ = occupancy(st.level, st.removed), out = [];
@@ -281,10 +311,17 @@
         }
         return out;
     }
+    // How soon a colour is wanted: 0 if someone of that colour is on the platform, else queue distance.
     function nextNeed(st, colour) {
         var Q = st.level.queue;
-        for (var i = st.q; i < Q.length; i++) if (Q[i] === colour) return i - st.q;
+        for (var s = 0; s < st.platform.length; s++) if (Q[st.platform[s]] === colour) return 0;
+        for (var i = st.q; i < Q.length; i++) if (Q[i] === colour) return 1 + i - st.q;
         return 1e9;
+    }
+    function platformHas(st, colour) {
+        var Q = st.level.queue;
+        for (var s = 0; s < st.platform.length; s++) if (Q[st.platform[s]] === colour) return true;
+        return false;
     }
     // Find a winning tap sequence with K bays (depth-first, memo of dead states, node cap).
     // Returns { ok: true, taps } / { ok: false } / { ok: null } when the cap is hit.
@@ -298,7 +335,8 @@
             if (isStuck(st) || st.bays.indexOf(null) === -1) return false;
             if (++nodes > cap) throw new Error('cap');
             var key = st.removed.map(function (r) { return r ? 1 : 0; }).join('') + '|' +
-                st.bays.map(function (b) { return b ? b.colour + ':' + b.cap + ':' + b.filled : '-'; }).join(',') + '|' + st.q;
+                st.bays.map(function (b) { return b ? b.colour + ':' + b.cap + ':' + b.filled : '-'; }).join(',') + '|' + st.q + '|' +
+                st.platform.map(function (pi) { return L.queue[pi]; }).join('');
             if (failed[key]) return false;
             var moves = freeBuses(st).sort(function (a, b) {
                 return nextNeed(st, L.buses[a].colour) - nextNeed(st, L.buses[b].colour) || a - b;
@@ -340,11 +378,10 @@
                 if (isWon(st)) { ok = true; break; }
                 if (isStuck(st)) break;
                 var occ = occupancy(level, st.removed), free = [], match = [];
-                var front = level.queue[st.q];
                 for (var i = 0; i < level.buses.length; i++) {
                     if (!st.removed[i] && exitInfo(level, st.removed, i, occ).clear) {
                         free.push(i);
-                        if (level.buses[i].colour === front) match.push(i);
+                        if (platformHas(st, level.buses[i].colour)) match.push(i);
                     }
                 }
                 var pool = match.length ? match : free;
@@ -367,8 +404,8 @@
                 while (boardOne(st)) { /* board */ }
                 if (isWon(st)) { ok = true; break; }
                 if (isStuck(st)) break;
-                var free = freeBuses(st), front = level.queue[st.q];
-                var pick = free.filter(function (i) { return level.buses[i].colour === front; });
+                var free = freeBuses(st);
+                var pick = free.filter(function (i) { return platformHas(st, level.buses[i].colour); });
                 if (!pick.length) {
                     var rem = [];
                     for (var i = 0; i < level.buses.length; i++) if (!st.removed[i]) rem.push({ i: i, need: nextNeed(st, level.buses[i].colour), t: r() });
@@ -411,8 +448,7 @@
     function spareBays(n) {
         if (n <= 2) return 2;
         if (isTough(n)) return 0;
-        if (n <= 8) return 1;
-        if (n <= 14) return n % 2 ? 0 : 1;
+        if (n <= 14) return 1;
         return n % 4 === 1 ? 1 : 0;
     }
     // Levels must need at least this many bays even when played perfectly (so parking matters).
@@ -471,7 +507,7 @@
     var api = {
         PALETTE: PALETTE, BASE_BAYS: BASE_BAYS, UNDO_PER_LEVEL: UNDO_PER_LEVEL,
         params: params, generate: generate, exitInfo: exitInfo, cellsOf: cellsOf,
-        createState: createState, tap: tap, boardOne: boardOne, peekBoard: peekBoard, isWon: isWon, isStuck: isStuck,
+        createState: createState, tap: tap, boardOne: boardOne, peekBoard: peekBoard, peekStep: peekStep, isWon: isWon, isStuck: isStuck,
         undo: undo, addBay: addBay, starsFor: starsFor, simulate: simulate,
         naiveWinRate: naiveWinRate, targetBand: targetBand, isTough: isTough, spareBays: spareBays,
         minBays: minBays, solveWith: solveWith, smartWinRate: smartWinRate, smartBand: smartBand
