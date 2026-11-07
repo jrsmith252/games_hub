@@ -69,6 +69,24 @@
             font-size: 11px; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.4);
         }
         .pax.front { width: 28px; height: 28px; font-size: 13px; box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px rgba(255,255,255,0.85); margin-right: 5px; }
+        .stop { position: relative; cursor: pointer; }
+        .run {
+            flex: none; height: 26px; padding: 0 8px 0 6px; border-radius: 999px;
+            background: var(--c); color: var(--ink);
+            display: inline-flex; align-items: center; gap: 3px;
+            font-size: 12px; font-weight: 700; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        }
+        .run .n { font-size: 11px; opacity: 0.9; }
+        .run.front { height: 30px; font-size: 13px; box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px rgba(255,255,255,0.85); margin-right: 4px; }
+        .queue-more { flex: none; font-size: 0.75rem; color: var(--text-secondary); padding-left: 2px; }
+        .queue-all {
+            display: none; position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 30;
+            background: var(--bg-raise); border: 1px solid var(--line); border-radius: 14px; padding: 10px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5); max-height: 45vh; overflow-y: auto; cursor: default;
+        }
+        .stop.expanded .queue-all { display: block; }
+        .queue-all .runs { display: flex; flex-wrap: wrap; gap: 6px; }
+        .queue-all .hint { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; }
         .queue-count { flex: none; text-align: right; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; }
         .queue-count b { display: block; color: var(--text-primary); font-size: 1rem; }
 
@@ -209,10 +227,14 @@
     </header>
 
     <main class="game">
-        <section class="stop" aria-label="Bus stop queue">
+        <section class="stop" id="stop" aria-label="Bus stop queue. Tap to see the whole queue." role="button" tabindex="0" aria-expanded="false" aria-controls="queueAll">
             <div class="stop-sign" aria-hidden="true">BUS</div>
             <div class="queue" id="queue"></div>
             <div class="queue-count"><b id="paxLeft">0</b>waiting</div>
+            <div class="queue-all" id="queueAll">
+                <div class="hint">The whole queue, in boarding order. Tap again to close.</div>
+                <div class="runs" id="queueRuns"></div>
+            </div>
         </section>
 
         <section class="bays" id="bays" aria-label="Bays"></section>
@@ -245,7 +267,7 @@
         <div class="modal">
             <h2 id="helpTitle">How to play</h2>
             <ol>
-                <li>Passengers queue at the <b>bus stop</b>. The next to board is on the left.</li>
+                <li>Passengers queue at the <b>bus stop</b> in colour groups. The next to board is on the left. <b>Tap the queue</b> to see everyone who's waiting.</li>
                 <li><b>Tap a bus</b> to drive it out of the depot. It can only leave if nothing is in the way of its arrow.</li>
                 <li>Buses wait in the <b>bays</b>. Passengers board the bus of their colour, and a full bus departs.</li>
                 <li>Bays are limited, and some levels lock a few. Fill them with the wrong colours and you're <b>stuck</b>, so plan ahead.</li>
@@ -423,15 +445,30 @@
             var pips = baysEl.querySelectorAll('[data-bay="' + bi + '"] .pip');
             for (var i = 0; i < pips.length; i++) pips[i].classList.toggle('on', i < filled);
         }
-        function renderQueue() {
-            var Q = level.queue;
-            var fit = Math.max(4, Math.floor((queueEl.clientWidth - 10) / 26));
-            var html = '';
-            for (var i = st.q; i < Math.min(Q.length, st.q + fit); i++) {
-                var pal = E.PALETTE[Q[i]];
-                html += '<span class="pax' + (i === st.q ? ' front' : '') + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + '">' + pal.sym + '</span>';
+        // The queue as runs of the same colour: [green x6][orange x3]...
+        function queueRuns() {
+            var Q = level.queue, runs = [];
+            for (var i = st.q; i < Q.length; i++) {
+                var last = runs[runs.length - 1];
+                if (last && last.c === Q[i]) last.n++; else runs.push({ c: Q[i], n: 1 });
             }
+            return runs;
+        }
+        function runHtml(r, front) {
+            var pal = E.PALETTE[r.c];
+            return '<span class="run' + (front ? ' front' : '') + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + '" aria-label="' +
+                r.n + ' ' + pal.name + '">' + pal.sym + '<span class="n">×' + r.n + '</span></span>';
+        }
+        function renderQueue() {
+            var Q = level.queue, runs = queueRuns();
+            var fit = Math.max(3, Math.floor((queueEl.clientWidth - 30) / 50));
+            var html = '';
+            for (var i = 0; i < Math.min(runs.length, fit); i++) html += runHtml(runs[i], i === 0);
+            if (runs.length > fit) html += '<span class="queue-more">+' + (runs.length - fit) + '</span>';
             queueEl.innerHTML = html;
+            var all = '';
+            runs.forEach(function (r, i) { all += runHtml(r, i === 0); });
+            $('queueRuns').innerHTML = all || '<span class="hint">Everyone has boarded.</span>';
             queueEl.setAttribute('aria-label', Q.length > st.q ? 'Next passenger: ' + E.PALETTE[Q[st.q]].name : 'Queue empty');
             $('paxLeft').textContent = Q.length - st.q;
         }
@@ -453,6 +490,11 @@
         // ---------- level flow ----------
         function startLevel(n) {
             levelNo = n;
+            busy = true;
+            setStatus('Building level ' + n + '…');
+            setTimeout(function () { buildLevel(n); }, 30);
+        }
+        function buildLevel(n) {
             level = E.generate(n);
             st = E.createState(level);
             busy = false;
@@ -461,7 +503,7 @@
             var baysTxt = level.bays + ' bay' + (level.bays === 1 ? '' : 's');
             if (n === 1) setStatus('Tap a bus whose arrow has a clear road out.');
             else if (level.tough) setStatus('Tough level · ' + baysTxt + ', no spare. Think before you tap!');
-            else setStatus(level.buses.length + ' buses · ' + baysTxt);
+            else setStatus(level.buses.length + ' buses · ' + baysTxt + (level.minBays && level.bays === level.minBays ? ', no spare' : ''));
         }
         function afterMove() {
             renderControls();
@@ -596,6 +638,20 @@
             var btn = e.target.closest('.bus');
             if (btn) onTap(+btn.dataset.id);
         });
+        function setQueueOpen(open) {
+            $('stop').classList.toggle('expanded', open);
+            $('stop').setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        $('stop').addEventListener('click', function (e) {
+            if (e.target.closest('.queue-all') && !e.target.closest('.hint')) return;
+            setQueueOpen(!$('stop').classList.contains('expanded'));
+        });
+        $('stop').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setQueueOpen(!$('stop').classList.contains('expanded')); }
+        });
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#stop')) setQueueOpen(false);
+        }, true);
         $('undoBtn').addEventListener('click', doUndo);
         $('bayBtn').addEventListener('click', doExtraBay);
         $('restartBtn').addEventListener('click', function () { if (!busy) startLevel(levelNo); });
