@@ -1,6 +1,7 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
-   Bump CACHE_VERSION whenever any file changes so players get the update. */
-const CACHE_VERSION = 'v1.1.1';
+   Pages and assets are fetched network-first, so updates show up straight away when online.
+   Bump CACHE_VERSION (and the version in the hub footer) when releasing. */
+const CACHE_VERSION = 'v1.1.2';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [
@@ -42,13 +43,32 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network first: always load the latest version when online (and refresh the
+// offline copy as we go); fall back to the saved copy when offline or very slow.
+const NETWORK_TIMEOUT_MS = 4000;
+
+function fromNetwork(req) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), NETWORK_TIMEOUT_MS);
+    fetch(req, { cache: 'no-cache' }).then((res) => {
+      clearTimeout(timer);
+      if (res && res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
+      }
+      resolve(res);
+    }, (err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   event.respondWith(
-    caches.match(req, { ignoreSearch: true }).then((hit) => {
-      if (hit) return hit;
-      return fetch(req).catch(() => (req.mode === 'navigate' ? caches.match('index.html') : Response.error()));
-    })
+    fromNetwork(req).catch(() =>
+      caches.match(req, { ignoreSearch: true }).then((hit) =>
+        hit || (req.mode === 'navigate' ? caches.match('index.html') : Response.error())
+      )
+    )
   );
 });
