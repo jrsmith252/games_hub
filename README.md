@@ -1,6 +1,6 @@
 # Game Hub
 
-Fourteen relaxing puzzle, word and arcade games in one installable, offline-capable web app. No ads, no accounts, no tracking; progress is saved on the device only.
+Fifteen relaxing puzzle, word and arcade games in one installable, offline-capable web app. No ads, no accounts, no tracking; progress is saved on the device only.
 
 Plain HTML/CSS/JavaScript, no build step. Each game is a self-contained page in `games/<name>/index.html`. Shared code lives in `shared/`:
 
@@ -30,4 +30,4 @@ Edit any file, then bump `CACHE_VERSION` in `sw.js` so installed copies refresh.
 
 ## Games
 
-Sliding Puzzle, 2048, Light Switch, Sudoku, Block Drop, Memory Match, Color Sequence, Mine Finder, Word Search, Hangman, Tic Tac Toe, Four in a Row, Snake, Brick Breaker.
+Depot Dash (bus-jam puzzle with endless generated levels; logic in `games/depot-dash/engine.js`), Sliding Puzzle, 2048, Light Switch, Sudoku, Block Drop, Memory Match, Color Sequence, Mine Finder, Word Search, Hangman, Tic Tac Toe, Four in a Row, Snake, Brick Breaker.
