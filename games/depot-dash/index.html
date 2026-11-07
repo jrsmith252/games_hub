@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Depot Dash — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-deep: #0a0f1a;
+            --bg-card: #141b2d;
+            --bg-raise: #1c2539;
+            --line: rgba(255,255,255,0.08);
+            --text-primary: #f0f4fc;
+            --text-secondary: #94a0b8;
+            --accent: #6366f1;
+            --accent-soft: rgba(99,102,241,0.18);
+            --asphalt: #161d2b;
+            --asphalt-line: rgba(255,255,255,0.045);
+            --gold: #fbbf24;
+            --danger: #f87171;
+        }
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 12px 16px;
+            background: rgba(20,27,45,0.85);
+            border-bottom: 1px solid var(--line);
+        }
+        .icon-btn {
+            width: 44px; height: 44px; border-radius: 12px;
+            background: var(--bg-card); border: 1px solid var(--line);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary); text-decoration: none; cursor: pointer;
+        }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.2rem; }
+        .level-btn {
+            margin-top: 2px; background: none; border: 0; color: var(--text-secondary);
+            font: inherit; font-size: 0.85rem; cursor: pointer; min-height: 24px; padding: 0 8px;
+        }
+        .level-btn .tough { color: var(--gold); font-weight: 600; }
+
+        .game { width: 100%; max-width: 480px; margin: 0 auto; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+
+        /* Bus stop queue */
+        .stop {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--bg-card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px;
+        }
+        .stop-sign {
+            flex: none; width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft);
+            display: flex; align-items: center; justify-content: center; color: #a5b4fc; font-weight: 700; font-size: 0.75rem;
+        }
+        .queue { flex: 1; display: flex; gap: 4px; overflow: hidden; min-height: 36px; align-items: center; padding: 4px 0 4px 5px; }
+        .pax {
+            flex: none; width: 22px; height: 22px; border-radius: 50%;
+            background: var(--c); color: var(--ink);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        }
+        .pax.front { width: 28px; height: 28px; font-size: 13px; box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px rgba(255,255,255,0.85); margin-right: 5px; }
+        .queue-count { flex: none; text-align: right; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; }
+        .queue-count b { display: block; color: var(--text-primary); font-size: 1rem; }
+
+        /* Bays */
+        .bays { display: flex; gap: 6px; }
+        .bay {
+            flex: 1; min-width: 0; height: 62px; border-radius: 12px;
+            border: 2px dashed rgba(255,255,255,0.14);
+            display: flex; align-items: center; justify-content: center; position: relative;
+        }
+        .bay.extra { border-color: rgba(251,191,36,0.45); }
+        .bay-empty { color: rgba(255,255,255,0.22); font-weight: 700; font-size: 0.9rem; }
+        .bay-bus {
+            position: absolute; inset: 3px; border-radius: 9px;
+            background: var(--c); color: var(--ink);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.35);
+        }
+        .bay-bus .sym { font-size: 15px; line-height: 1; }
+        .pips { display: grid; grid-template-columns: repeat(3, 7px); gap: 3px; }
+        .pip { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,0.28); }
+        .pip.on { background: var(--ink); }
+        .bays.shake { animation: shake 0.35s; }
+        @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+
+        /* Depot yard */
+        .yard-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+        .yard {
+            position: relative; overflow: hidden; border-radius: 14px;
+            background-color: var(--asphalt);
+            background-image:
+                linear-gradient(var(--asphalt-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--asphalt-line) 1px, transparent 1px);
+            background-size: var(--cell) var(--cell);
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06);
+        }
+        .bus { position: absolute; border: 0; background: transparent; padding: 0; cursor: pointer; }
+        .bus .body {
+            position: absolute; inset: 3px; border-radius: 9px;
+            background: var(--c); color: var(--ink);
+            display: flex; align-items: center; justify-content: space-around;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.25), 0 2px 5px rgba(0,0,0,0.45);
+        }
+        .bus.dir-R .body { flex-direction: row; }
+        .bus.dir-L .body { flex-direction: row-reverse; }
+        .bus.dir-D .body { flex-direction: column; }
+        .bus.dir-U .body { flex-direction: column-reverse; }
+        .bus .screen { position: absolute; background: rgba(15,23,42,0.5); border-radius: 4px; }
+        .bus.dir-R .screen { right: 4px; top: 5px; bottom: 5px; width: 14%; }
+        .bus.dir-L .screen { left: 4px; top: 5px; bottom: 5px; width: 14%; }
+        .bus.dir-D .screen { bottom: 4px; left: 5px; right: 5px; height: 14%; }
+        .bus.dir-U .screen { top: 4px; left: 5px; right: 5px; height: 14%; }
+        .bus .sym { font-size: calc(var(--cell) * 0.32); line-height: 1; position: relative; }
+        .bus .arrow { width: calc(var(--cell) * 0.44); height: calc(var(--cell) * 0.44); position: relative; }
+        .bus .arrow svg { width: 100%; height: 100%; stroke: var(--ink); fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+        .bus.dir-D .arrow svg { transform: rotate(90deg); }
+        .bus.dir-L .arrow svg { transform: rotate(180deg); }
+        .bus.dir-U .arrow svg { transform: rotate(-90deg); }
+        .bus:focus-visible .body { outline: 3px solid #fff; outline-offset: 1px; }
+
+        .status { text-align: center; font-size: 0.85rem; color: var(--text-secondary); min-height: 1.2em; }
+
+        .controls { display: flex; gap: 8px; }
+        .ctrl {
+            flex: 1; min-height: 48px; border-radius: 12px; border: 1px solid var(--line);
+            background: var(--bg-card); color: var(--text-primary); font: inherit; font-weight: 600; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+        }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .ctrl .badge { font-size: 0.75rem; color: var(--text-secondary); font-weight: 500; }
+
+        .toast {
+            position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+            background: #0b1220; border: 1px solid var(--line); color: var(--text-primary);
+            padding: 10px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none;
+            transition: opacity 0.2s; white-space: nowrap; z-index: 40;
+        }
+        .toast.show { opacity: 1; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(5,8,15,0.78); display: none;
+            align-items: center; justify-content: center; padding: 20px; z-index: 50;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            width: 100%; max-width: 360px; background: var(--bg-card); border: 1px solid var(--line);
+            border-radius: 20px; padding: 24px 20px 20px; text-align: center;
+        }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.45rem; margin-bottom: 8px; }
+        .modal p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; margin-bottom: 16px; }
+        .modal ol { text-align: left; color: var(--text-secondary); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 16px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal ol b { color: var(--text-primary); }
+        .stars { font-size: 2.2rem; letter-spacing: 6px; margin: 4px 0 10px; color: rgba(255,255,255,0.15); }
+        .stars .lit { color: var(--gold); }
+        .btn {
+            display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px;
+            background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 1rem; cursor: pointer;
+        }
+        .btn.secondary { background: var(--bg-raise); color: var(--text-primary); border: 1px solid var(--line); }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell {
+            min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-raise);
+            color: var(--text-primary); font: inherit; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .level-cell small { font-size: 0.6rem; color: var(--gold); letter-spacing: 1px; min-height: 0.8em; }
+        .level-cell.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+        .level-cell.tough { background: rgba(251,191,36,0.08); }
+    </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <div class="title-block">
+            <div class="game-title">Depot Dash</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg>
+        </button>
+    </header>
+
+    <main class="game">
+        <section class="stop" aria-label="Bus stop queue">
+            <div class="stop-sign" aria-hidden="true">BUS</div>
+            <div class="queue" id="queue"></div>
+            <div class="queue-count"><b id="paxLeft">0</b>waiting</div>
+        </section>
+
+        <section class="bays" id="bays" aria-label="Bays"></section>
+
+        <div class="yard-wrap" id="yardWrap">
+            <div class="yard" id="yard" aria-label="Depot"></div>
+        </div>
+
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+
+        <div class="controls" id="controls">
+            <button class="ctrl" id="undoBtn">
+                <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                Undo <span class="badge" id="undoLeft">3</span>
+            </button>
+            <button class="ctrl" id="bayBtn">
+                <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M12 9v6M9 12h6"/></svg>
+                Extra bay
+            </button>
+            <button class="ctrl" id="restartBtn">
+                <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+                Restart
+            </button>
+        </div>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li>Passengers queue at the <b>bus stop</b>. The next to board is on the left.</li>
+                <li><b>Tap a bus</b> to drive it out of the depot. It can only leave if nothing is in the way of its arrow.</li>
+                <li>Buses wait in the <b>bays</b>. Passengers board the bus of their colour, and a full bus departs.</li>
+                <li>There are only 5 bays. Fill them with the wrong colours and you're <b>stuck</b>, so plan ahead.</li>
+            </ol>
+            <p>Undo and Extra bay can get you out of trouble, but each one used costs you a star.</p>
+            <button class="btn" id="helpClose">Let's go</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <h2 id="winTitle">Level cleared!</h2>
+            <div class="stars" id="winStars" aria-label="3 stars"></div>
+            <p id="winText">Everyone got on their bus.</p>
+            <button class="btn" id="nextBtn">Next level</button>
+            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="stuckModal" role="dialog" aria-modal="true" aria-labelledby="stuckTitle">
+        <div class="modal">
+            <h2 id="stuckTitle">Bays full!</h2>
+            <p id="stuckText">None of the buses in the bays match the next passenger.</p>
+            <button class="btn" id="stuckUndo">Undo last bus</button>
+            <button class="btn" id="stuckBay">Open an extra bay</button>
+            <button class="btn secondary" id="stuckRestart">Restart level</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <h2 id="levelTitle">Levels</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.DepotEngine;
+        var S = window.HubStorage;
+        var KEY_PROGRESS = 'depotdash_progress';
+        var KEY_STARS = 'depotdash_stars';
+        var KEY_SEEN = 'depotdash_instructionsSeen';
+        var DIR_NAME = { U: 'up', D: 'down', L: 'left', R: 'right' };
+        var ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+
+        var $ = function (id) { return document.getElementById(id); };
+        var yard = $('yard'), baysEl = $('bays'), queueEl = $('queue');
+
+        // ---------- saved progress ----------
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var stars = loadStars();
+        function loadStars() {
+            var out = {};
+            try {
+                var o = JSON.parse(S.getString(KEY_STARS, '{}'));
+                if (o && typeof o === 'object' && !Array.isArray(o)) {
+                    Object.keys(o).forEach(function (k) {
+                        if (/^\d+$/.test(k) && (o[k] === 1 || o[k] === 2 || o[k] === 3)) out[k] = o[k];
+                    });
+                }
+            } catch (e) { /* corrupt: start fresh */ }
+            return out;
+        }
+        function saveProgress() {
+            S.setObject(KEY_PROGRESS, progress);
+            S.setString(KEY_STARS, JSON.stringify(stars));
+        }
+
+        // ---------- state ----------
+        var levelNo = progress.level, level = null, st = null;
+        var cell = 44, busy = false, pendingLayout = false;
+
+        // ---------- helpers ----------
+        function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+        function animate(node, frames, opts) {
+            if (!node || !node.animate) return Promise.resolve();
+            return new Promise(function (res) {
+                var a = node.animate(frames, opts);
+                var done = false;
+                var finish = function () { if (!done) { done = true; res(); } };
+                a.onfinish = finish; a.oncancel = finish;
+                setTimeout(finish, (opts.duration || 300) + 200);
+            });
+        }
+        var toastTimer = null;
+        function toast(msg) {
+            var t = $('toast');
+            t.textContent = msg; t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1600);
+        }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function setStatus(msg) { $('status').textContent = msg; }
+        function anyModalOpen() { return !!document.querySelector('.modal-overlay.active'); }
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('button'); if (b) b.focus(); }
+        function closeModal(id) { $(id).classList.remove('active'); }
+
+        // ---------- layout ----------
+        function layout() {
+            var wrap = $('yardWrap');
+            var availW = wrap.clientWidth;
+            var top = wrap.getBoundingClientRect().top;
+            var below = Math.max($('status').offsetHeight, 20) + $('controls').offsetHeight + 34;
+            var availH = window.innerHeight - top - below;
+            var c = Math.floor(Math.min(availW / level.cols, availH / level.rows));
+            cell = Math.max(30, Math.min(64, c));
+            yard.style.width = cell * level.cols + 'px';
+            yard.style.height = cell * level.rows + 'px';
+            yard.style.setProperty('--cell', cell + 'px');
+        }
+
+        // ---------- rendering ----------
+        function renderYard() {
+            yard.innerHTML = '';
+            level.buses.forEach(function (b, i) {
+                if (st.removed[i]) return;
+                var horiz = b.dir === 'L' || b.dir === 'R';
+                var pal = E.PALETTE[b.colour];
+                var btn = document.createElement('button');
+                btn.className = 'bus dir-' + b.dir;
+                btn.dataset.id = i;
+                btn.style.setProperty('--c', pal.hex);
+                btn.style.setProperty('--ink', pal.ink);
+                btn.style.left = b.x * cell + 'px';
+                btn.style.top = b.y * cell + 'px';
+                btn.style.width = (horiz ? b.len : 1) * cell + 'px';
+                btn.style.height = (horiz ? 1 : b.len) * cell + 'px';
+                btn.setAttribute('aria-label', pal.name + ' bus, ' + b.cap + ' seats, facing ' + DIR_NAME[b.dir]);
+                btn.innerHTML = '<span class="body"><span class="screen"></span><span class="sym" aria-hidden="true">' +
+                    pal.sym + '</span><span class="arrow">' + ARROW + '</span></span>';
+                yard.appendChild(btn);
+            });
+        }
+        function bayBusHtml(b) {
+            var pal = E.PALETTE[b.colour], pips = '';
+            for (var i = 0; i < b.cap; i++) pips += '<span class="pip' + (i < b.filled ? ' on' : '') + '"></span>';
+            return '<div class="bay-bus" style="--c:' + pal.hex + ';--ink:' + pal.ink + '">' +
+                '<span class="sym" aria-hidden="true">' + pal.sym + '</span><span class="pips">' + pips + '</span></div>';
+        }
+        function renderBays(arrivedIndex) {
+            baysEl.innerHTML = '';
+            st.bays.forEach(function (b, i) {
+                var slot = document.createElement('div');
+                slot.className = 'bay' + (i >= E.BASE_BAYS ? ' extra' : '');
+                slot.dataset.bay = i;
+                if (b) {
+                    slot.innerHTML = bayBusHtml(b);
+                    slot.setAttribute('aria-label', E.PALETTE[b.colour].name + ' bus, ' + b.filled + ' of ' + b.cap + ' seats taken');
+                } else {
+                    slot.innerHTML = '<span class="bay-empty" aria-hidden="true">P</span>';
+                    slot.setAttribute('aria-label', 'Empty bay');
+                }
+                baysEl.appendChild(slot);
+            });
+            if (arrivedIndex !== undefined) {
+                var nb = baysEl.querySelector('[data-bay="' + arrivedIndex + '"] .bay-bus');
+                animate(nb, [{ transform: 'translateY(26px) scale(0.85)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+                    { duration: 220, easing: 'cubic-bezier(.2,.8,.3,1)' });
+            }
+        }
+        function updatePips(bi, filled) {
+            var pips = baysEl.querySelectorAll('[data-bay="' + bi + '"] .pip');
+            for (var i = 0; i < pips.length; i++) pips[i].classList.toggle('on', i < filled);
+        }
+        function renderQueue() {
+            var Q = level.queue;
+            var fit = Math.max(4, Math.floor((queueEl.clientWidth - 10) / 26));
+            var html = '';
+            for (var i = st.q; i < Math.min(Q.length, st.q + fit); i++) {
+                var pal = E.PALETTE[Q[i]];
+                html += '<span class="pax' + (i === st.q ? ' front' : '') + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + '">' + pal.sym + '</span>';
+            }
+            queueEl.innerHTML = html;
+            queueEl.setAttribute('aria-label', Q.length > st.q ? 'Next passenger: ' + E.PALETTE[Q[st.q]].name : 'Queue empty');
+            $('paxLeft').textContent = Q.length - st.q;
+        }
+        function renderControls() {
+            $('undoLeft').textContent = st.undoLeft;
+            $('undoBtn').disabled = busy || st.undoLeft <= 0 || st.history.length === 0;
+            $('bayBtn').disabled = busy || st.extraUsed;
+            $('restartBtn').disabled = busy;
+        }
+        function renderLevelLabel() {
+            var t = level.tough ? ' · <span class="tough">Tough</span>' : '';
+            $('levelBtn').innerHTML = 'Level ' + levelNo + t + ' ▾';
+        }
+        function renderAll() {
+            // Bays, queue and labels first: the depot is sized from the space left below them
+            renderBays(); renderQueue(); renderControls(); renderLevelLabel(); layout(); renderYard();
+        }
+
+        // ---------- level flow ----------
+        function startLevel(n) {
+            levelNo = n;
+            level = E.generate(n);
+            st = E.createState(level);
+            busy = false;
+            ['winModal', 'stuckModal', 'levelModal'].forEach(closeModal);
+            renderAll();
+            if (n === 1) setStatus('Tap a bus whose arrow has a clear road out.');
+            else if (level.tough) setStatus('Tough level: think before you tap!');
+            else setStatus(level.buses.length + ' buses · ' + level.queue.length + ' passengers');
+        }
+        function afterMove() {
+            renderControls();
+            if (E.isWon(st)) { onWin(); return; }
+            if (E.isStuck(st)) {
+                buzz(60);
+                setStatus('Stuck: no bay bus matches the next passenger.');
+                $('stuckUndo').style.display = st.undoLeft > 0 && st.history.length ? '' : 'none';
+                $('stuckBay').style.display = st.extraUsed ? 'none' : '';
+                setTimeout(function () { openModal('stuckModal'); }, 250);
+                return;
+            }
+            var free = st.bays.filter(function (b) { return !b; }).length;
+            if (free === 1) setStatus('Careful: one bay left.');
+            else if (free === 0) setStatus('No free bays.');
+            else setStatus('');
+        }
+        function onWin() {
+            var s = E.starsFor(st);
+            var prev = stars[levelNo] || 0;
+            if (s > prev) stars[levelNo] = s;
+            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
+            saveProgress();
+            var html = '';
+            for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
+            $('winStars').innerHTML = html;
+            $('winStars').setAttribute('aria-label', s + ' of 3 stars');
+            $('winTitle').textContent = 'Level ' + levelNo + ' cleared!';
+            $('winText').textContent = s === 3 ? 'Perfect run, no boosters needed.' :
+                'Cleared with ' + st.boostsUsed + ' booster' + (st.boostsUsed === 1 ? '' : 's') + '. Replay without them for 3 stars.';
+            $('replayBtn').style.display = s === 3 ? 'none' : '';
+            setStatus('');
+            setTimeout(function () { openModal('winModal'); }, 350);
+        }
+
+        // ---------- taps ----------
+        function busEl(id) { return yard.querySelector('.bus[data-id="' + id + '"]'); }
+        async function onTap(id) {
+            if (busy || anyModalOpen()) return;
+            var b = level.buses[id];
+            var res = E.tap(st, id);
+            var node = busEl(id);
+            var v = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] }[b.dir];
+            if (res.type === 'blocked') {
+                busy = true; renderControls(); buzz(18);
+                var nudge = res.dist * cell + 7;
+                var blocker = busEl(res.blocker);
+                if (blocker) animate(blocker.querySelector('.body'), [{ filter: 'brightness(1)' }, { filter: 'brightness(1.6)' }, { filter: 'brightness(1)' }], { duration: 380 });
+                await animate(node, [
+                    { transform: 'translate(0,0)' },
+                    { transform: 'translate(' + v[0] * nudge + 'px,' + v[1] * nudge + 'px)', offset: 0.45 },
+                    { transform: 'translate(0,0)' }
+                ], { duration: 260 + res.dist * 40, easing: 'ease-in-out' });
+                busy = false; renderControls();
+                return;
+            }
+            if (res.type === 'full') {
+                buzz(40);
+                baysEl.classList.remove('shake'); void baysEl.offsetWidth; baysEl.classList.add('shake');
+                toast('All bays are full');
+                return;
+            }
+            if (res.type !== 'exit') return;
+            busy = true; renderControls();
+            var cells = res.dist + b.len + 1;
+            await animate(node, [
+                { transform: 'translate(0,0)' },
+                { transform: 'translate(' + v[0] * cells * cell + 'px,' + v[1] * cells * cell + 'px)' }
+            ], { duration: 150 + cells * 32, easing: 'cubic-bezier(.55,0,.9,.55)', fill: 'forwards' });
+            if (node) node.remove();
+            renderBays(res.bay);
+            await sleep(170);
+            await settle();
+            busy = false;
+            afterMove();
+        }
+        async function settle() {
+            var step;
+            while ((step = E.boardOne(st))) {
+                renderQueue();
+                updatePips(step.bay, step.filled);
+                if (step.departed) {
+                    await sleep(110);
+                    var leaving = baysEl.querySelector('[data-bay="' + step.bay + '"] .bay-bus');
+                    await animate(leaving, [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-30px)', opacity: 0 }],
+                        { duration: 240, easing: 'ease-in', fill: 'forwards' });
+                    renderBays();
+                } else {
+                    await sleep(70);
+                }
+            }
+            if (pendingLayout) { pendingLayout = false; layout(); renderYard(); }
+        }
+
+        // ---------- boosters ----------
+        function doUndo() {
+            if (busy || !E.undo(st)) return;
+            closeModal('stuckModal');
+            renderAll();
+            toast('Undone, ' + st.undoLeft + ' left');
+            afterMove();
+        }
+        async function doExtraBay() {
+            if (busy || !E.addBay(st)) return;
+            closeModal('stuckModal');
+            renderBays(); renderControls();
+            toast('Extra bay opened');
+            busy = true;
+            await settle();
+            busy = false;
+            afterMove();
+        }
+
+        // ---------- level picker ----------
+        function openLevels() {
+            var grid = $('levelGrid'), html = '';
+            var max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) {
+                var s = stars[n] || 0, str = '';
+                for (var i = 0; i < s; i++) str += '★';
+                html += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (E.isTough(n) ? ' tough' : '') +
+                    '" data-level="' + n + '" aria-label="Level ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>';
+            }
+            grid.innerHTML = html;
+            openModal('levelModal');
+            var cur = grid.querySelector('.current');
+            if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+        }
+
+        // ---------- wiring ----------
+        yard.addEventListener('click', function (e) {
+            var btn = e.target.closest('.bus');
+            if (btn) onTap(+btn.dataset.id);
+        });
+        $('undoBtn').addEventListener('click', doUndo);
+        $('bayBtn').addEventListener('click', doExtraBay);
+        $('restartBtn').addEventListener('click', function () { if (!busy) startLevel(levelNo); });
+        $('stuckUndo').addEventListener('click', doUndo);
+        $('stuckBay').addEventListener('click', doExtraBay);
+        $('stuckRestart').addEventListener('click', function () { startLevel(levelNo); });
+        $('nextBtn').addEventListener('click', function () { startLevel(levelNo + 1); });
+        $('replayBtn').addEventListener('click', function () { startLevel(levelNo); });
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', function () { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); });
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) {
+            var b = e.target.closest('.level-cell');
+            if (b) startLevel(+b.dataset.level);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                ['helpModal', 'levelModal'].forEach(function (id) { if ($(id).classList.contains('active')) { closeModal(id); if (id === 'helpModal') S.setFlag(KEY_SEEN, true); } });
+            }
+        });
+        var resizeTimer = null;
+        window.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function () {
+                if (busy) { pendingLayout = true; return; }
+                layout(); renderYard(); renderQueue();
+            }, 120);
+        });
+
+        startLevel(levelNo);
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+    })();
+    </script>
+</body>
+</html>
