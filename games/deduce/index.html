@@ -31,9 +31,9 @@
         }
         .top-bar {
             display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            padding: 10px 14px; background: var(--folder);
+            padding: 6px 12px; background: var(--folder);
             border-bottom: 3px solid var(--folder-dark); box-shadow: 0 2px 0 rgba(0,0,0,0.08);
-            position: sticky; top: 0; z-index: 20;
+            position: relative; flex: none; z-index: 20;
         }
         .icon-btn {
             width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(31,42,68,0.25);
@@ -43,14 +43,24 @@
         .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
         .title-block { flex: 1; text-align: center; }
         .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.3px; }
+        .sub-row { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 1px; }
         .game-sub { font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #5b4316; margin-top: -2px; }
         .level-btn { background: none; border: 0; font: inherit; color: var(--ink); font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; }
         .level-btn .tricky { color: #9a3412; font-weight: 700; }
 
-        main { max-width: 640px; margin: 0 auto; padding: 12px 12px 110px; }
+        /* Whole screen: header, board (always visible), scrolling clue pane, controls */
+        html, body.deduce { height: 100%; }
+        body.deduce { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; }
+        main { flex: 1; min-height: 0; width: 100%; max-width: 640px; margin: 0 auto; padding: 8px 12px 0; display: flex; flex-direction: column; }
+        .board-wrap { flex: none; }
+        .clue-pane {
+            flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+            margin: 0 -12px; padding: 4px 12px 12px; border-top: 2px solid var(--line);
+            box-shadow: inset 0 8px 8px -8px rgba(0,0,0,0.15);
+        }
         .case-card {
             background: var(--paper-2); border: 1px solid var(--line); border-radius: 4px 14px 14px 14px;
-            padding: 12px 14px; box-shadow: 0 2px 0 rgba(0,0,0,0.05); position: relative; margin-top: 10px;
+            padding: 12px 14px; box-shadow: 0 2px 0 rgba(0,0,0,0.05); position: relative; margin-top: 18px;
         }
         .case-card::before {
             content: 'CASE FILE'; position: absolute; top: -12px; left: -1px; padding: 2px 10px;
@@ -62,7 +72,9 @@
 
         /* ---------- the board ---------- */
         .board-wrap { position: relative; }
-        .board-scroll { overflow-x: auto; margin: 12px -12px 0; padding: 4px 12px 10px; -webkit-overflow-scrolling: touch; }
+        .board-scroll { overflow: auto; margin: 4px -12px 0; padding: 4px 12px 8px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+        .frzc { z-index: 4; will-change: transform; }
+        .cat-col.frzc { background: #efdcae; }
         /* Frozen name column: labels stay put while the grids scroll sideways */
         .frz { z-index: 3; will-change: transform; }
         .cat-row.frz { background: #efdcae; }
@@ -118,14 +130,22 @@
             flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff;
             font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px;
         }
-        .clue.done { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: rgba(31,42,68,0.5); }
+        .clue .txt { flex: 1; }
+        .clue .box {
+            flex: none; width: 26px; height: 26px; border-radius: 7px; border: 2px solid rgba(31,42,68,0.35); margin-top: -1px;
+            display: flex; align-items: center; justify-content: center; color: #fff; background: #fff;
+        }
+        .clue .box svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+        .clue.done .box { background: var(--yes); border-color: var(--yes); }
+        .clue.done .box svg { opacity: 1; }
+        .clue.done .txt { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: rgba(31,42,68,0.5); }
         .clue.done .num { background: #9ca3af; }
         .clue.cited { background: #dbeafe; }
         .clues .tip { font-size: 0.78rem; color: var(--ink-soft); padding: 0 10px 6px; }
 
         /* ---------- controls ---------- */
         .controls {
-            position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+            position: relative; flex: none; z-index: 20;
             padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
             background: rgba(246,239,224,0.96); border-top: 1px solid var(--line);
         }
@@ -202,30 +222,31 @@
         </a>
         <div class="title-block">
             <div class="game-title" id="gameTitle">Deduce</div>
-            <div class="game-sub">Logic Grids</div>
-            <button class="level-btn" id="levelBtn" aria-label="Choose case">Case 1</button>
+            <div class="sub-row"><span class="game-sub">Logic Grids</span><button class="level-btn" id="levelBtn" aria-label="Choose case">Case 1</button></div>
         </div>
         <button class="icon-btn" id="helpBtn" aria-label="How to play">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg>
         </button>
     </header>
 
-    <main>
-        <section class="case-card" aria-labelledby="caseTitle">
-            <h2 id="caseTitle">…</h2>
-            <p id="caseIntro"></p>
-        </section>
-        <div class="board-wrap">
+    <main id="main">
+        <div class="board-wrap" id="boardWrap">
             <div class="board-scroll" id="boardScroll">
                 <div class="board" id="board" role="grid" aria-label="Logic grid"></div>
             </div>
             <div class="fade-right" id="fadeRight" aria-hidden="true">›</div>
         </div>
-        <section class="clues" aria-labelledby="cluesTitle">
-            <h3 id="cluesTitle">Clues</h3>
-            <p class="tip">Tap a clue to cross it off once you've used it.</p>
-            <div id="clueList"></div>
-        </section>
+        <div class="clue-pane" id="cluePane">
+            <section class="case-card" aria-labelledby="caseTitle">
+                <h2 id="caseTitle">…</h2>
+                <p id="caseIntro"></p>
+            </section>
+            <section class="clues" aria-labelledby="cluesTitle">
+                <h3 id="cluesTitle">Clues</h3>
+                <p class="tip">Tap a clue to tick it off when you've used it. Tap again to bring it back.</p>
+                <div id="clueList"></div>
+            </section>
+        </div>
     </main>
 
     <div class="controls">
@@ -305,6 +326,7 @@
         var X_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
         var TICK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L20 7"/></svg>';
 
+        document.body.classList.add('deduce');
         document.title = GAME_NAME + ' — Game Hub';
         $('gameTitle').textContent = SHORT_NAME;
 
@@ -359,7 +381,13 @@
             var board = $('board'), n = pz.size, k = pz.k;
             var R = rowCats(), C = colCats();
             var avail = $('boardScroll').clientWidth - 24;
-            var catW = 20, labW = k >= 4 ? 80 : 92, headH = 92, catH = 20;
+            var catW = 20, labW = k >= 4 ? 80 : 92, catH = 20;
+            // column headings only as tall as the longest label needs
+            var ctx2 = (renderBoard._c || (renderBoard._c = document.createElement('canvas'))).getContext('2d');
+            ctx2.font = '12.5px "DM Sans", sans-serif';
+            var longest = 0;
+            C.forEach(function (c) { pz.cats[c].labels.forEach(function (l) { longest = Math.max(longest, ctx2.measureText(l).width); }); });
+            var headH = Math.max(40, Math.min(92, Math.ceil(longest) + 16));
             var cell = Math.floor((avail - catW - labW) / (n * C.length));
             cell = Math.max(32, Math.min(46, cell));
             var W = catW + labW + n * C.length * cell, H = catH + headH + n * R.length * cell;
@@ -368,9 +396,9 @@
             // column category names + item labels
             C.forEach(function (c, cj) {
                 var x0 = catW + labW + cj * n * cell;
-                html += '<div class="cat-col" style="left:' + x0 + 'px;top:0;width:' + (n * cell - 2) + 'px;height:' + (catH - 2) + 'px">' + pz.cats[c].name + '</div>';
+                html += '<div class="cat-col frzc" style="left:' + x0 + 'px;top:0;width:' + (n * cell - 2) + 'px;height:' + (catH - 2) + 'px">' + pz.cats[c].name + '</div>';
                 for (var j = 0; j < n; j++) {
-                    html += '<div class="lab col" data-c="' + c + '" data-v="' + j + '" style="left:' + (x0 + j * cell) + 'px;top:' + catH + 'px;width:' + cell + 'px;height:' + headH + 'px"><span>' + esc(pz.cats[c].labels[j]) + '</span></div>';
+                    html += '<div class="lab col frzc" data-c="' + c + '" data-v="' + j + '" style="left:' + (x0 + j * cell) + 'px;top:' + catH + 'px;width:' + cell + 'px;height:' + headH + 'px"><span>' + esc(pz.cats[c].labels[j]) + '</span></div>';
                 }
             });
             // row category names + item labels
@@ -396,13 +424,19 @@
             });
             board.innerHTML = html;
             paintCells();
-            $('boardScroll').scrollLeft = 0;
+            var sc = $('boardScroll');
+            sc.scrollLeft = 0; sc.scrollTop = 0;
+            // Board takes what it needs, but always leaves room to read the clues below
+            var mainH = $('main').clientHeight;
+            var cap = Math.max(mainH * 0.6, mainH - 190);
+            sc.style.maxHeight = Math.max(180, Math.floor(cap)) + 'px';
             onBoardScroll();
         }
         // Keep the name column frozen and show a fade when there's more grid to the right
         function onBoardScroll() {
-            var sc = $('boardScroll'), x = sc.scrollLeft;
+            var sc = $('boardScroll'), x = sc.scrollLeft, y = sc.scrollTop;
             $('board').querySelectorAll('.frz').forEach(function (el) { el.style.transform = x ? 'translateX(' + x + 'px)' : ''; });
+            $('board').querySelectorAll('.frzc').forEach(function (el) { el.style.transform = y ? 'translateY(' + y + 'px)' : ''; });
             $('fadeRight').classList.toggle('show', sc.scrollWidth - sc.clientWidth - x > 4);
         }
         function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
@@ -421,8 +455,9 @@
 
         function renderClues() {
             $('clueList').innerHTML = pz.clues.map(function (cl, idx) {
-                return '<button class="clue' + (doneClues[idx] ? ' done' : '') + '" data-idx="' + idx + '" aria-pressed="' + (doneClues[idx] ? 'true' : 'false') + '">' +
-                    '<span class="num">' + (idx + 1) + '</span><span>' + esc(cl.text) + '</span></button>';
+                return '<button class="clue' + (doneClues[idx] ? ' done' : '') + '" data-idx="' + idx + '" aria-pressed="' + (doneClues[idx] ? 'true' : 'false') + '" aria-label="Clue ' + (idx + 1) + ': ' + esc(cl.text) + '">' +
+                    '<span class="num">' + (idx + 1) + '</span><span class="txt">' + esc(cl.text) + '</span>' +
+                    '<span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L20 7"/></svg></span></button>';
             }).join('');
         }
         function renderLevelLabel() {
@@ -446,7 +481,7 @@
                     (3 - hintsUsed) + ' star' + (3 - hintsUsed === 1 ? '' : 's') + ' this time. Once it\'s solved you can replay it for a fresh try at 3 stars.';
             }
             renderLevelLabel(); renderBoard(); renderClues(); renderControls();
-            window.scrollTo(0, 0);
+            $('cluePane').scrollTop = 0;
             saveState();
         }
         function renderControls() {
