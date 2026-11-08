@@ -22,6 +22,11 @@
         return a;
     }
     function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+    // "a" or "an" before a word
+    function an(w) { return (/^[aeiouéè]/i.test(w) ? 'an ' : 'a ') + w; }
+    // Singular form for use as an adjective: "the cookie baker", "the tomato grower"
+    var SING = { cupcakes: 'cupcake', cookies: 'cookie', leeks: 'leek', onions: 'onion', tomatoes: 'tomato', beans: 'bean' };
+    function sing(v) { return SING[v] || v; }
     function plural(d, word) { return d + ' ' + word + (d === 1 ? '' : 's'); }
 
     // ---------- themes (everyday mix) ----------
@@ -34,91 +39,91 @@
           intro: 'The {n} dogs at this year\'s village show each have a different {cats}. Can you work out which is which?',
           cats: [
             { name: 'Dog', items: ['Biscuit', 'Pepper', 'Bramble', 'Toffee', 'Maple', 'Juniper'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Breed', items: ['Beagle', 'Corgi', 'Poodle', 'Collie', 'Dachshund', 'Whippet'], ref: T('the {v}'), pred: T('the {v}') },
-            { name: 'Age', ordered: true, values: [1, 2, 3, 4, 5, 6, 7, 8], label: function (v) { return v + ' yrs'; },
-              ref: function (v) { return 'the ' + v + '-year-old'; }, pred: function (v) { return v + ' years old'; },
+            { name: 'Breed', noun: 'breed', items: ['beagle', 'corgi', 'poodle', 'collie', 'dachshund', 'whippet'], ref: T('the {v}'), pred: T('the {v}') },
+            { name: 'Age', noun: 'age', ordered: true, values: [1, 2, 3, 4, 5, 6, 7, 8], label: function (v) { return v + (v === 1 ? ' yr' : ' yrs'); },
+              ref: function (v) { return 'the ' + v + '-year-old'; }, pred: function (v) { return plural(v, 'year') + ' old'; },
               more: 'is older than', less: 'is younger than', max: 'is the oldest', min: 'is the youngest',
               diff: function (P, Q, d) { return P + ' is exactly ' + plural(d, 'year') + ' older than ' + Q; } },
-            { name: 'Trick', items: ['roll over', 'high five', 'play dead', 'spin', 'sit pretty', 'wave'], label: T('{v}'),
+            { name: 'Trick', noun: 'trick', items: ['roll over', 'high five', 'play dead', 'spin', 'sit pretty', 'wave'], label: T('{v}'),
               ref: T('the dog who can {v}'), pred: T('the one who can {v}') }
           ] },
         { id: 'cafe', title: 'Saturday at the café', who: 'customers',
-          intro: '{n} customers each ordered a different {cats}. Use the clues to match them up.',
+          intro: '{n} customers are in the café, each with a different {cats}. Use the clues to match them up.',
           cats: [
             { name: 'Customer', items: ['Priya', 'Tom', 'Grace', 'Omar', 'Hannah', 'Leo'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Drink', items: ['latte', 'tea', 'mocha', 'smoothie', 'cocoa', 'flat white'], ref: T('the {v} drinker'), pred: T('the one drinking {v}') },
-            { name: 'Table', ordered: true, values: [1, 2, 3, 4, 5, 6, 7, 8], label: function (v) { return 'Table ' + v; },
+            { name: 'Drink', noun: 'drink', items: ['latte', 'tea', 'mocha', 'smoothie', 'cocoa', 'flat white'], ref: T('the {v} drinker'), pred: function (v) { return 'the one drinking ' + (v === 'tea' || v === 'cocoa' ? v : an(v)); } },
+            { name: 'Table', noun: 'table', ordered: true, values: [1, 2, 3, 4, 5, 6, 7, 8], label: function (v) { return 'Table ' + v; },
               ref: function (v) { return 'whoever is at table ' + v; }, pred: function (v) { return 'at table ' + v; },
               more: 'is at a higher-numbered table than', less: 'is at a lower-numbered table than', max: 'is at the highest-numbered table', min: 'is at the lowest-numbered table',
               diff: function (P, Q, d) { return P + ' is exactly ' + plural(d, 'table') + ' further along than ' + Q; } },
-            { name: 'Cake', items: ['scone', 'brownie', 'flapjack', 'carrot cake', 'éclair', 'muffin'], ref: T('the {v} eater'), pred: T('the one having a {v}') }
+            { name: 'Cake', noun: 'cake', items: ['scone', 'brownie', 'flapjack', 'carrot cake', 'éclair', 'muffin'], ref: T('the {v} eater'), pred: function (v) { return 'the one having ' + an(v); } }
           ] },
         { id: 'holiday', title: 'Summer holidays', who: 'friends',
-          intro: '{n} friends are each going away, with a different {cats}. Who is going where?',
+          intro: '{n} friends are going away, each with a different {cats}. Can you work out their plans?',
           cats: [
             { name: 'Friend', items: ['Amira', 'Josh', 'Ellie', 'Sam', 'Nadia', 'Callum'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Place', items: ['Cornwall', 'Skye', 'Lisbon', 'Venice', 'Dublin', 'Bruges'], ref: T('the {v} traveller'), pred: T('going to {v}') },
-            { name: 'Month', ordered: true, values: [3, 4, 5, 6, 7, 8, 9, 10],
+            { name: 'Place', noun: 'destination', items: ['Cornwall', 'Skye', 'Lisbon', 'Venice', 'Dublin', 'Bruges'], ref: T('the {v} traveller'), pred: T('going to {v}') },
+            { name: 'Month', noun: 'month', ordered: true, values: [3, 4, 5, 6, 7, 8, 9, 10],
               label: function (v) { return ['', '', '', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'][v]; },
               ref: function (v) { return 'whoever goes in ' + MONTHS[v]; }, pred: function (v) { return 'going in ' + MONTHS[v]; },
               more: 'is going later in the year than', less: 'is going earlier in the year than', max: 'is the last to go away', min: 'is the first to go away',
               diff: function (P, Q, d) { return P + ' goes exactly ' + plural(d, 'month') + ' after ' + Q; } },
-            { name: 'Travel', items: ['train', 'ferry', 'plane', 'coach', 'car', 'bike'], ref: T('whoever goes by {v}'), pred: T('travelling by {v}') }
+            { name: 'Travel', noun: 'way of travelling', items: ['train', 'ferry', 'plane', 'coach', 'car', 'bike'], ref: T('whoever goes by {v}'), pred: T('travelling by {v}') }
           ] },
         { id: 'allotment', title: 'The allotment show', who: 'gardeners',
-          intro: '{n} gardeners each entered a different {cats}. Sort out the results.',
+          intro: '{n} gardeners entered the show, each with a different {cats}. Sort out the results.',
           cats: [
             { name: 'Gardener', items: ['Doris', 'Raj', 'Fiona', 'Bill', 'Mei', 'Arthur'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Crop', items: ['marrow', 'leeks', 'onions', 'tomatoes', 'beans', 'pumpkin'], ref: T('the {v} grower'), pred: T('the one who grew the {v}') },
-            { name: 'Plot', ordered: true, values: [1, 2, 3, 4, 5, 6, 7, 8], label: function (v) { return 'Plot ' + v; },
+            { name: 'Crop', noun: 'crop', items: ['marrow', 'leeks', 'onions', 'tomatoes', 'beans', 'pumpkin'], ref: function (v) { return 'the ' + sing(v) + ' grower'; }, pred: T('the one who grew the {v}') },
+            { name: 'Plot', noun: 'plot', ordered: true, values: [1, 2, 3, 4, 5, 6, 7, 8], label: function (v) { return 'Plot ' + v; },
               ref: function (v) { return 'whoever has plot ' + v; }, pred: function (v) { return 'on plot ' + v; },
               more: 'is on a higher-numbered plot than', less: 'is on a lower-numbered plot than', max: 'is on the highest-numbered plot', min: 'is on the lowest-numbered plot',
               diff: function (P, Q, d) { return P + '\'s plot number is exactly ' + d + ' more than that of ' + Q; } },
-            { name: 'Prize', items: ['rosette', 'cup', 'medal', 'ribbon', 'shield', 'certificate'], ref: T('the {v} winner'), pred: T('the one who won the {v}') }
+            { name: 'Prize', noun: 'prize', items: ['rosette', 'cup', 'medal', 'ribbon', 'shield', 'certificate'], ref: T('the {v} winner'), pred: T('the one who won the {v}') }
           ] },
         { id: 'football', title: 'Five-a-side night', who: 'players',
           intro: '{n} players turned up for five-a-side, each with a different {cats}. Who is who?',
           cats: [
             { name: 'Player', items: ['Kofi', 'Ryan', 'Megan', 'Luca', 'Zara', 'Dan'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Position', items: ['keeper', 'defender', 'winger', 'striker', 'midfielder', 'sub'], ref: T('the {v}'), pred: T('the {v}') },
-            { name: 'Goals', ordered: true, values: [0, 1, 2, 3, 4, 5, 6, 7], label: function (v) { return plural(v, 'goal'); },
+            { name: 'Position', noun: 'position', items: ['keeper', 'defender', 'winger', 'striker', 'midfielder', 'sub'], ref: T('the {v}'), pred: T('the {v}') },
+            { name: 'Goals', noun: 'number of goals', ordered: true, values: [0, 1, 2, 3, 4, 5, 6, 7], label: function (v) { return plural(v, 'goal'); },
               ref: function (v) { return 'whoever scored ' + plural(v, 'goal'); }, pred: function (v) { return 'the one who scored ' + plural(v, 'goal'); },
               more: 'scored more goals than', less: 'scored fewer goals than', max: 'scored the most goals', min: 'scored the fewest goals',
               diff: function (P, Q, d) { return P + ' scored exactly ' + plural(d, 'goal') + ' more than ' + Q; } },
-            { name: 'Boots', items: ['red', 'white', 'black', 'gold', 'green', 'pink'], ref: T('the player in {v} boots'), pred: T('wearing {v} boots') }
+            { name: 'Boots', noun: 'boot colour', items: ['red', 'white', 'black', 'gold', 'green', 'pink'], ref: T('the player in {v} boots'), pred: T('wearing {v} boots') }
           ] },
         { id: 'depot', title: 'Early shift at the bus depot', who: 'drivers',
           intro: '{n} drivers start the early shift, each with a different {cats}. Get the rota straight.',
           cats: [
             { name: 'Driver', items: ['Pat', 'Marcus', 'Wendy', 'Gary', 'Tasha', 'Neil'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Route', items: ['the 1', 'the 5', 'the 12', 'the 25', 'the 36', 'the 58'], label: T('{v}'), ref: T('whoever drives {v}'), pred: T('the driver of {v}') },
-            { name: 'Start time', ordered: true, values: [5, 6, 7, 8, 9, 10, 11, 12], label: clock,
+            { name: 'Route', noun: 'route', items: ['the 1', 'the 5', 'the 12', 'the 25', 'the 36', 'the 58'], label: T('{v}'), ref: T('whoever drives {v}'), pred: T('the driver of {v}') },
+            { name: 'Start time', noun: 'start time', ordered: true, values: [5, 6, 7, 8, 9, 10, 11, 12], label: clock,
               ref: function (v) { return 'whoever starts at ' + clock(v); }, pred: function (v) { return 'the one starting at ' + clock(v); },
               more: 'starts later than', less: 'starts earlier than', max: 'is the last to start', min: 'is the first to start',
               diff: function (P, Q, d) { return P + ' starts exactly ' + plural(d, 'hour') + ' after ' + Q; } },
-            { name: 'Bus', items: ['double-decker', 'single-decker', 'minibus', 'electric bus', 'hybrid', 'coach'], ref: T('the {v} driver'), pred: T('driving the {v}') }
+            { name: 'Bus', noun: 'bus', items: ['double-decker', 'single-decker', 'minibus', 'electric bus', 'hybrid', 'coach'], ref: T('the {v} driver'), pred: T('driving the {v}') }
           ] },
         { id: 'bakeoff', title: 'The charity bake sale', who: 'bakers',
-          intro: '{n} bakers each brought a different {cats}. Match the bakes to the bakers.',
+          intro: '{n} bakers entered the bake sale, each with a different {cats}. Can you match them up?',
           cats: [
             { name: 'Baker', items: ['Ruth', 'Ade', 'Holly', 'Jamal', 'Bea', 'Frank'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Bake', items: ['sponge', 'tart', 'cupcakes', 'cookies', 'pie', 'roulade'], ref: T('the {v} baker'), pred: T('the one who made the {v}') },
-            { name: 'Score', ordered: true, values: [3, 4, 5, 6, 7, 8, 9, 10], label: function (v) { return v + '/10'; },
+            { name: 'Bake', noun: 'bake', items: ['sponge', 'tart', 'cupcakes', 'cookies', 'pie', 'roulade'], ref: function (v) { return 'the ' + sing(v) + ' baker'; }, pred: T('the one who made the {v}') },
+            { name: 'Score', noun: 'score', ordered: true, values: [3, 4, 5, 6, 7, 8, 9, 10], label: function (v) { return v + '/10'; },
               ref: function (v) { return 'whoever scored ' + v + '/10'; }, pred: function (v) { return 'the one who scored ' + v + '/10'; },
               more: 'scored higher than', less: 'scored lower than', max: 'got the top score', min: 'got the lowest score',
               diff: function (P, Q, d) { return P + ' scored exactly ' + plural(d, 'point') + ' more than ' + Q; } },
-            { name: 'Flavour', items: ['lemon', 'cherry', 'ginger', 'coffee', 'raspberry', 'vanilla'], ref: T('the {v} baker'), pred: T('the one who baked with {v}') }
+            { name: 'Flavour', noun: 'flavour', items: ['lemon', 'cherry', 'ginger', 'coffee', 'raspberry', 'vanilla'], ref: T('the {v} baker'), pred: T('the one who baked with {v}') }
           ] },
         { id: 'books', title: 'Book club', who: 'members',
-          intro: '{n} book club members each chose a different {cats}. Who picked what?',
+          intro: '{n} book club members met up, each with a different {cats}. Who picked what?',
           cats: [
             { name: 'Member', items: ['Iris', 'Ben', 'Sofia', 'Hugh', 'Lena', 'Kwame'], ref: T('{v}'), pred: T('{v}') },
-            { name: 'Genre', items: ['mystery', 'sci-fi', 'romance', 'history', 'poetry', 'fantasy'], ref: T('the {v} fan'), pred: T('the one who chose {v}') },
-            { name: 'Pages', ordered: true, values: [100, 200, 300, 400, 500, 600, 700, 800], step: 100, label: function (v) { return v + 'pp'; },
+            { name: 'Genre', noun: 'genre', items: ['mystery', 'sci-fi', 'romance', 'history', 'poetry', 'fantasy'], ref: T('the {v} fan'), pred: T('the one who chose {v}') },
+            { name: 'Pages', noun: 'book length', ordered: true, values: [100, 200, 300, 400, 500, 600, 700, 800], step: 100, label: function (v) { return v + 'pp'; },
               ref: function (v) { return 'the reader of the ' + v + '-page book'; }, pred: function (v) { return 'the one reading the ' + v + '-page book'; },
               more: 'is reading a longer book than', less: 'is reading a shorter book than', max: 'is reading the longest book', min: 'is reading the shortest book',
-              diff: function (P, Q, d) { return P + '\'s book is exactly ' + d + ' pages longer than the one read by ' + Q; } },
-            { name: 'Snack', items: ['biscuits', 'grapes', 'crisps', 'olives', 'nuts', 'fudge'], ref: T('whoever brought {v}'), pred: T('the one who brought {v}') }
+              diff: function (P, Q, d) { return P + ' is reading a book exactly ' + d + ' pages longer than the book chosen by ' + Q; } },
+            { name: 'Snack', noun: 'snack', items: ['biscuits', 'grapes', 'crisps', 'olives', 'nuts', 'fudge'], ref: T('whoever brought {v}'), pred: T('the one who brought {v}') }
           ] }
     ];
     var MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -192,14 +197,14 @@
                 var yesJ = -1, unknown = [], nos = 0;
                 for (var j = 0; j < n; j++) { var v = getK(P, a, i, b, j); if (v === 1) yesJ = j; else if (v === 0) unknown.push(j); else nos++; }
                 if (yesJ >= 0) unknown.forEach(function (j) { out.push({ a: a, i: i, b: b, j: j, val: -1, why: label(P.pz, a, i) + ' is already matched with ' + label(P.pz, b, yesJ) + ', so it can\'t be ' + label(P.pz, b, j) + '.' }); });
-                else if (unknown.length === 1) out.push({ a: a, i: i, b: b, j: unknown[0], val: 1, why: label(P.pz, b, unknown[0]) + ' is the only ' + P.pz.cats[b].name.toLowerCase() + ' left for ' + label(P.pz, a, i) + '.' });
+                else if (unknown.length === 1) out.push({ a: a, i: i, b: b, j: unknown[0], val: 1, why: label(P.pz, b, unknown[0]) + ' is the only ' + (P.pz.cats[b].noun || P.pz.cats[b].name.toLowerCase()) + ' left for ' + label(P.pz, a, i) + '.' });
                 if (out.length >= limit) return;
             }
             for (var j2 = 0; j2 < n; j2++) {
                 var yesI = -1, unk = [];
                 for (var i2 = 0; i2 < n; i2++) { var w = getK(P, a, i2, b, j2); if (w === 1) yesI = i2; else if (w === 0) unk.push(i2); }
                 if (yesI >= 0) unk.forEach(function (i3) { out.push({ a: a, i: i3, b: b, j: j2, val: -1, why: label(P.pz, b, j2) + ' is already matched with ' + label(P.pz, a, yesI) + ', so it can\'t be ' + label(P.pz, a, i3) + '.' }); });
-                else if (unk.length === 1) out.push({ a: a, i: unk[0], b: b, j: j2, val: 1, why: label(P.pz, a, unk[0]) + ' is the only ' + P.pz.cats[a].name.toLowerCase() + ' left for ' + label(P.pz, b, j2) + '.' });
+                else if (unk.length === 1) out.push({ a: a, i: unk[0], b: b, j: j2, val: 1, why: label(P.pz, a, unk[0]) + ' is the only ' + (P.pz.cats[a].noun || P.pz.cats[a].name.toLowerCase()) + ' left for ' + label(P.pz, b, j2) + '.' });
                 if (out.length >= limit) return;
             }
         }
@@ -389,7 +394,7 @@
                 vals = null;
             }
             var labels = show.map(function (v) { return src.label ? src.label(v) : String(v); });
-            return { name: src.name, show: show, vals: vals, step: src.step, labels: labels, ref: src.ref, pred: src.pred,
+            return { name: src.name, noun: src.noun, show: show, vals: vals, step: src.step, labels: labels, ref: src.ref, pred: src.pred,
                      ordered: !!src.ordered, more: src.more, less: src.less, max: src.max, min: src.min, diff: src.diff };
         });
         var pz = { number: n, theme: theme.id, title: theme.title, k: rc.k, size: size, cats: cats, clues: [], tricky: rc.tricky };
@@ -424,7 +429,7 @@
         pz.clues.forEach(function (cl) { delete cl.w; cl.text = clueText(pz, cl); });
         pz.rounds = solve(pz).rounds;
         var whoN = ['', 'one', 'two', 'three', 'four', 'five', 'six'][size];   // lower case: the sentence is capitalised below
-        var catNames = cats.slice(1).map(function (cc) { return cc.name.toLowerCase(); });
+        var catNames = cats.slice(1).map(function (cc) { return cc.noun || cc.name.toLowerCase(); });
         var catsTxt = catNames.length === 1 ? catNames[0] : catNames.slice(0, -1).join(', ') + ' and ' + catNames[catNames.length - 1];
         pz.intro = cap(theme.intro.replace('{n}', whoN).replace('{cats}', catsTxt));
         return pz;
