@@ -154,10 +154,21 @@
     }
 
     // ---------- difficulty curve ----------
-    function params(n) {
-        // The depot keeps growing for the first ~40 levels: up to 10 x 13 and around 50 vehicles
-        var cols = Math.min(10, 4 + Math.floor((n + 1) / 4));     // 4..10
-        var rows = Math.min(13, 5 + Math.floor(n / 3));           // 5..13
+    // Depot shapes (height / width) the game can fit to the screen; same area, so same difficulty.
+    var SHAPES = [1.0, 1.15, 1.3, 1.45];
+    function shapeFor(ratio) {
+        var best = SHAPES[0];
+        SHAPES.forEach(function (sh) { if (Math.abs(sh - ratio) < Math.abs(best - ratio)) best = sh; });
+        return best;
+    }
+    function params(n, shape) {
+        // The depot keeps growing for the first ~25 levels (about 130 square units, ~40-50 vehicles)
+        var baseCols = Math.min(10, 4 + Math.floor((n + 1) / 4));     // 4..10
+        var baseRows = Math.min(13, 5 + Math.floor(n / 3));           // 5..13
+        var area = baseCols * baseRows;
+        var sh = shape || 1.3;
+        var cols = Math.max(4, Math.round(Math.sqrt(area / sh) * 2) / 2);   // half-unit steps
+        var rows = Math.max(5, Math.round(area / cols * 2) / 2);
         var colours = Math.min(6, 2 + Math.floor((n + 1) / 4));   // 2..6
         var maxBuses = Math.floor(cols * rows / 2.3);
         var buses = Math.max(3, Math.min(maxBuses, 3 + Math.floor(n * 1.15)));
@@ -548,9 +559,9 @@
         lvl.bays = Math.max(2, Math.min(BASE_BAYS, m.K + spareBays(n)));
         return true;
     }
-    function generate(n) {
+    function generate(n, shape) {
         n = Math.max(1, Math.floor(n) || 1);
-        var p = params(n), band = targetBand(n);
+        var p = params(n, shape), band = targetBand(n);
         var best = null, bestScore = Infinity, solverCalls = 0;
         for (var attempt = 0; attempt < 60; attempt++) {
             var lvl = tryGenerate(n, p, rng(Math.imul(n, 7919) + Math.imul(attempt, 104729) + 17));
@@ -574,7 +585,7 @@
         }
         if (!best) {
             // Fallback: an easier recipe (still verified by simulate)
-            var easy = params(Math.max(1, Math.floor(n / 2)));
+            var easy = params(Math.max(1, Math.floor(n / 2)), shape);
             for (var a2 = 0; a2 < 200 && !best; a2++) {
                 best = tryGenerate(n, easy, rng(Math.imul(n, 31337) + a2));
                 if (best) { best.attempt = 1000 + a2; fitBays(best, n); }
@@ -587,7 +598,7 @@
 
     var api = {
         PALETTE: PALETTE, BASE_BAYS: BASE_BAYS, UNDO_PER_LEVEL: UNDO_PER_LEVEL,
-        params: params, generate: generate, exitInfo: exitInfo, polyOf: polyOf, intersects: intersects, inDepot: inDepot,
+        params: params, generate: generate, shapeFor: shapeFor, SHAPES: SHAPES, exitInfo: exitInfo, polyOf: polyOf, intersects: intersects, inDepot: inDepot,
         TYPES: TYPES, cosD: cosD, sinD: sinD, computeBlocks: computeBlocks,
         createState: createState, tap: tap, boardOne: boardOne, peekBoard: peekBoard, peekStep: peekStep, isWon: isWon, isStuck: isStuck,
         undo: undo, addBay: addBay, starsFor: starsFor, simulate: simulate,
