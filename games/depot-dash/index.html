@@ -199,9 +199,26 @@
         .fig { position: relative; width: 28px; height: 36px; color: var(--c); display: block; --fs: 1; }
         .platform { display: flex !important; flex-direction: column; gap: 3px; align-items: stretch; }
         .plat-back, .plat-front { display: grid; grid-template-columns: repeat(var(--pcols, 5), 1fr); gap: 3px 1px; justify-items: center; align-items: end; }
-        .plat-front { padding-top: 3px; border-top: 1px dashed rgba(15,23,42,0.25); }
+        .plat-back {
+            position: relative; padding: 13px 2px 4px; border-radius: 6px;
+            background: rgba(15,23,42,0.22);
+        }
+        .plat-back::before {
+            content: 'NEXT IN LINE'; position: absolute; top: 1px; left: 6px;
+            font-size: 8px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.75);
+        }
+        /* a rope between the queue and the boarding rows */
+        .plat-front {
+            position: relative; padding: 13px 2px 2px; margin-top: 2px;
+            border-top: 3px solid #b45309; box-shadow: 0 -1px 0 rgba(0,0,0,0.25);
+        }
+        .plat-front::before {
+            content: 'BOARDING'; position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+            padding: 1px 7px; border-radius: 999px; background: #facc15; color: #1f2937;
+            font-size: 8.5px; font-weight: 800; letter-spacing: 1px; white-space: nowrap;
+        }
         .platform .fig { width: 19px; height: 24px; }
-        .plat-back .fig { opacity: 0.72; }
+        .plat-back .fig { opacity: 0.5; filter: saturate(0.6); transform: scale(0.86); }
         .fig svg.person { width: 100%; height: 100%; fill: currentColor; position: relative; z-index: 1; }
         .fig::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: -2px; height: 4px; border-radius: 50%; background: rgba(0,0,0,0.35); }
         .platform .fig svg.person { animation: sway 1.8s ease-in-out infinite; animation-delay: var(--d, 0ms); transform-origin: 50% 100%; }
@@ -213,6 +230,9 @@
             .stop.pmode { padding: 5px 6px; }
             .platform { min-height: 62px; padding: 3px 2px 4px; }
             .platform .fig { width: 16px; height: 20px; }
+            .plat-back { padding-top: 10px; padding-bottom: 2px; }
+            .plat-front { padding-top: 9px; margin-top: 1px; }
+            .plat-back::before { font-size: 7px; }
             .bay { height: 46px; }
             .bays { padding: 4px 5px 5px; }
             section#stop { padding-top: 13px !important; }
@@ -374,6 +394,7 @@
             transition: opacity 0.2s; white-space: nowrap; z-index: 40;
         }
         .toast.show { opacity: 1; }
+        .toast.long { white-space: normal; width: min(92vw, 380px); text-align: center; border-radius: 14px; line-height: 1.35; }
 
         /* Modals */
         .modal-overlay {
@@ -489,7 +510,7 @@
             <button class="modal-close" id="helpX" aria-label="Close how to play">✕</button>
             <h2 id="helpTitle">How to play</h2>
             <ol>
-                <li>Passengers wait on the <b>platform</b>. Anyone whose colour matches a parked bus walks on. Gaps fill from the <b>queue</b> on the left. On <b>Single file</b> levels they board strictly in order. <b>Tap the stop</b> to see everyone who's waiting.</li>
+                <li>Passengers wait on the <b>platform</b>. Only the <b>front two rows</b> (by the <b>Boarding</b> rope) can board: anyone there whose colour matches a parked bus walks on. The rows behind are <b>next in line</b> and step forward as space frees up. Gaps fill from the <b>queue</b> on the left. On <b>Single file</b> levels they board strictly in order. <b>Tap the stop</b> to see everyone who's waiting.</li>
                 <li><b>Tap a vehicle</b> to drive it out of the depot the way its arrow points. It can only leave if nothing is in its path. Cars seat 4, minibuses 6 and coaches 10.</li>
                 <li>Buses wait in the <b>bays</b>. Passengers board the bus of their colour, and a full bus departs.</li>
                 <li>Boarding always follows the same rules: the platform boards from <b>left to right</b>, and if two buses of the same colour are parked, passengers fill the <b>left-most bay</b> first.</li>
@@ -603,11 +624,12 @@
             });
         }
         var toastTimer = null;
-        function toast(msg) {
+        function toast(msg, ms) {
             var t = $('toast');
             t.textContent = msg; t.classList.add('show');
+            t.classList.toggle('long', msg.length > 40);
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1600);
+            toastTimer = setTimeout(function () { t.classList.remove('show'); }, ms || 1600);
         }
         function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
         function setStatus(msg) { $('status').textContent = msg; }
@@ -1111,9 +1133,24 @@
                 { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(0.5)', opacity: 0.2 }
             ], { duration: 280, easing: 'ease-in-out', fill: 'forwards' }).then(function () { f.remove(); });
         }
+        // Once per session: explain when a parked bus is waiting for passengers who are still queuing behind.
+        var queueTipShown = false;
+        function maybeQueueTip() {
+            if (queueTipShown || level.mode !== 'platform') return;
+            var Q = level.queue, W = level.platform || 1;
+            var front = {}, back = {};
+            st.platform.forEach(function (pid) { front[Q[pid]] = true; });
+            for (var i = st.q; i < Math.min(Q.length, st.q + W); i++) back[Q[i]] = true;
+            var waiting = st.bays.filter(function (b) { return b && !front[b.colour] && back[b.colour]; });
+            if (!waiting.length) return;
+            queueTipShown = true;
+            var name = E.PALETTE[waiting[0].colour].name.toLowerCase();
+            toast('Only the front rows can board. The ' + name + ' passengers will step forward as space frees up.', 4200);
+        }
         // Everything has stopped moving: check for win / stuck and refresh.
         function maybeIdle() {
             if (inflight > 0 || settling || building) { renderControls(); return; }
+            maybeQueueTip();
             if (pendingLayout) { pendingLayout = false; layout(); renderYard(); }
             afterMove();
         }
