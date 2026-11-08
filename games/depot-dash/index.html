@@ -96,12 +96,39 @@
         .stop.pmode .stop-sign, .stop.pmode .queue, .stop.pmode .queue-count { display: none; }
         .stop.pmode .plat-row { display: flex; }
         .platform {
-            flex: 1; display: grid; grid-template-columns: repeat(var(--pcols, 5), 1fr); gap: 4px 2px;
-            justify-items: center; align-items: end; min-height: 80px; padding: 4px 2px;
-            border-radius: 10px; background: rgba(255,255,255,0.035);
+            flex: 1; display: grid; grid-template-columns: repeat(var(--pcols, 5), 1fr); gap: 4px 1px;
+            justify-items: center; align-items: end; min-height: 80px; padding: 5px 2px 6px;
+            border-radius: 10px 10px 4px 4px;
+            background:
+                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 16px 16px,
+                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 16px 16px,
+                #263046;
+            border-bottom: 4px solid rgba(250,204,21,0.7);
         }
-        .fig { position: relative; width: 28px; height: 36px; color: var(--c); display: block; }
-        .fig svg.person { width: 100%; height: 100%; fill: currentColor; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45)); }
+        .fig { position: relative; width: 28px; height: 36px; color: var(--c); display: block; --fs: 1; }
+        .platform[data-size="m"] .fig { width: 24px; height: 31px; }
+        .platform[data-size="s"] .fig { width: 21px; height: 27px; }
+        .fig svg.person { width: 100%; height: 100%; fill: currentColor; position: relative; z-index: 1; }
+        .fig::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: -2px; height: 4px; border-radius: 50%; background: rgba(0,0,0,0.35); }
+        .platform .fig svg.person { animation: sway 1.8s ease-in-out infinite; animation-delay: var(--d, 0ms); transform-origin: 50% 100%; }
+        @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg) translateY(-1px); } }
+        @media (max-height: 760px) {
+            .top-bar { padding: 6px 12px; }
+            .game-title { font-size: 1.05rem; }
+            .game { gap: 7px; padding-top: 7px; }
+            .stop.pmode { padding: 5px 6px; }
+            .platform { min-height: 62px; padding: 3px 2px 4px; }
+            .platform[data-size="l"] .fig { width: 24px; height: 30px; }
+            .platform[data-size="m"] .fig { width: 21px; height: 27px; }
+            .platform[data-size="s"] .fig { width: 19px; height: 24px; }
+            .bay { height: 50px; }
+            .ctrl { min-height: 44px; font-size: 0.85rem; }
+            .status { font-size: 0.8rem; min-height: 1em; }
+        }
+        @media (max-height: 700px) {
+            .status { display: none; }
+        }
+        .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
         .fig .shape { position: absolute; left: 50%; top: 21px; width: 11px; height: 11px; margin-left: -5.5px; color: var(--ink); display: none; }
         .shapes .fig .shape { display: block; }
         .fig.flying { position: fixed; z-index: 60; pointer-events: none; margin: 0; }
@@ -121,18 +148,20 @@
         /* Bays */
         .bays { display: flex; gap: 6px; }
         .bay {
-            flex: 1; min-width: 0; height: 62px; border-radius: 12px;
-            border: 2px dashed rgba(255,255,255,0.14);
+            flex: 1; min-width: 0; height: 62px; border-radius: 4px;
+            background: #1a2130;
+            border: 2px solid rgba(255,255,255,0.5); border-top: 0;
             display: flex; align-items: center; justify-content: center; position: relative;
         }
-        .bay.extra { border-color: rgba(251,191,36,0.45); }
-        .bay.locked { border: 2px solid transparent; background: repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 6px, transparent 6px 12px); }
+        .bay.extra { border-color: rgba(251,191,36,0.75); }
+        .bay.locked { border: 2px solid rgba(255,255,255,0.12); border-top: 0; background: repeating-linear-gradient(135deg, rgba(250,204,21,0.10) 0 7px, rgba(15,23,42,0.6) 7px 14px); }
         .bay.locked svg { width: 16px; height: 16px; stroke: rgba(255,255,255,0.25); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .bay-empty { color: rgba(255,255,255,0.22); font-weight: 700; font-size: 0.9rem; }
         .bay .bay-bus + .bay-bus { pointer-events: none; }
         .bay-bus {
             position: absolute; inset: 3px; border-radius: 9px;
-            background: var(--c); color: var(--ink);
+            background: linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 35%, rgba(0,0,0,0) 65%, rgba(0,0,0,0.2)), var(--c);
+            color: var(--ink);
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
             box-shadow: inset 0 -3px 0 rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.35);
         }
@@ -149,29 +178,61 @@
         .yard-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
         .yard {
             position: relative; overflow: hidden; border-radius: 14px;
-            background-color: var(--asphalt);
+            background-color: #1a2130;
             background-image:
-                linear-gradient(var(--asphalt-line) 1px, transparent 1px),
-                linear-gradient(90deg, var(--asphalt-line) 1px, transparent 1px);
-            background-size: var(--cell) var(--cell);
-            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06);
+                radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1.6px),
+                radial-gradient(rgba(0,0,0,0.25) 1px, transparent 1.6px),
+                linear-gradient(90deg, rgba(255,255,255,0.05) 2px, transparent 2px),
+                linear-gradient(rgba(255,255,255,0.05) 2px, transparent 2px);
+            background-size: 7px 7px, 11px 11px, calc(var(--cell) * 2) calc(var(--cell) * 2), calc(var(--cell) * 2) calc(var(--cell) * 2);
+            background-position: 0 0, 3px 5px, 0 0, 0 0;
+            box-shadow: 0 0 0 4px #2a3346, 0 0 0 6px rgba(250,204,21,0.35), inset 0 0 24px rgba(0,0,0,0.45);
         }
         .bus { position: absolute; border: 0; background: transparent; padding: 0; cursor: pointer; transform-origin: 50% 50%; }
         .bus.type-car .body { border-radius: 12px; inset: 2px; }
         .bus.type-coach .body { border-radius: 8px; }
         .bus .seats .shape { transform: rotate(var(--ar, 0deg)); }
         .bus .body {
-            position: absolute; inset: 2px; border-radius: 9px;
-            background: var(--c); color: var(--ink);
-            display: flex; align-items: center; justify-content: space-around;
-            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.25), 0 2px 5px rgba(0,0,0,0.45);
+            position: absolute; inset: 2px; border-radius: 9px; z-index: 1;
+            background:
+                linear-gradient(to bottom, rgba(255,255,255,0.30), rgba(255,255,255,0) 32%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.26)),
+                var(--c);
+            color: var(--ink);
+            display: flex; align-items: center; justify-content: space-evenly;
+            padding: 0 15% 0 6%;   /* keep the arrow and seats on the roof, clear of the windscreen */
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.22), 0 4px 7px rgba(0,0,0,0.5);
         }
+        /* Roof panel */
+        .bus .body::before {
+            content: ''; position: absolute; top: 20%; bottom: 20%; left: 9%; right: 21%;
+            border-radius: 6px; background: rgba(255,255,255,0.13); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+        }
+        /* Side windows along both long edges (minibuses and coaches); a rear window on cars */
+        .bus .body::after {
+            content: ''; position: absolute; left: 7%; right: 22%; top: 3px; bottom: 3px; pointer-events: none;
+            background:
+                repeating-linear-gradient(90deg, rgba(15,23,42,0.4) 0 7px, transparent 7px 10px) top / 100% 3px no-repeat,
+                repeating-linear-gradient(90deg, rgba(15,23,42,0.4) 0 7px, transparent 7px 10px) bottom / 100% 3px no-repeat;
+        }
+        .bus.type-car .body::after { left: 5px; right: auto; width: 9%; top: 6px; bottom: 6px; border-radius: 3px; background: rgba(15,23,42,0.5); }
+        .bus.type-car .body::before { left: 18%; right: 25%; top: 16%; bottom: 16%; }
+        /* Wheels peeking out at the axles */
+        .bus .wheels { position: absolute; inset: 0 0 0 0; z-index: 0; }
+        .bus .wheels::before, .bus .wheels::after {
+            content: ''; position: absolute; top: -1px; bottom: -1px; width: 13%; border-radius: 3px; background: #0b0f17;
+        }
+        .bus .wheels::before { left: 13%; }
+        .bus .wheels::after { right: 17%; }
+        .bus.type-car .wheels::before { left: 16%; width: 15%; }
+        .bus.type-car .wheels::after { right: 18%; width: 15%; }
+        .bus .seats, .bus .arrow { z-index: 2; }
+        .bus .arrow svg { filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25)); }
         .bus.dir-R .body { flex-direction: row; }
         .bus.dir-L .body { flex-direction: row-reverse; }
         .bus.dir-D .body { flex-direction: column; }
         .bus.dir-U .body { flex-direction: column-reverse; }
-        .bus .screen { position: absolute; background: rgba(15,23,42,0.5); border-radius: 4px; }
-        .bus.dir-R .screen { right: 4px; top: 5px; bottom: 5px; width: 14%; }
+        .bus .screen { position: absolute; background: linear-gradient(90deg, rgba(15,23,42,0.45), rgba(15,23,42,0.7)); border-radius: 4px 7px 7px 4px; z-index: 1; }
+        .bus.dir-R .screen { right: 4px; top: 4px; bottom: 4px; width: 13%; }
         .bus.dir-L .screen { left: 4px; top: 5px; bottom: 5px; width: 14%; }
         .bus.dir-D .screen { bottom: 4px; left: 5px; right: 5px; height: 14%; }
         .bus.dir-U .screen { top: 4px; left: 5px; right: 5px; height: 14%; }
@@ -452,10 +513,11 @@
             var wrap = $('yardWrap');
             var availW = wrap.clientWidth;
             var top = wrap.getBoundingClientRect().top;
-            var below = Math.max($('status').offsetHeight, 20) + $('controls').offsetHeight + 34;
+            var statusH = $('status').offsetParent ? Math.max($('status').offsetHeight, 18) : 0;
+            var below = statusH + $('controls').offsetHeight + 28;
             var availH = window.innerHeight - top - below;
             var c = Math.floor(Math.min(availW / level.cols, availH / level.rows));
-            cell = Math.max(30, Math.min(64, c));
+            cell = Math.max(26, Math.min(64, c));
             yard.style.width = cell * level.cols + 'px';
             yard.style.height = cell * level.rows + 'px';
             yard.style.setProperty('--cell', cell + 'px');
@@ -488,7 +550,7 @@
                 btn.setAttribute('aria-label', pal.name + ' ' + E.TYPES[b.type].name + ', ' + b.cap + ' seats, facing ' + facing(b.a));
                 var dots = '';
                 for (var d = 0; d < b.cap; d++) dots += '<span class="dot"></span>';
-                btn.innerHTML = '<span class="body"><span class="screen"></span>' +
+                btn.innerHTML = '<span class="wheels"></span><span class="body"><span class="screen"></span>' +
                     '<span class="seats" aria-hidden="true">' + shapeSvg(b.colour) +
                     '<span class="dots" style="--cols:' + seatCols(b.cap) + '">' + dots + '</span></span>' +
                     '<span class="arrow">' + ARROW + '</span></span>';
@@ -554,10 +616,10 @@
             return '<span class="run' + (front ? ' front' : '') + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + '" aria-label="' +
                 r.n + ' ' + pal.name + '">' + shapeSvg(r.c) + '<span class="n">×' + r.n + '</span></span>';
         }
-        var PERSON = '<svg class="person" viewBox="0 0 24 30" aria-hidden="true"><circle cx="12" cy="6.5" r="5.5"/><path d="M3 29v-8a9 9 0 0 1 18 0v8z"/></svg>';
+        var PERSON = '<svg class="person" viewBox="0 0 24 30" aria-hidden="true"><circle cx="12" cy="6.5" r="5.5"/><path d="M3 29v-8a9 9 0 0 1 18 0v8z"/><path d="M7 18.5a6 6 0 0 1 5-3.2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.6" stroke-linecap="round"/></svg>';
         function figHtml(pid) {
             var pal = E.PALETTE[level.queue[pid]];
-            return '<span class="fig" data-pid="' + pid + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + '">' + PERSON + shapeSvg(level.queue[pid]) + '</span>';
+            return '<span class="fig" data-pid="' + pid + '" style="--c:' + pal.hex + ';--ink:' + pal.ink + ';--d:-' + ((pid * 397) % 1800) + 'ms">' + PERSON + shapeSvg(level.queue[pid]) + '</span>';
         }
         function runsOf(list) {
             var runs = [];
@@ -576,7 +638,9 @@
             var plat = $('platform');
             var before = {};
             plat.querySelectorAll('.fig').forEach(function (f) { before[f.dataset.pid] = f.getBoundingClientRect(); });
-            plat.style.setProperty('--pcols', Math.ceil((level.platform || 1) / 2));
+            var W = level.platform || 1;
+            plat.style.setProperty('--pcols', Math.ceil(W / 2));
+            plat.dataset.size = W <= 10 ? 'l' : W <= 12 ? 'm' : 's';
             plat.innerHTML = st.platform.map(figHtml).join('');
             plat.querySelectorAll('.fig').forEach(function (f) {
                 var b = before[f.dataset.pid];
@@ -634,21 +698,56 @@
         }
 
         // ---------- level flow ----------
+        // ---------- level building: in a background worker, with the next level prepared early ----------
+        var levelCache = {};      // n -> generated level (current and next)
+        var pending = {};         // n -> [callbacks] waiting for the worker
+        var worker = null;
+        try {
+            if (window.Worker && /^https?:$/.test(location.protocol)) {
+                worker = new Worker('worker.js');
+                worker.onmessage = function (e) {
+                    var n = e.data.n, lvl = e.data.level;
+                    if (!lvl) lvl = E.generate(n);            // worker failed: build here instead
+                    levelCache[n] = lvl;
+                    (pending[n] || []).forEach(function (cb) { cb(lvl); });
+                    delete pending[n];
+                };
+                worker.onerror = function () { worker = null; };
+            }
+        } catch (e) { worker = null; }
+        function getLevel(n, cb) {
+            if (levelCache[n]) { cb(levelCache[n]); return; }
+            if (!worker) { setTimeout(function () { levelCache[n] = E.generate(n); cb(levelCache[n]); }, 30); return; }
+            if (pending[n]) { pending[n].push(cb); return; }
+            pending[n] = [cb];
+            worker.postMessage({ n: n });
+        }
+        function prefetch(n) {
+            if (!worker || levelCache[n] || pending[n]) return;
+            pending[n] = [];
+            worker.postMessage({ n: n });
+        }
         function startLevel(n) {
             levelNo = n;
             gen++; inflight = 0; arriving = {}; settling = false; settleAgain = false;
             building = true;
-            setStatus('Building level ' + n + '…');
-            setTimeout(function () { buildLevel(n); }, 30);
+            if (!levelCache[n]) setStatus('Building level ' + n + '…');
+            var myGen = gen;
+            getLevel(n, function (lvl) {
+                if (myGen !== gen) return;               // another level was chosen meanwhile
+                Object.keys(levelCache).forEach(function (k) { if (+k !== n && +k !== n + 1) delete levelCache[k]; });
+                buildLevel(n, lvl);
+                prefetch(n + 1);
+            });
         }
-        function buildLevel(n) {
-            level = E.generate(n);
+        function buildLevel(n, lvl) {
+            level = lvl;
             st = E.createState(level);
             building = false;
             ['winModal', 'stuckModal', 'levelModal'].forEach(closeModal);
             renderAll();
             var baysTxt = level.bays + ' bay' + (level.bays === 1 ? '' : 's');
-            if (n === 1) setStatus('Tap a bus whose arrow has a clear road out.');
+            if (n === 1) setStatus('Tap a vehicle whose arrow has a clear road out.');
             else if (level.tough) setStatus('Tough level · ' + baysTxt + ', no spare. Think before you tap!');
             else setStatus(level.buses.length + ' vehicles · ' + baysTxt + (level.minBays && level.bays === level.minBays ? ', no spare' : ''));
         }
@@ -668,7 +767,25 @@
             else if (free === 0) setStatus('No free bays.');
             else setStatus('');
         }
+        function confetti() {
+            try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            var colours = E.PALETTE.map(function (p) { return p.hex; }).concat(['#fbbf24', '#ffffff']);
+            for (var i = 0; i < 60; i++) {
+                var c = document.createElement('span');
+                c.className = 'confetti';
+                c.style.left = (Math.random() * 100) + 'vw';
+                c.style.background = colours[i % colours.length];
+                document.body.appendChild(c);
+                var drift = (Math.random() - 0.5) * 160, spin = (Math.random() - 0.5) * 900;
+                animate(c, [
+                    { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+                    { transform: 'translate(' + drift + 'px,' + (window.innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + spin + 'deg)', opacity: 0.9 }
+                ], { duration: 1400 + Math.random() * 900, delay: Math.random() * 250, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' })
+                    .then(function (el) { return function () { el.remove(); }; }(c));
+            }
+        }
         function onWin() {
+            confetti();
             var s = E.starsFor(st);
             var prev = stars[levelNo] || 0;
             if (s > prev) stars[levelNo] = s;
