@@ -234,7 +234,7 @@
                 <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo
             </button>
             <button class="ctrl primary" id="hintBtn">
-                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small>−★</small>
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small id="hintLeft">2 left</small>
             </button>
             <button class="ctrl" id="clearBtn">
                 <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Clear
@@ -253,7 +253,7 @@
                 <li>Use what you've marked to work out more. If A goes with B, and B doesn't go with C, then A doesn't go with C either.</li>
                 <li>Every case has exactly one answer, and you can always reach it by reasoning. You never need to guess.</li>
             </ol>
-            <p>Stuck? <b>Hint</b> points out a wrong mark, or explains the next step you can work out. Each hint costs a star.</p>
+            <p>Stuck? <b>Hint</b> points out a wrong mark, or explains the next step you can work out. You get <b>2 hints</b> per case: solve with none for 3 stars, one hint for 2 stars, two hints for 1 star. Undo and Clear are free.</p>
             <label class="toggle-row" for="autoToggle">
                 <span><b>Auto-cross</b><small>When you place a ✓, fill the rest of its row and column with ✗</small></span>
                 <span class="switch"><input type="checkbox" id="autoToggle" role="switch"><span class="track"></span></span>
@@ -318,6 +318,7 @@
         })();
         var autoCross = S.getString(KEY_AUTO, 'true') !== 'false';
 
+        var MAX_HINTS = 2;   // 1 hint = 2 stars, 2 hints = 1 star
         var levelNo = progress.level, pz = null, K = null, history = [], hintsUsed = 0, doneClues = {}, solved = false;
         var hintTarget = null;
 
@@ -440,7 +441,10 @@
         }
         function renderControls() {
             $('undoBtn').disabled = history.length === 0 || solved;
-            $('hintBtn').disabled = solved;
+            var left = Math.max(0, MAX_HINTS - hintsUsed);
+            $('hintBtn').disabled = solved || left === 0;
+            $('hintLeft').textContent = left ? left + ' left' : 'none left';
+            $('hintBtn').setAttribute('aria-label', 'Hint, ' + left + ' of ' + MAX_HINTS + ' left. Each hint costs a star.');
             $('clearBtn').disabled = solved;
         }
         function pushHistory() {
@@ -479,11 +483,12 @@
             paintCells(); renderControls(); saveState();
         }
         function showHint() {
-            if (solved) return;
+            if (solved || hintsUsed >= MAX_HINTS) return;
             var h = E.hint(pz, K);
             if (!h) { toast('No hint needed: check the whole grid'); return; }
             hintsUsed++;
             hintTarget = h;
+            renderControls();
             var bar = $('hintBar');
             bar.className = 'hint-bar show' + (h.mistake ? ' mistake' : '');
             var where = pz.cats[h.a].labels[h.i] + ' / ' + pz.cats[h.b].labels[h.j];
@@ -500,7 +505,7 @@
             $('hintBar').className = 'hint-bar';
             document.querySelectorAll('.clue.cited').forEach(function (el) { el.classList.remove('cited'); });
         }
-        function starsFor() { return hintsUsed === 0 ? 3 : hintsUsed <= 2 ? 2 : 1; }
+        function starsFor() { return hintsUsed === 0 ? 3 : hintsUsed === 1 ? 2 : 1; }
         function confetti() {
             try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
             var colours = ['#d97706', '#15803d', '#2563eb', '#b91c1c', '#7c3aed', '#1f2a44'];
