@@ -185,7 +185,8 @@
         // Level type: "single" = strict single-file queue; "platform" = pick from a platform of waiting passengers
         var mode = (n <= 2 || n % 4 === 0) ? 'single' : 'platform';
         // Platform grows into a crowd; bigger levels mix passengers for more buses at once
-        var platform = mode === 'single' ? 1 : n <= 8 ? 10 : n <= 16 ? 12 : n <= 30 ? 14 : 16;
+        // Everyone on the platform (four rows) can board
+        var platform = mode === 'single' ? 1 : n <= 8 ? 12 : n <= 16 ? 16 : 20;
         var mixGroup = n <= 16 ? 3 : 4;
         return { cols: cols, rows: rows, colours: colours, buses: buses, maxPark: maxPark, minPeak: minPeak,
                  mode: mode, platform: platform, mixGroup: mixGroup,
@@ -540,11 +541,17 @@
     function spareBays(n) {
         if (n <= 2) return 2;
         if (isTough(n)) return 0;
+        // Platform levels offer more choice, so they get less slack (a breather every third level)
+        if (params(n).mode === 'platform' && n > 6) return n % 3 === 1 ? 1 : 0;
         if (n <= 14) return 1;
         return n % 4 === 1 ? 1 : 0;
     }
     // Levels must need at least this many bays even when played perfectly (so parking matters).
-    function minNeeded(n) { return n <= 2 ? 1 : n <= 9 ? 2 : 3; }
+    function minNeeded(n) {
+        // With the whole platform boardable, lots of bays make levels easy: keep platform levels tighter
+        if (params(n).mode === 'platform') return n <= 2 ? 1 : n <= 14 ? 2 : 3;
+        return n <= 2 ? 1 : n <= 5 ? 2 : n <= 14 ? 3 : 4;
+    }
     // Coarse fit from the generator's own plan (always valid); refined later by the exact solver.
     function fitBays(lvl, n) {
         lvl.bays = Math.max(2, Math.min(BASE_BAYS, lvl.peak + spareBays(n)));
@@ -572,14 +579,20 @@
             var gap = lvl.naive < band[0] ? band[0] - lvl.naive : lvl.naive > band[1] ? lvl.naive - band[1] : 0;
             if (gap > 0 && solverCalls === 0 && attempt < 40) { if (gap < bestScore) { best = lvl; bestScore = gap + 1000; } continue; }
             // Candidate is in band (or we're running out of attempts): measure it exactly
-            if (solverCalls >= 7) break;
+            if (solverCalls >= 9) break;
             solverCalls++;
-            if (!exactFit(lvl, n)) { if (bestScore > 500) { best = lvl; bestScore = 500; } continue; }
+            if (!exactFit(lvl, n)) {
+                // Solver ran out of budget: still valid (plan proven by simulate), but rank it below exact ones
+                lvl.smart = smartWinRate(lvl, 16);
+                var fb = smartBand(n), fgap = lvl.smart < fb[0] ? fb[0] - lvl.smart : lvl.smart > fb[1] ? lvl.smart - fb[1] : 0;
+                if (200 + fgap < bestScore) { best = lvl; bestScore = 200 + fgap; }
+                continue;
+            }
             var short = Math.max(0, minNeeded(n) - lvl.minBays);
             var sb = smartBand(n);
             lvl.smart = smartWinRate(lvl, 16);
             var sgap = lvl.smart < sb[0] ? sb[0] - lvl.smart : lvl.smart > sb[1] ? lvl.smart - sb[1] : 0;
-            var score = short * 100 + sgap;
+            var score = short * 25 + sgap;
             if (score < bestScore) { best = lvl; bestScore = score; }
             if (score === 0) break;
         }
