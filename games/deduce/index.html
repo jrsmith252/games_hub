@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Case Closed — Game Hub</title>
+    <title>Deduce: Logic Grids — Game Hub</title>
     <link rel="stylesheet" href="../../shared/fonts.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -43,6 +43,7 @@
         .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
         .title-block { flex: 1; text-align: center; }
         .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.3px; }
+        .game-sub { font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #5b4316; margin-top: -2px; }
         .level-btn { background: none; border: 0; font: inherit; color: var(--ink); font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; }
         .level-btn .tricky { color: #9a3412; font-weight: 700; }
 
@@ -199,7 +200,8 @@
             <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
         </a>
         <div class="title-block">
-            <div class="game-title" id="gameTitle">Case Closed</div>
+            <div class="game-title" id="gameTitle">Deduce</div>
+            <div class="game-sub">Logic Grids</div>
             <button class="level-btn" id="levelBtn" aria-label="Choose case">Case 1</button>
         </div>
         <button class="icon-btn" id="helpBtn" aria-label="How to play">
@@ -263,7 +265,7 @@
     <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
         <div class="modal">
             <div class="stamp" aria-hidden="true">SOLVED</div>
-            <h2 id="winTitle">Case closed!</h2>
+            <h2 id="winTitle">Case solved!</h2>
             <div class="stars" id="winStars"></div>
             <p id="winText"></p>
             <button class="btn" id="nextBtn">Next case</button>
@@ -292,7 +294,8 @@
     <script>
     (function () {
         'use strict';
-        var GAME_NAME = 'Case Closed';   // one place to rename the game
+        var GAME_NAME = 'Deduce: Logic Grids';   // one place to rename the game (store/listing name)
+        var SHORT_NAME = 'Deduce';
         var E = window.CaseEngine, S = window.HubStorage;
         var KEY_PROGRESS = 'caseclosed_progress', KEY_STARS = 'caseclosed_stars', KEY_STATE = 'caseclosed_state',
             KEY_SEEN = 'caseclosed_instructionsSeen', KEY_AUTO = 'caseclosed_autocross';
@@ -301,7 +304,7 @@
         var TICK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L20 7"/></svg>';
 
         document.title = GAME_NAME + ' — Game Hub';
-        $('gameTitle').textContent = GAME_NAME;
+        $('gameTitle').textContent = SHORT_NAME;
 
         // ---------- saved data ----------
         var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });

@@ -30,4 +30,4 @@ Edit any file, then bump `CACHE_VERSION` in `sw.js` so installed copies refresh.
 
 ## Games
 
-Case Closed (logic-grid deduction puzzles; generator and solver in `games/case-closed/engine.js`), Depot Dash (bus-jam puzzle with endless generated levels; logic in `games/depot-dash/engine.js`), Sliding Puzzle, 2048, Light Switch, Sudoku, Block Drop, Memory Match, Color Sequence, Mine Finder, Word Search, Hangman, Tic Tac Toe, Four in a Row, Snake, Brick Breaker.
+Deduce: Logic Grids (logic-grid deduction puzzles; generator and solver in `games/deduce/engine.js`), Depot Dash (bus-jam puzzle with endless generated levels; logic in `games/depot-dash/engine.js`), Sliding Puzzle, 2048, Light Switch, Sudoku, Block Drop, Memory Match, Color Sequence, Mine Finder, Word Search, Hangman, Tic Tac Toe, Four in a Row, Snake, Brick Breaker.

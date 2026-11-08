@@ -1,4 +1,4 @@
-/* Case Closed: logic-grid puzzle engine. Themes, clue writing, a human-style deduction
+/* Deduce: Logic Grids, puzzle engine. Themes, clue writing, a human-style deduction
    solver (every step has a reason, used for hints), and a generator that only ships
    puzzles the solver can finish by pure deduction, which also proves the answer is unique.
    No DOM access: runs in the browser and in Node tests. */
