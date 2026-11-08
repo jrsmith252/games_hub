@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Case Closed — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --paper: #f6efe0;
+            --paper-2: #fffaf0;
+            --folder: #e3c27d;
+            --folder-dark: #c9a35a;
+            --ink: #1f2a44;
+            --ink-soft: #5b6478;
+            --line: #c9bfa8;
+            --line-strong: #8a7f68;
+            --yes: #15803d;
+            --no: #64748b;
+            --accent: #b45309;
+            --hint: #2563eb;
+            --wrong: #dc2626;
+        }
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--paper);
+            background-image: radial-gradient(rgba(120,90,40,0.06) 1px, transparent 1.5px);
+            background-size: 9px 9px;
+            color: var(--ink); min-height: 100vh;
+        }
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 10px 14px; background: var(--folder);
+            border-bottom: 3px solid var(--folder-dark); box-shadow: 0 2px 0 rgba(0,0,0,0.08);
+            position: sticky; top: 0; z-index: 20;
+        }
+        .icon-btn {
+            width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(31,42,68,0.25);
+            background: rgba(255,255,255,0.35); color: var(--ink);
+            display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
+        }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.3px; }
+        .level-btn { background: none; border: 0; font: inherit; color: var(--ink); font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; }
+        .level-btn .tricky { color: #9a3412; font-weight: 700; }
+
+        main { max-width: 640px; margin: 0 auto; padding: 12px 12px 110px; }
+        .case-card {
+            background: var(--paper-2); border: 1px solid var(--line); border-radius: 4px 14px 14px 14px;
+            padding: 12px 14px; box-shadow: 0 2px 0 rgba(0,0,0,0.05); position: relative; margin-top: 10px;
+        }
+        .case-card::before {
+            content: 'CASE FILE'; position: absolute; top: -12px; left: -1px; padding: 2px 10px;
+            background: var(--folder); border: 1px solid var(--folder-dark); border-bottom: 0; border-radius: 8px 8px 0 0;
+            font-size: 0.6rem; font-weight: 700; letter-spacing: 1.5px; color: #5b4316;
+        }
+        .case-card h2 { font-family: 'Fraunces', serif; font-size: 1.1rem; margin-bottom: 4px; }
+        .case-card p { color: var(--ink-soft); font-size: 0.92rem; line-height: 1.45; }
+
+        /* ---------- the board ---------- */
+        .board-wrap { position: relative; }
+        .board-scroll { overflow-x: auto; margin: 12px -12px 0; padding: 4px 12px 10px; -webkit-overflow-scrolling: touch; }
+        /* Frozen name column: labels stay put while the grids scroll sideways */
+        .frz { z-index: 3; will-change: transform; }
+        .cat-row.frz { background: #efdcae; }
+        .fade-right {
+            position: absolute; top: 12px; right: -12px; bottom: 10px; width: 34px; pointer-events: none; z-index: 4;
+            background: linear-gradient(90deg, rgba(246,239,224,0), rgba(246,239,224,0.95));
+            display: none; align-items: center; justify-content: flex-end; padding-right: 6px; color: var(--ink-soft); font-size: 1.1rem;
+        }
+        .fade-right.show { display: flex; }
+        .board { position: relative; margin: 0 auto; }
+        .cat-col, .cat-row {
+            position: absolute; display: flex; align-items: center; justify-content: center;
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; color: var(--ink); text-transform: uppercase;
+            background: rgba(227,194,125,0.45); border-radius: 4px;
+        }
+        .cat-row span { writing-mode: vertical-rl; transform: rotate(180deg); }
+        .lab {
+            position: absolute; display: flex; align-items: center; font-size: 0.78rem; color: var(--ink);
+            overflow: hidden; white-space: nowrap; background: var(--paper-2); border: 1px solid var(--line);
+        }
+        .lab.row { justify-content: flex-end; padding-right: 6px; border-right: 0; }
+        .lab.col { align-items: flex-end; justify-content: center; padding-bottom: 6px; border-bottom: 0; }
+        .lab.col span { writing-mode: vertical-rl; transform: rotate(180deg); text-overflow: ellipsis; overflow: hidden; }
+        .lab.row span { text-overflow: ellipsis; overflow: hidden; }
+        .lab.hl { background: #fde68a; }
+        .block { position: absolute; border: 2px solid var(--line-strong); background: var(--paper-2); display: grid; }
+        .cell {
+            border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+            background: transparent; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            color: var(--no); position: relative;
+        }
+        .cell:nth-child(var(--n)) { border-right: 0; }
+        .cell svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .cell.yes { color: var(--yes); background: rgba(21,128,61,0.10); }
+        .cell.yes svg { stroke-width: 3.6; }
+        .cell.cross { background: rgba(253,230,138,0.35); }
+        .cell.hinted { box-shadow: inset 0 0 0 3px var(--hint); animation: pulse 1s ease-in-out infinite; }
+        .cell.wrong { box-shadow: inset 0 0 0 3px var(--wrong); }
+        @keyframes pulse { 50% { box-shadow: inset 0 0 0 3px rgba(37,99,235,0.35); } }
+
+        /* ---------- clues ---------- */
+        .clues { margin-top: 12px; background: var(--paper-2); border: 1px solid var(--line); border-radius: 14px; padding: 6px 4px; }
+        .clues h3 { font-family: 'Fraunces', serif; font-size: 1rem; padding: 6px 10px 4px; }
+        .clue {
+            display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left;
+            background: none; border: 0; font: inherit; color: var(--ink); padding: 9px 10px; border-radius: 10px; cursor: pointer; line-height: 1.4;
+            min-height: 44px;
+        }
+        .clue .num {
+            flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff;
+            font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px;
+        }
+        .clue.done { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: rgba(31,42,68,0.5); }
+        .clue.done .num { background: #9ca3af; }
+        .clue.cited { background: #dbeafe; }
+        .clues .tip { font-size: 0.78rem; color: var(--ink-soft); padding: 0 10px 6px; }
+
+        /* ---------- controls ---------- */
+        .controls {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+            background: rgba(246,239,224,0.96); border-top: 1px solid var(--line);
+        }
+        .controls .row { max-width: 640px; margin: 0 auto; display: flex; gap: 8px; }
+        .ctrl {
+            flex: 1; min-height: 48px; border-radius: 12px; border: 2px solid rgba(31,42,68,0.2);
+            background: var(--paper-2); color: var(--ink); font: inherit; font-weight: 700; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+        }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .ctrl.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+        .ctrl small { font-weight: 500; opacity: 0.8; font-size: 0.72rem; }
+        .hint-bar {
+            display: none; max-width: 640px; margin: 0 auto 8px; background: #eff6ff; border: 2px solid var(--hint);
+            border-radius: 12px; padding: 10px 12px; font-size: 0.9rem; line-height: 1.4; color: #1e3a8a;
+        }
+        .hint-bar.show { display: block; }
+        .hint-bar.mistake { background: #fef2f2; border-color: var(--wrong); color: #7f1d1d; }
+        .hint-bar b { display: block; margin-bottom: 2px; }
+
+        /* ---------- modals ---------- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(31,42,68,0.55); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { width: 100%; max-width: 380px; background: var(--paper-2); border-radius: 18px; padding: 22px 20px 18px; text-align: center; border: 1px solid var(--line); max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 14px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 14px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal ol b { color: var(--ink); }
+        .stars { font-size: 2.2rem; letter-spacing: 6px; margin: 2px 0 10px; color: #d6cdb9; }
+        .stars .lit { color: #d97706; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--ink); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(31,42,68,0.25); }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; cursor: pointer; }
+        .toggle-row b { display: block; font-size: 0.95rem; color: var(--ink); }
+        .toggle-row small { display: block; color: var(--ink-soft); font-size: 0.8rem; margin-top: 2px; }
+        .switch { position: relative; flex: none; width: 50px; height: 30px; }
+        .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+        .switch .track { position: absolute; inset: 0; border-radius: 999px; background: #cbd5e1; transition: background 0.2s; pointer-events: none; }
+        .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .switch input:checked + .track { background: var(--yes); }
+        .switch input:checked + .track::after { transform: translateX(20px); }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .level-cell small { font-size: 0.6rem; color: #d97706; letter-spacing: 1px; min-height: 0.8em; }
+        .level-cell.current { border: 2px solid var(--ink); }
+        .level-cell.tricky { background: #fff7ed; }
+        .stamp {
+            display: inline-block; margin: 4px 0 10px; padding: 6px 14px; border: 3px solid #b91c1c; color: #b91c1c;
+            font-family: 'Fraunces', serif; font-weight: 700; letter-spacing: 2px; transform: rotate(-6deg); border-radius: 6px;
+        }
+        .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
+        .toast.show { opacity: 1; }
+        .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
+    </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Case Closed</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose case">Case 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg>
+        </button>
+    </header>
+
+    <main>
+        <section class="case-card" aria-labelledby="caseTitle">
+            <h2 id="caseTitle">…</h2>
+            <p id="caseIntro"></p>
+        </section>
+        <div class="board-wrap">
+            <div class="board-scroll" id="boardScroll">
+                <div class="board" id="board" role="grid" aria-label="Logic grid"></div>
+            </div>
+            <div class="fade-right" id="fadeRight" aria-hidden="true">›</div>
+        </div>
+        <section class="clues" aria-labelledby="cluesTitle">
+            <h3 id="cluesTitle">Clues</h3>
+            <p class="tip">Tap a clue to cross it off once you've used it.</p>
+            <div id="clueList"></div>
+        </section>
+    </main>
+
+    <div class="controls">
+        <div class="hint-bar" id="hintBar" role="status" aria-live="polite"></div>
+        <div class="row">
+            <button class="ctrl" id="undoBtn" aria-label="Undo">
+                <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo
+            </button>
+            <button class="ctrl primary" id="hintBtn">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small>−★</small>
+            </button>
+            <button class="ctrl" id="clearBtn">
+                <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Clear
+            </button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li>Each person (or pet) matches exactly <b>one</b> item in every category, and no two share an item.</li>
+                <li>Read the <b>clues</b> and mark the grid: tap a square once for <b>✗</b> (can't be), twice for <b>✓</b> (it's a match), three times to clear it.</li>
+                <li>Use what you've marked to work out more. If A goes with B, and B doesn't go with C, then A doesn't go with C either.</li>
+                <li>Every case has exactly one answer, and you can always reach it by reasoning. You never need to guess.</li>
+            </ol>
+            <p>Stuck? <b>Hint</b> points out a wrong mark, or explains the next step you can work out. Each hint costs a star.</p>
+            <label class="toggle-row" for="autoToggle">
+                <span><b>Auto-cross</b><small>When you place a ✓, fill the rest of its row and column with ✗</small></span>
+                <span class="switch"><input type="checkbox" id="autoToggle" role="switch"><span class="track"></span></span>
+            </label>
+            <button class="btn" id="helpClose">Start investigating</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <div class="stamp" aria-hidden="true">SOLVED</div>
+            <h2 id="winTitle">Case closed!</h2>
+            <div class="stars" id="winStars"></div>
+            <p id="winText"></p>
+            <button class="btn" id="nextBtn">Next case</button>
+            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="clearModal" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+        <div class="modal">
+            <h2 id="clearTitle">Clear the grid?</h2>
+            <p>This removes all your marks for this case. Hints already used still count.</p>
+            <button class="btn" id="clearYes">Clear marks</button>
+            <button class="btn secondary" id="clearNo">Keep going</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <h2 id="levelTitle">Cases</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Case Closed';   // one place to rename the game
+        var E = window.CaseEngine, S = window.HubStorage;
+        var KEY_PROGRESS = 'caseclosed_progress', KEY_STARS = 'caseclosed_stars', KEY_STATE = 'caseclosed_state',
+            KEY_SEEN = 'caseclosed_instructionsSeen', KEY_AUTO = 'caseclosed_autocross';
+        var $ = function (id) { return document.getElementById(id); };
+        var X_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+        var TICK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L20 7"/></svg>';
+
+        document.title = GAME_NAME + ' — Game Hub';
+        $('gameTitle').textContent = GAME_NAME;
+
+        // ---------- saved data ----------
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var stars = (function () {
+            var out = {};
+            try {
+                var o = JSON.parse(S.getString(KEY_STARS, '{}'));
+                if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; });
+            } catch (e) { /* ignore */ }
+            return out;
+        })();
+        var autoCross = S.getString(KEY_AUTO, 'true') !== 'false';
+
+        var levelNo = progress.level, pz = null, K = null, history = [], hintsUsed = 0, doneClues = {}, solved = false;
+        var hintTarget = null;
+
+        // ---------- helpers ----------
+        function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 1600); }
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('button'); if (b) b.focus(); }
+        function closeModal(id) { $(id).classList.remove('active'); }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function getK(a, i, b, j) { return E.getK({ K: K, size: pz.size }, a, i, b, j); }
+        function setK(a, i, b, j, v) { E.setK({ K: K, size: pz.size }, a, i, b, j, v); }
+
+        function saveState() {
+            S.setString(KEY_STATE, JSON.stringify({ level: levelNo, K: K, hints: hintsUsed, done: doneClues, solved: solved }));
+        }
+        function loadState(n) {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.level !== n || !Array.isArray(o.K) || o.K.length !== pz.k) return false;
+                // validate shape
+                for (var a = 0; a < pz.k; a++) for (var b = 0; b < pz.k; b++) {
+                    var g = o.K[a][b];
+                    if (a < b) { if (!Array.isArray(g) || g.length !== pz.size * pz.size || g.some(function (v) { return v !== 0 && v !== 1 && v !== -1; })) return false; }
+                }
+                K = o.K; hintsUsed = Math.max(0, o.hints | 0); doneClues = o.done && typeof o.done === 'object' ? o.done : {}; solved = !!o.solved;
+                return true;
+            } catch (e) { return false; }
+        }
+
+        // ---------- board layout ----------
+        // Classic stacked layout: columns are categories 1..k-1, rows are category 0 then k-1 down to 2.
+        function rowCats() { var r = [0]; for (var c = pz.k - 1; c >= 2; c--) r.push(c); return r; }
+        function colCats() { var c = []; for (var x = 1; x < pz.k; x++) c.push(x); return c; }
+        function renderBoard() {
+            var board = $('board'), n = pz.size, k = pz.k;
+            var R = rowCats(), C = colCats();
+            var avail = $('boardScroll').clientWidth - 24;
+            var catW = 20, labW = k >= 4 ? 80 : 92, headH = 92, catH = 20;
+            var cell = Math.floor((avail - catW - labW) / (n * C.length));
+            cell = Math.max(32, Math.min(46, cell));
+            var W = catW + labW + n * C.length * cell, H = catH + headH + n * R.length * cell;
+            board.style.width = W + 'px'; board.style.height = H + 'px';
+            var html = '';
+            // column category names + item labels
+            C.forEach(function (c, cj) {
+                var x0 = catW + labW + cj * n * cell;
+                html += '<div class="cat-col" style="left:' + x0 + 'px;top:0;width:' + (n * cell - 2) + 'px;height:' + (catH - 2) + 'px">' + pz.cats[c].name + '</div>';
+                for (var j = 0; j < n; j++) {
+                    html += '<div class="lab col" data-c="' + c + '" data-v="' + j + '" style="left:' + (x0 + j * cell) + 'px;top:' + catH + 'px;width:' + cell + 'px;height:' + headH + 'px"><span>' + esc(pz.cats[c].labels[j]) + '</span></div>';
+                }
+            });
+            // row category names + item labels
+            R.forEach(function (r, ri) {
+                var y0 = catH + headH + ri * n * cell;
+                html += '<div class="cat-row frz" style="left:0;top:' + y0 + 'px;width:' + (catW - 2) + 'px;height:' + (n * cell - 2) + 'px"><span>' + pz.cats[r].name + '</span></div>';
+                for (var i = 0; i < n; i++) {
+                    html += '<div class="lab row frz" data-c="' + r + '" data-v="' + i + '" style="left:' + catW + 'px;top:' + (y0 + i * cell) + 'px;width:' + labW + 'px;height:' + cell + 'px"><span>' + esc(pz.cats[r].labels[i]) + '</span></div>';
+                }
+            });
+            // grid blocks (triangular)
+            R.forEach(function (r, ri) {
+                C.forEach(function (c, cj) {
+                    if (ri + cj >= k - 1) return;
+                    var x0 = catW + labW + cj * n * cell, y0 = catH + headH + ri * n * cell;
+                    html += '<div class="block" role="rowgroup" style="left:' + x0 + 'px;top:' + y0 + 'px;width:' + n * cell + 'px;height:' + n * cell + 'px;grid-template-columns:repeat(' + n + ',1fr)">';
+                    for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+                        html += '<button class="cell" data-r="' + r + '" data-i="' + i + '" data-c="' + c + '" data-j="' + j + '" style="' +
+                            (j === n - 1 ? 'border-right:0;' : '') + (i === n - 1 ? 'border-bottom:0;' : '') + '"></button>';
+                    }
+                    html += '</div>';
+                });
+            });
+            board.innerHTML = html;
+            paintCells();
+            $('boardScroll').scrollLeft = 0;
+            onBoardScroll();
+        }
+        // Keep the name column frozen and show a fade when there's more grid to the right
+        function onBoardScroll() {
+            var sc = $('boardScroll'), x = sc.scrollLeft;
+            $('board').querySelectorAll('.frz').forEach(function (el) { el.style.transform = x ? 'translateX(' + x + 'px)' : ''; });
+            $('fadeRight').classList.toggle('show', sc.scrollWidth - sc.clientWidth - x > 4);
+        }
+        function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
+        function paintCell(btn) {
+            var r = +btn.dataset.r, i = +btn.dataset.i, c = +btn.dataset.c, j = +btn.dataset.j;
+            var v = getK(r, i, c, j);
+            btn.classList.toggle('yes', v === 1);
+            btn.classList.toggle('no', v === -1);
+            btn.innerHTML = v === 1 ? TICK_SVG : v === -1 ? X_SVG : '';
+            btn.setAttribute('aria-label', pz.cats[r].labels[i] + ' and ' + pz.cats[c].labels[j] + ': ' + (v === 1 ? 'match' : v === -1 ? 'not a match' : 'unknown'));
+            var isHint = hintTarget && ((hintTarget.a === r && hintTarget.i === i && hintTarget.b === c && hintTarget.j === j) || (hintTarget.a === c && hintTarget.i === j && hintTarget.b === r && hintTarget.j === i));
+            btn.classList.toggle('hinted', !!(isHint && !hintTarget.mistake));
+            btn.classList.toggle('wrong', !!(isHint && hintTarget.mistake));
+        }
+        function paintCells() { $('board').querySelectorAll('.cell').forEach(paintCell); }
+
+        function renderClues() {
+            $('clueList').innerHTML = pz.clues.map(function (cl, idx) {
+                return '<button class="clue' + (doneClues[idx] ? ' done' : '') + '" data-idx="' + idx + '" aria-pressed="' + (doneClues[idx] ? 'true' : 'false') + '">' +
+                    '<span class="num">' + (idx + 1) + '</span><span>' + esc(cl.text) + '</span></button>';
+            }).join('');
+        }
+        function renderLevelLabel() {
+            $('levelBtn').innerHTML = 'Case ' + levelNo + (pz.tricky ? ' · <span class="tricky">Tricky</span>' : '') + ' ▾';
+        }
+
+        // ---------- play ----------
+        function startLevel(n) {
+            levelNo = n;
+            pz = E.generate(n);
+            hintTarget = null; history = [];
+            if (!loadState(n)) { K = E.newKnowledge(pz.k, pz.size); hintsUsed = 0; doneClues = {}; solved = false; }
+            ['winModal', 'levelModal', 'clearModal'].forEach(closeModal);
+            $('caseTitle').textContent = pz.title;
+            $('caseIntro').textContent = pz.intro;
+            hideHint();
+            renderLevelLabel(); renderBoard(); renderClues(); renderControls();
+            window.scrollTo(0, 0);
+            saveState();
+        }
+        function renderControls() {
+            $('undoBtn').disabled = history.length === 0 || solved;
+            $('hintBtn').disabled = solved;
+            $('clearBtn').disabled = solved;
+        }
+        function pushHistory() {
+            history.push(E.cloneK(K));
+            if (history.length > 300) history.shift();
+        }
+        function onCell(btn) {
+            if (solved) return;
+            var r = +btn.dataset.r, i = +btn.dataset.i, c = +btn.dataset.c, j = +btn.dataset.j;
+            var v = getK(r, i, c, j);
+            var next = v === 0 ? -1 : v === -1 ? 1 : 0;   // blank -> X -> tick -> blank
+            pushHistory();
+            setK(r, i, c, j, next);
+            if (next === 1 && autoCross) {
+                for (var x = 0; x < pz.size; x++) {
+                    if (x !== j && getK(r, i, c, x) === 0) setK(r, i, c, x, -1);
+                    if (x !== i && getK(r, x, c, j) === 0) setK(r, x, c, j, -1);
+                }
+            }
+            buzz(8);
+            if (hintTarget) { hintTarget = null; hideHint(); }
+            paintCells(); renderControls(); saveState();
+            highlight(r, i, c, j);
+            if (E.isSolved(pz, K)) onWin();
+        }
+        function highlight(r, i, c, j) {
+            $('board').querySelectorAll('.lab.hl').forEach(function (l) { l.classList.remove('hl'); });
+            var a = $('board').querySelector('.lab.row[data-c="' + r + '"][data-v="' + i + '"]');
+            var b = $('board').querySelector('.lab.col[data-c="' + c + '"][data-v="' + j + '"]');
+            if (a) a.classList.add('hl'); if (b) b.classList.add('hl');
+        }
+        function undo() {
+            if (!history.length || solved) return;
+            K = history.pop();
+            hintTarget = null; hideHint();
+            paintCells(); renderControls(); saveState();
+        }
+        function showHint() {
+            if (solved) return;
+            var h = E.hint(pz, K);
+            if (!h) { toast('No hint needed: check the whole grid'); return; }
+            hintsUsed++;
+            hintTarget = h;
+            var bar = $('hintBar');
+            bar.className = 'hint-bar show' + (h.mistake ? ' mistake' : '');
+            var where = pz.cats[h.a].labels[h.i] + ' / ' + pz.cats[h.b].labels[h.j];
+            bar.innerHTML = '<b>' + (h.mistake ? 'Something\'s not right' : 'Next step: ' + (h.val === 1 ? '✓ ' : '✗ ') + esc(where)) + '</b>' + esc(h.why);
+            // highlight any clue the reason refers to
+            document.querySelectorAll('.clue.cited').forEach(function (el) { el.classList.remove('cited'); });
+            var m = /Clue (\d+)/.exec(h.why);
+            if (m) { var el = document.querySelector('.clue[data-idx="' + (m[1] - 1) + '"]'); if (el) el.classList.add('cited'); }
+            paintCells(); saveState();
+            var cellEl = document.querySelector('.cell.hinted, .cell.wrong');
+            if (cellEl && cellEl.scrollIntoView) cellEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+        }
+        function hideHint() {
+            $('hintBar').className = 'hint-bar';
+            document.querySelectorAll('.clue.cited').forEach(function (el) { el.classList.remove('cited'); });
+        }
+        function starsFor() { return hintsUsed === 0 ? 3 : hintsUsed <= 2 ? 2 : 1; }
+        function confetti() {
+            try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            var colours = ['#d97706', '#15803d', '#2563eb', '#b91c1c', '#7c3aed', '#1f2a44'];
+            for (var i = 0; i < 50; i++) {
+                var c = document.createElement('span');
+                c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = colours[i % colours.length];
+                document.body.appendChild(c);
+                if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }],
+                    { duration: 1400 + Math.random() * 900, delay: Math.random() * 250, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
+                a.onfinish = (function (el) { return function () { el.remove(); }; })(c);
+            }
+        }
+        function onWin() {
+            solved = true; hideHint();
+            var s = starsFor();
+            if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
+            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
+            S.setObject(KEY_PROGRESS, progress);
+            S.setString(KEY_STARS, JSON.stringify(stars));
+            saveState(); renderControls(); confetti();
+            var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
+            $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
+            $('winText').textContent = s === 3 ? 'Solved by pure deduction, no hints needed.' : 'Solved with ' + hintsUsed + ' hint' + (hintsUsed === 1 ? '' : 's') + '. Try again without for 3 stars.';
+            $('replayBtn').style.display = s === 3 ? 'none' : '';
+            setTimeout(function () { openModal('winModal'); }, 400);
+        }
+        function openLevels() {
+            var html = '', max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) {
+                var s = stars[n] || 0, str = ''; for (var i = 0; i < s; i++) str += '★';
+                html += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (E.isTricky(n) ? ' tricky' : '') + '" data-level="' + n + '" aria-label="Case ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>';
+            }
+            $('levelGrid').innerHTML = html;
+            openModal('levelModal');
+            var cur = $('levelGrid').querySelector('.current'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+        }
+        function resetCase(n) {
+            S.setString(KEY_STATE, 'null');
+            startLevel(n);
+        }
+
+        // ---------- wiring ----------
+        $('board').addEventListener('click', function (e) { var b = e.target.closest('.cell'); if (b) onCell(b); });
+        $('boardScroll').addEventListener('scroll', onBoardScroll, { passive: true });
+        $('clueList').addEventListener('click', function (e) {
+            var b = e.target.closest('.clue'); if (!b) return;
+            var idx = +b.dataset.idx; doneClues[idx] = !doneClues[idx];
+            b.classList.toggle('done', !!doneClues[idx]); b.setAttribute('aria-pressed', doneClues[idx] ? 'true' : 'false');
+            saveState();
+        });
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', showHint);
+        $('clearBtn').addEventListener('click', function () { openModal('clearModal'); });
+        $('clearYes').addEventListener('click', function () {
+            pushHistory(); K = E.newKnowledge(pz.k, pz.size); doneClues = {}; hintTarget = null; hideHint();
+            closeModal('clearModal'); paintCells(); renderClues(); renderControls(); saveState();
+        });
+        $('clearNo').addEventListener('click', function () { closeModal('clearModal'); });
+        $('nextBtn').addEventListener('click', function () { startLevel(levelNo + 1); });
+        $('replayBtn').addEventListener('click', function () { resetCase(levelNo); });
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', function () { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); });
+        $('autoToggle').checked = autoCross;
+        $('autoToggle').addEventListener('change', function () { autoCross = this.checked; S.setString(KEY_AUTO, autoCross ? 'true' : 'false'); });
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) {
+            var b = e.target.closest('.level-cell'); if (!b) return;
+            var n = +b.dataset.level;
+            if (n === levelNo) { closeModal('levelModal'); return; }
+            S.setString(KEY_STATE, 'null');
+            startLevel(n);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') ['helpModal', 'levelModal', 'clearModal'].forEach(function (id) { if ($(id).classList.contains('active')) { closeModal(id); if (id === 'helpModal') S.setFlag(KEY_SEEN, true); } });
+        });
+        var rt = null;
+        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(renderBoard, 150); });
+
+        startLevel(levelNo);
+        if (solved) { renderControls(); }
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        window.__case = function () { return { pz: pz, K: K }; };   // read by the automated play-tests
+    })();
+    </script>
+</body>
+</html>
