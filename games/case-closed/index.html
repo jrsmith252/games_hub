@@ -87,14 +87,17 @@
         .lab.col span { writing-mode: vertical-rl; transform: rotate(180deg); text-overflow: ellipsis; overflow: hidden; }
         .lab.row span { text-overflow: ellipsis; overflow: hidden; }
         .lab.hl { background: #fde68a; }
-        .block { position: absolute; border: 2px solid var(--line-strong); background: var(--paper-2); display: grid; }
+        .block { position: absolute; border: 0; background: var(--paper-2); display: grid; }
+        /* thick grid edge drawn on top, so it takes no space and squares line up with the labels */
+        .block::after { content: ''; position: absolute; inset: -1px; border: 2px solid var(--line-strong); pointer-events: none; z-index: 1; }
         .cell {
             border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
             background: transparent; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
             color: var(--no); position: relative;
         }
         .cell:nth-child(var(--n)) { border-right: 0; }
-        .cell svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .cell { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+        .cell svg { position: absolute; left: 19%; top: 19%; width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
         .cell.yes { color: var(--yes); background: rgba(21,128,61,0.10); }
         .cell.yes svg { stroke-width: 3.6; }
         .cell.cross { background: rgba(253,230,138,0.35); }
@@ -375,7 +378,7 @@
                 C.forEach(function (c, cj) {
                     if (ri + cj >= k - 1) return;
                     var x0 = catW + labW + cj * n * cell, y0 = catH + headH + ri * n * cell;
-                    html += '<div class="block" role="rowgroup" style="left:' + x0 + 'px;top:' + y0 + 'px;width:' + n * cell + 'px;height:' + n * cell + 'px;grid-template-columns:repeat(' + n + ',1fr)">';
+                    html += '<div class="block" role="rowgroup" style="left:' + x0 + 'px;top:' + y0 + 'px;width:' + n * cell + 'px;height:' + n * cell + 'px;grid-template-columns:repeat(' + n + ',' + cell + 'px);grid-template-rows:repeat(' + n + ',' + cell + 'px)">';
                     for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
                         html += '<button class="cell" data-r="' + r + '" data-i="' + i + '" data-c="' + c + '" data-j="' + j + '" style="' +
                             (j === n - 1 ? 'border-right:0;' : '') + (i === n - 1 ? 'border-bottom:0;' : '') + '"></button>';
