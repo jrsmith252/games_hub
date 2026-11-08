@@ -28,3 +28,12 @@ button, a, [role="button"], .cell, .tile, .card, .key {
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Safety net: no pop-up may ever be taller than the screen; long ones scroll inside themselves */
+.modal-overlay .modal, .modal-overlay .modal-content, .modal-overlay > div {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
