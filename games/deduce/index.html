@@ -145,6 +145,7 @@
         }
         .hint-bar.show { display: block; }
         .hint-bar.mistake { background: #fef2f2; border-color: var(--wrong); color: #7f1d1d; }
+        .hint-bar.notquite { background: #fff7ed; border-color: #ea580c; color: #7c2d12; }
         .hint-bar b { display: block; margin-bottom: 2px; }
 
         /* ---------- modals ---------- */
@@ -252,6 +253,7 @@
                 <li>Read the <b>clues</b> and mark the grid: tap a square once for <b>✗</b> (can't be), twice for <b>✓</b> (it's a match), three times to clear it.</li>
                 <li>Use what you've marked to work out more. If A goes with B, and B doesn't go with C, then A doesn't go with C either.</li>
                 <li>Every case has exactly one answer, and you can always reach it by reasoning. You never need to guess.</li>
+                <li>If you fill in every match but something's wrong, you'll get a free <b>Not quite</b> message (it won't say where).</li>
             </ol>
             <p>Stuck? <b>Hint</b> points out a wrong mark, or explains the next step you can work out. You get <b>2 hints</b> per case: solve with none for 3 stars, one hint for 2 stars, two hints for 1 star. Undo and Clear are free.</p>
             <label class="toggle-row" for="autoToggle">
@@ -468,7 +470,28 @@
             if (hintTarget) { hintTarget = null; hideHint(); }
             paintCells(); renderControls(); saveState();
             highlight(r, i, c, j);
-            if (E.isSolved(pz, K)) onWin();
+            if (E.isSolved(pz, K)) onWin(); else checkNotQuite();
+        }
+        // Free nudge: when every row of the main grids has its tick but the answer is wrong,
+        // say so without saying where.
+        function looksComplete() {
+            for (var b = 1; b < pz.k; b++) for (var e = 0; e < pz.size; e++) {
+                var ticks = 0;
+                for (var j = 0; j < pz.size; j++) if (getK(0, e, b, j) === 1) ticks++;
+                if (ticks !== 1) return false;
+            }
+            return true;
+        }
+        function checkNotQuite() {
+            if (solved || hintTarget) return;
+            var bar = $('hintBar');
+            if (looksComplete()) {
+                bar.className = 'hint-bar show notquite';
+                bar.innerHTML = '<b>Not quite</b>Something here doesn\'t fit the clues. Look again: this one\'s free.';
+                buzz(30);
+            } else if (bar.classList.contains('notquite')) {
+                hideHint();
+            }
         }
         function highlight(r, i, c, j) {
             $('board').querySelectorAll('.lab.hl').forEach(function (l) { l.classList.remove('hl'); });
@@ -481,6 +504,7 @@
             K = history.pop();
             hintTarget = null; hideHint();
             paintCells(); renderControls(); saveState();
+            checkNotQuite();
         }
         function showHint() {
             if (solved || hintsUsed >= MAX_HINTS) return;
