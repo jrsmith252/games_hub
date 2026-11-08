@@ -343,6 +343,8 @@
         var autoCross = S.getString(KEY_AUTO, 'true') !== 'false';
 
         var MAX_HINTS = 2;   // 1 hint = 2 stars, 2 hints = 1 star
+        // autoX: crosses that auto-cross added for each tick, so removing the tick can take them away again
+        var autoX = {};
         var levelNo = progress.level, pz = null, K = null, history = [], hintsUsed = 0, doneClues = {}, solved = false;
         var hintTarget = null;
 
@@ -355,7 +357,7 @@
         function setK(a, i, b, j, v) { E.setK({ K: K, size: pz.size }, a, i, b, j, v); }
 
         function saveState() {
-            S.setString(KEY_STATE, JSON.stringify({ v: 2, level: levelNo, K: K, hints: hintsUsed, done: doneClues, solved: solved }));
+            S.setString(KEY_STATE, JSON.stringify({ v: 2, level: levelNo, K: K, ax: autoX, hints: hintsUsed, done: doneClues, solved: solved }));
         }
         function loadState(n) {
             try {
@@ -366,7 +368,7 @@
                     var g = o.K[a][b];
                     if (a < b) { if (!Array.isArray(g) || g.length !== pz.size * pz.size || g.some(function (v) { return v !== 0 && v !== 1 && v !== -1; })) return false; }
                 }
-                K = o.K; doneClues = o.done && typeof o.done === 'object' ? o.done : {}; solved = !!o.solved;
+                K = o.K; autoX = o.ax && typeof o.ax === 'object' ? o.ax : {}; doneClues = o.done && typeof o.done === 'object' ? o.done : {}; solved = !!o.solved;
                 // Saves from before the 2-hint limit (no version) were made under the old rules: don't count them.
                 hintsUsed = o.v === 2 ? Math.min(MAX_HINTS, Math.max(0, o.hints | 0)) : 0;
                 return true;
@@ -469,7 +471,7 @@
             levelNo = n;
             pz = E.generate(n);
             hintTarget = null; history = [];
-            if (!loadState(n)) { K = E.newKnowledge(pz.k, pz.size); hintsUsed = 0; doneClues = {}; solved = false; }
+            if (!loadState(n)) { K = E.newKnowledge(pz.k, pz.size); autoX = {}; hintsUsed = 0; doneClues = {}; solved = false; }
             ['winModal', 'levelModal', 'clearModal'].forEach(closeModal);
             $('caseTitle').textContent = pz.title;
             $('caseIntro').textContent = pz.intro;
@@ -493,7 +495,7 @@
             $('clearBtn').disabled = solved;
         }
         function pushHistory() {
-            history.push(E.cloneK(K));
+            history.push({ K: E.cloneK(K), ax: JSON.stringify(autoX) });
             if (history.length > 300) history.shift();
         }
         function onCell(btn) {
@@ -503,12 +505,27 @@
             var next = v === 0 ? -1 : v === -1 ? 1 : 0;   // blank -> X -> tick -> blank
             pushHistory();
             setK(r, i, c, j, next);
+            var key = r + ',' + i + ',' + c + ',' + j;
             if (next === 1 && autoCross) {
+                var added = [];
                 for (var x = 0; x < pz.size; x++) {
-                    if (x !== j && getK(r, i, c, x) === 0) setK(r, i, c, x, -1);
-                    if (x !== i && getK(r, x, c, j) === 0) setK(r, x, c, j, -1);
+                    if (x !== j && getK(r, i, c, x) === 0) { setK(r, i, c, x, -1); added.push([i, x]); }
+                    if (x !== i && getK(r, x, c, j) === 0) { setK(r, x, c, j, -1); added.push([x, j]); }
                 }
+                if (added.length) autoX[key] = added;
+            } else if (next === 0 && autoX[key]) {
+                // Taking a tick away also takes away the crosses it added (unless another tick still needs them)
+                var still = {};
+                Object.keys(autoX).forEach(function (k2) {
+                    if (k2 === key) return;
+                    var q = k2.split(',').map(Number);
+                    if (q[0] === r && q[2] === c && getK(r, q[1], c, q[3]) === 1) autoX[k2].forEach(function (p) { still[p[0] + ',' + p[1]] = 1; });
+                });
+                autoX[key].forEach(function (p) {
+                    if (!still[p[0] + ',' + p[1]] && getK(r, p[0], c, p[1]) === -1) setK(r, p[0], c, p[1], 0);
+                });
             }
+            if (next !== 1) delete autoX[key];
             buzz(8);
             if (hintTarget) { hintTarget = null; hideHint(); }
             paintCells(); renderControls(); saveState();
@@ -544,7 +561,7 @@
         }
         function undo() {
             if (!history.length || solved) return;
-            K = history.pop();
+            var h = history.pop(); K = h.K; autoX = JSON.parse(h.ax);
             hintTarget = null; hideHint();
             paintCells(); renderControls(); saveState();
             checkNotQuite();
@@ -628,7 +645,7 @@
         $('hintBtn').addEventListener('click', showHint);
         $('clearBtn').addEventListener('click', function () { openModal('clearModal'); });
         $('clearYes').addEventListener('click', function () {
-            pushHistory(); K = E.newKnowledge(pz.k, pz.size); doneClues = {}; hintTarget = null; hideHint();
+            pushHistory(); K = E.newKnowledge(pz.k, pz.size); autoX = {}; doneClues = {}; hintTarget = null; hideHint();
             closeModal('clearModal'); paintCells(); renderClues(); renderControls(); saveState();
         });
         $('clearNo').addEventListener('click', function () { closeModal('clearModal'); });

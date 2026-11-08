@@ -176,6 +176,9 @@
         return '';
     }
 
+    // A clue's sentence without its capital letter and full stop, for use inside a hint
+    function clueBody(pz, cl) { var t = clueText(pz, cl).slice(0, -1); return /^(The|Whoever) /.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t; }
+
     // ---------- solver: human techniques, each deduction with a reason ----------
     function label(pz, c, v) { return pz.cats[c].labels[v]; }
     function cellName(pz, a, i, b, j) { return label(pz, a, i) + ' / ' + label(pz, b, j); }
@@ -259,8 +262,8 @@
                     var phi = cl.gt ? pp : pq, plo = cl.gt ? pq : pp;
                     var maxLo = Math.max.apply(null, plo), minHi = Math.min.apply(null, phi);
                     for (var o = 0; o < P.size; o++) {
-                        if (o <= Math.min.apply(null, plo) && hi.c !== O) pushIf(P, out, hi.c, hi.v, O, o, -1, num + ': ' + label(pz, hi.c, hi.v) + ' must be above ' + label(pz, O, o) + ' here.');
-                        if (o >= Math.max.apply(null, phi) && lo.c !== O) pushIf(P, out, lo.c, lo.v, O, o, -1, num + ': ' + label(pz, lo.c, lo.v) + ' must be below ' + label(pz, O, o) + ' here.');
+                        if (o <= Math.min.apply(null, plo) && hi.c !== O) pushIf(P, out, hi.c, hi.v, O, o, -1, num + ' says ' + clueBody(pz, cl) + ', so ' + termRef(pz, hi) + ' isn\'t ' + termPred(pz, { c: O, v: o }) + '.');
+                        if (o >= Math.max.apply(null, phi) && lo.c !== O) pushIf(P, out, lo.c, lo.v, O, o, -1, num + ' says ' + clueBody(pz, cl) + ', so ' + termRef(pz, lo) + ' isn\'t ' + termPred(pz, { c: O, v: o }) + '.');
                     }
                     void maxLo; void minHi;
                 } else {
@@ -269,8 +272,8 @@
                         var needQ = vals[o2] - cl.d, needP = vals[o2] + cl.d;
                         var okP = pq.some(function (x) { return vals[x] === needQ; });
                         var okQ = pp.some(function (x) { return vals[x] === needP; });
-                        if (!okP && cl.p.c !== O) pushIf(P, out, cl.p.c, cl.p.v, O, o2, -1, num + ': ' + label(pz, cl.p.c, cl.p.v) + ' can\'t be ' + label(pz, O, o2) + ', as nothing fits exactly ' + cl.d + ' below it.');
-                        if (!okQ && cl.q.c !== O) pushIf(P, out, cl.q.c, cl.q.v, O, o2, -1, num + ': ' + label(pz, cl.q.c, cl.q.v) + ' can\'t be ' + label(pz, O, o2) + ', as nothing fits exactly ' + cl.d + ' above it.');
+                        if (!okP && cl.p.c !== O) pushIf(P, out, cl.p.c, cl.p.v, O, o2, -1, num + ' says ' + clueBody(pz, cl) + '. That can\'t work if ' + termRef(pz, cl.p) + ' is ' + termPred(pz, { c: O, v: o2 }) + ', so rule it out.');
+                        if (!okQ && cl.q.c !== O) pushIf(P, out, cl.q.c, cl.q.v, O, o2, -1, num + ' says ' + clueBody(pz, cl) + '. That can\'t work if ' + termRef(pz, cl.q) + ' is ' + termPred(pz, { c: O, v: o2 }) + ', so rule it out.');
                     }
                 }
             }
