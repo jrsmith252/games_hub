@@ -11,7 +11,6 @@
         { name: 'Purple', hex: '#a855f7', sym: '★', ink: '#ffffff' },
         { name: 'Orange', hex: '#fb923c', sym: '✚', ink: '#431407' }
     ];
-    var DIRV = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
     var BASE_BAYS = 5;
     var UNDO_PER_LEVEL = 3;
 
@@ -36,60 +35,122 @@
     }
     function range(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
 
-    // ---------- geometry ----------
-    function isHoriz(b) { return b.dir === 'L' || b.dir === 'R'; }
-    function cellsOf(b) {
-        var out = [];
-        for (var i = 0; i < b.len; i++) out.push(isHoriz(b) ? [b.x + i, b.y] : [b.x, b.y + i]);
-        return out;
+    // ---------- geometry: free-angle vehicles ----------
+    // Units are depot "cells". A vehicle is a rectangle centred on (x, y) heading at angle a
+    // (degrees; 0 = right, 90 = down). Angles are multiples of 15 and use a fixed trig table,
+    // so the arithmetic is identical on every device.
+    var TYPES = {
+        car:   { len: 1.35, wid: 0.80, cap: 4,  name: 'car' },
+        mini:  { len: 2.00, wid: 0.86, cap: 6,  name: 'minibus' },
+        coach: { len: 2.85, wid: 0.92, cap: 10, name: 'coach' }
+    };
+    var COS15 = [1, 0.965925826289, 0.866025403784, 0.707106781187, 0.5, 0.258819045103, 0,
+                 -0.258819045103, -0.5, -0.707106781187, -0.866025403784, -0.965925826289,
+                 -1, -0.965925826289, -0.866025403784, -0.707106781187, -0.5, -0.258819045103, 0,
+                 0.258819045103, 0.5, 0.707106781187, 0.866025403784, 0.965925826289];
+    function cosD(a) { return COS15[(((a / 15) % 24) + 24) % 24]; }
+    function sinD(a) { return cosD(a - 90); }
+    function axesOf(v) { var c = cosD(v.a), s2 = sinD(v.a); return { hx: c, hy: s2, nx: -s2, ny: c }; }
+    function rectPoly(v, back, front, hw) {
+        var ax = axesOf(v);
+        return [
+            [v.x + ax.hx * front + ax.nx * hw, v.y + ax.hy * front + ax.ny * hw],
+            [v.x + ax.hx * front - ax.nx * hw, v.y + ax.hy * front - ax.ny * hw],
+            [v.x - ax.hx * back - ax.nx * hw, v.y - ax.hy * back - ax.ny * hw],
+            [v.x - ax.hx * back + ax.nx * hw, v.y - ax.hy * back + ax.ny * hw]
+        ];
     }
-    function frontOf(b) {
-        switch (b.dir) {
-            case 'R': return [b.x + b.len - 1, b.y];
-            case 'D': return [b.x, b.y + b.len - 1];
-            default: return [b.x, b.y]; // L and U: front is the first cell
+    function polyOf(v, pad) { pad = pad || 0; return rectPoly(v, v.len / 2 + pad, v.len / 2 + pad, v.wid / 2 + pad); }
+    function sweptPoly(v, t) { return rectPoly(v, v.len / 2, v.len / 2 + t, v.wid / 2); }
+    // Separating-axis test for two convex quads (touching does not count as overlapping)
+    function intersects(A, B) {
+        var polys = [A, B];
+        for (var p = 0; p < 2; p++) {
+            var P = polys[p];
+            for (var i = 0; i < 4; i++) {
+                var a = P[i], b = P[(i + 1) % 4];
+                var nx = a[1] - b[1], ny = b[0] - a[0];
+                var minA = Infinity, maxA = -Infinity, minB = Infinity, maxB = -Infinity, k, d;
+                for (k = 0; k < 4; k++) { d = A[k][0] * nx + A[k][1] * ny; if (d < minA) minA = d; if (d > maxA) maxA = d; }
+                for (k = 0; k < 4; k++) { d = B[k][0] * nx + B[k][1] * ny; if (d < minB) minB = d; if (d > maxB) maxB = d; }
+                if (maxA <= minB + 1e-9 || maxB <= minA + 1e-9) return false;
+            }
         }
+        return true;
     }
-    function occupancy(level, removed) {
-        var g = new Array(level.cols * level.rows);
-        for (var k = 0; k < g.length; k++) g[k] = -1;
-        level.buses.forEach(function (b, i) {
-            if (removed && removed[i]) return;
-            cellsOf(b).forEach(function (c) { g[c[1] * level.cols + c[0]] = i; });
-        });
-        return g;
-    }
-    // Is the road from bus i's front to the edge of the depot clear?
-    function exitInfo(level, removed, i, occ) {
-        occ = occ || occupancy(level, removed);
-        var b = level.buses[i];
-        var v = DIRV[b.dir];
-        var p = frontOf(b);
-        var x = p[0], y = p[1], dist = 0;
-        for (;;) {
-            x += v[0]; y += v[1];
-            if (x < 0 || y < 0 || x >= level.cols || y >= level.rows) return { clear: true, dist: dist };
-            var o = occ[y * level.cols + x];
-            if (o !== -1) return { clear: false, dist: dist, blocker: o };
-            dist++;
+    // How far v can drive forward before touching w (null if w is never in its way)
+    function blockDist(level, v, w) {
+        var D = level.cols + level.rows + 4;
+        var wp = polyOf(w);
+        if (!intersects(sweptPoly(v, D), wp)) return null;
+        var lo = 0, hi = D;
+        for (var it = 0; it < 24; it++) {
+            var mid = (lo + hi) / 2;
+            if (intersects(sweptPoly(v, mid), wp)) hi = mid; else lo = mid;
         }
+        return hi;
     }
-    // Removing a bus only ever frees cells, so greedy removal finds a full
-    // clearance whenever one exists.
+    // Distance from the front of v to the edge of the depot along its heading
+    function edgeDist(level, v) {
+        var ax = axesOf(v);
+        var fx = v.x + ax.hx * v.len / 2, fy = v.y + ax.hy * v.len / 2, t = Infinity;
+        if (ax.hx > 1e-9) t = Math.min(t, (level.cols - fx) / ax.hx);
+        if (ax.hx < -1e-9) t = Math.min(t, -fx / ax.hx);
+        if (ax.hy > 1e-9) t = Math.min(t, (level.rows - fy) / ax.hy);
+        if (ax.hy < -1e-9) t = Math.min(t, -fy / ax.hy);
+        return Math.max(0, t);
+    }
+    // Blocker lists: for each vehicle, every other vehicle in its path, nearest first.
+    // Computed once per level, so checking a tap is just a walk down a short list.
+    function addBlocks(level, k) {
+        var B = level.block, vs = level.buses, list = [];
+        for (var i = 0; i < vs.length; i++) {
+            if (i === k) continue;
+            var d = blockDist(level, vs[k], vs[i]);
+            if (d !== null) list.push({ j: i, d: d });
+            var d2 = blockDist(level, vs[i], vs[k]);
+            if (d2 !== null) { B[i].push({ j: k, d: d2 }); B[i].sort(function (x, y) { return x.d - y.d; }); }
+        }
+        list.sort(function (x, y) { return x.d - y.d; });
+        B[k] = list;
+    }
+    function dropBlocks(level, k) {
+        level.block.length = k;
+        for (var i = 0; i < k; i++) level.block[i] = level.block[i].filter(function (e) { return e.j !== k; });
+    }
+    function computeBlocks(level) {
+        level.block = [];
+        for (var k = 0; k < level.buses.length; k++) { level.block.push([]); addBlocks(level, k); }
+    }
+    function exitInfo(level, removed, i) {
+        var L = level.block[i];
+        for (var k = 0; k < L.length; k++) {
+            if (!removed || !removed[L[k].j]) return { clear: false, dist: L[k].d, blocker: L[k].j };
+        }
+        return { clear: true, dist: edgeDist(level, level.buses[i]) };
+    }
+    // Removing a vehicle never puts anything new in another's way, so greedy removal finds a
+    // full clearance whenever one exists.
     function fullyRemovable(level) {
         var removed = new Array(level.buses.length).fill(false);
         var left = level.buses.length, progress = true;
         while (left > 0 && progress) {
             progress = false;
-            var occ = occupancy(level, removed);
             for (var i = 0; i < level.buses.length; i++) {
-                if (!removed[i] && exitInfo(level, removed, i, occ).clear) {
-                    removed[i] = true; left--; progress = true;
-                    occ = occupancy(level, removed);
-                }
+                if (!removed[i] && exitInfo(level, removed, i).clear) { removed[i] = true; left--; progress = true; }
             }
         }
         return left === 0;
+    }
+    function inDepot(level, v) {
+        var m = 0.06;
+        return polyOf(v).every(function (c) { return c[0] >= m && c[1] >= m && c[0] <= level.cols - m && c[1] <= level.rows - m; });
+    }
+    function fits(level, v) {
+        if (!inDepot(level, v)) return false;
+        var vp = polyOf(v, 0.05);
+        for (var i = 0; i < level.buses.length; i++) if (intersects(vp, polyOf(level.buses[i], 0.05))) return false;
+        return true;
     }
 
     // ---------- difficulty curve ----------
@@ -97,21 +158,24 @@
         var cols = Math.min(7, 4 + Math.floor((n + 1) / 6));      // 4..7
         var rows = Math.min(9, 5 + Math.floor(n / 5));            // 5..9
         var colours = Math.min(6, 2 + Math.floor((n + 1) / 4));   // 2..6
-        var maxBuses = Math.floor(cols * rows / 2.5);
+        var maxBuses = Math.floor(cols * rows / 2.3);
         var buses = Math.max(3, Math.min(maxBuses, 3 + Math.floor(n * 0.8)));
         // How many buses the intended solution parks at once (bays are 5)
         var maxPark = n <= 1 ? 1 : n <= 3 ? 2 : n <= 6 ? 3 : n <= 15 ? 4 : 5;
         // The solution must genuinely need this many bays at its busiest moment
         var minPeak = n <= 2 ? 1 : n <= 5 ? 2 : n <= 12 ? 3 : 4;
         var removeBias = Math.min(0.85, 0.4 + n * 0.03);
-        var longChance = n <= 2 ? 0 : Math.min(0.5, 0.15 + n * 0.012);
+        // Vehicle mix: cars and minibuses first, coaches from level 6
+        var mix = n <= 5 ? { car: 0.5, mini: 0.5, coach: 0 } : n <= 12 ? { car: 0.4, mini: 0.42, coach: 0.18 } : { car: 0.36, mini: 0.39, coach: 0.25 };
+        // Angles: square to the depot at first, diagonals from level 3, any 15-degree angle from level 9
+        var angles = n <= 2 ? 'square' : n <= 8 ? 'diagonal' : 'any';
         var minBlocked = n <= 2 ? 0 : 0.3;
         // Level type: "single" = strict single-file queue; "platform" = pick from a platform of waiting passengers
         var mode = (n <= 2 || n % 4 === 0) ? 'single' : 'platform';
         var platform = mode === 'single' ? 1 : n <= 8 ? 10 : n <= 20 ? 8 : 7;
         return { cols: cols, rows: rows, colours: colours, buses: buses, maxPark: maxPark, minPeak: minPeak,
                  mode: mode, platform: platform,
-                 removeBias: removeBias, longChance: longChance, minBlocked: minBlocked, bays: BASE_BAYS };
+                 removeBias: removeBias, mix: mix, angles: angles, minBlocked: minBlocked, bays: BASE_BAYS };
     }
 
     // ---------- game state (shared by the UI and by level verification) ----------
@@ -216,31 +280,46 @@
 
     // ---------- generation ----------
     function tryGenerate(n, p, r) {
-        var lvl = { number: n, cols: p.cols, rows: p.rows, bays: p.bays, mode: p.mode, platform: p.platform, buses: [], queue: [] };
-        var occ = new Array(p.cols * p.rows).fill(-1);
+        var lvl = { number: n, cols: p.cols, rows: p.rows, bays: p.bays, mode: p.mode, platform: p.platform, buses: [], queue: [], block: [] };
+        function pickType() {
+            var x = r();
+            if (x < p.mix.car) return 'car';
+            if (x < p.mix.car + p.mix.mini) return 'mini';
+            return 'coach';
+        }
+        function pickAngle() {
+            var x = r();
+            if (p.angles === 'square' || (p.angles !== 'square' && x < 0.5)) return 90 * Math.floor(r() * 4);
+            if (p.angles === 'diagonal' || x < 0.8) return 45 + 90 * Math.floor(r() * 4);
+            return 15 * Math.floor(r() * 24);
+        }
+        function tryAdd(v) {
+            if (!fits(lvl, v)) return false;
+            lvl.buses.push(v); lvl.block.push([]);
+            var k = lvl.buses.length - 1;
+            addBlocks(lvl, k);
+            if (!fullyRemovable(lvl)) { lvl.buses.pop(); dropBlocks(lvl, k); return false; }
+            return true;
+        }
         var tries = 0;
-        while (lvl.buses.length < p.buses && tries < 900) {
+        while (lvl.buses.length < p.buses && tries < 1400) {
             tries++;
-            var len = r() < p.longChance ? 3 : 2;
-            var dir = 'UDLR'.charAt(Math.floor(r() * 4));
-            var horiz = dir === 'L' || dir === 'R';
-            var maxX = horiz ? p.cols - len : p.cols - 1;
-            var maxY = horiz ? p.rows - 1 : p.rows - len;
-            var b = { x: Math.floor(r() * (maxX + 1)), y: Math.floor(r() * (maxY + 1)), len: len, dir: dir };
-            var cs = cellsOf(b);
-            if (cs.some(function (c) { return occ[c[1] * p.cols + c[0]] !== -1; })) continue;
-            lvl.buses.push(b);
-            if (!fullyRemovable(lvl)) { lvl.buses.pop(); continue; }
-            var id = lvl.buses.length - 1;
-            cs.forEach(function (c) { occ[c[1] * p.cols + c[0]] = id; });
+            var type = pickType(), T = TYPES[type], ang = pickAngle();
+            var cx = 0.5 + r() * (p.cols - 1), cy = 0.5 + r() * (p.rows - 1);
+            // Sometimes park a neat row of matching vehicles side by side, like a real depot
+            var rowLen = r() < 0.35 ? 2 + Math.floor(r() * 3) : 1;
+            var nx = -sinD(ang), ny = cosD(ang), gap = T.wid + 0.14;
+            for (var q2 = 0; q2 < rowLen && lvl.buses.length < p.buses; q2++) {
+                var v = { x: cx + nx * gap * q2, y: cy + ny * gap * q2, a: ang, type: type, len: T.len, wid: T.wid, cap: T.cap };
+                if (!tryAdd(v) && q2 === 0) break;
+            }
         }
         var N = lvl.buses.length;
         if (N < Math.max(3, Math.floor(p.buses * 0.7))) return null;
 
-        // Require a real jam: some buses must start blocked
+        // Require a real jam: some vehicles must start blocked
         var blocked = 0;
-        var occ0 = occupancy(lvl, null);
-        for (var i = 0; i < N; i++) if (!exitInfo(lvl, null, i, occ0).clear) blocked++;
+        for (var i = 0; i < N; i++) if (!exitInfo(lvl, null, i).clear) blocked++;
         if (blocked < Math.floor(N * p.minBlocked)) return null;
 
         // Colours: use every colour at least once, then random
@@ -248,13 +327,12 @@
         shuffle(range(N), r).forEach(function (id, idx) {
             lvl.buses[id].colour = idx < k ? idx : Math.floor(r() * k);
         });
-        lvl.buses.forEach(function (bb) { bb.cap = bb.len === 3 ? 6 : 4; });
 
         // A valid removal order (random among currently-free buses)
         var removed = new Array(N).fill(false), plan = [];
         while (plan.length < N) {
-            var o = occupancy(lvl, removed), cand = [];
-            for (var j = 0; j < N; j++) if (!removed[j] && exitInfo(lvl, removed, j, o).clear) cand.push(j);
+            var cand = [];
+            for (var j = 0; j < N; j++) if (!removed[j] && exitInfo(lvl, removed, j).clear) cand.push(j);
             if (!cand.length) return null;
             var pick = cand[Math.floor(r() * cand.length)];
             removed[pick] = true; plan.push(pick);
@@ -305,9 +383,9 @@
                  platform: st.platform.slice(), q: st.q, moves: st.moves, undoLeft: 0, extraUsed: true, boostsUsed: 0, history: [] };
     }
     function freeBuses(st) {
-        var occ = occupancy(st.level, st.removed), out = [];
+        var out = [];
         for (var i = 0; i < st.level.buses.length; i++) {
-            if (!st.removed[i] && exitInfo(st.level, st.removed, i, occ).clear) out.push(i);
+            if (!st.removed[i] && exitInfo(st.level, st.removed, i).clear) out.push(i);
         }
         return out;
     }
@@ -377,9 +455,9 @@
                 while (boardOne(st)) { /* board */ }
                 if (isWon(st)) { ok = true; break; }
                 if (isStuck(st)) break;
-                var occ = occupancy(level, st.removed), free = [], match = [];
+                var free = [], match = [];
                 for (var i = 0; i < level.buses.length; i++) {
-                    if (!st.removed[i] && exitInfo(level, st.removed, i, occ).clear) {
+                    if (!st.removed[i] && exitInfo(level, st.removed, i).clear) {
                         free.push(i);
                         if (platformHas(st, level.buses[i].colour)) match.push(i);
                     }
@@ -506,7 +584,8 @@
 
     var api = {
         PALETTE: PALETTE, BASE_BAYS: BASE_BAYS, UNDO_PER_LEVEL: UNDO_PER_LEVEL,
-        params: params, generate: generate, exitInfo: exitInfo, cellsOf: cellsOf,
+        params: params, generate: generate, exitInfo: exitInfo, polyOf: polyOf, intersects: intersects, inDepot: inDepot,
+        TYPES: TYPES, cosD: cosD, sinD: sinD, computeBlocks: computeBlocks,
         createState: createState, tap: tap, boardOne: boardOne, peekBoard: peekBoard, peekStep: peekStep, isWon: isWon, isStuck: isStuck,
         undo: undo, addBay: addBay, starsFor: starsFor, simulate: simulate,
         naiveWinRate: naiveWinRate, targetBand: targetBand, isTough: isTough, spareBays: spareBays,

@@ -138,8 +138,8 @@
         }
         .bay-bus .shape { width: 15px; height: 15px; display: none; }
         .shapes .bay-bus .shape { display: block; }
-        .pips { display: grid; grid-template-columns: repeat(var(--cols, 3), 9px); gap: 4px; }
-        .shapes .pips { grid-template-columns: repeat(var(--cols, 3), 7px); gap: 3px; }
+        .pips { display: grid; grid-template-columns: repeat(var(--cols, 3), var(--pip, 9px)); gap: var(--pgap, 4px); }
+        .shapes .pips { --pip: 7px; --pgap: 3px; }
         .pip { width: 100%; aspect-ratio: 1; border-radius: 50%; background: rgba(0,0,0,0.28); }
         .pip.on { background: var(--ink); }
         .bays.shake { animation: shake 0.35s; }
@@ -156,9 +156,12 @@
             background-size: var(--cell) var(--cell);
             box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06);
         }
-        .bus { position: absolute; border: 0; background: transparent; padding: 0; cursor: pointer; }
+        .bus { position: absolute; border: 0; background: transparent; padding: 0; cursor: pointer; transform-origin: 50% 50%; }
+        .bus.type-car .body { border-radius: 12px; inset: 2px; }
+        .bus.type-coach .body { border-radius: 8px; }
+        .bus .seats .shape { transform: rotate(var(--ar, 0deg)); }
         .bus .body {
-            position: absolute; inset: 3px; border-radius: 9px;
+            position: absolute; inset: 2px; border-radius: 9px;
             background: var(--c); color: var(--ink);
             display: flex; align-items: center; justify-content: space-around;
             box-shadow: inset 0 -3px 0 rgba(0,0,0,0.25), 0 2px 5px rgba(0,0,0,0.45);
@@ -190,7 +193,7 @@
         .switch input:checked + .track { background: var(--accent); }
         .switch input:checked + .track::after { transform: translateX(20px); }
         .switch input:focus-visible + .track { outline: 2px solid #818cf8; outline-offset: 2px; }
-        .bus .arrow { width: calc(var(--cell) * 0.44); height: calc(var(--cell) * 0.44); position: relative; }
+        .bus .arrow { width: calc(var(--cell) * 0.5); height: calc(var(--cell) * 0.5); position: relative; }
         .bus .arrow svg { width: 100%; height: 100%; stroke: var(--ink); fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
         .bus.dir-D .arrow svg { transform: rotate(90deg); }
         .bus.dir-L .arrow svg { transform: rotate(180deg); }
@@ -320,7 +323,7 @@
             <h2 id="helpTitle">How to play</h2>
             <ol>
                 <li>Passengers wait on the <b>platform</b>. Anyone whose colour matches a parked bus walks on. Gaps fill from the <b>queue</b> on the left. On <b>Single file</b> levels they board strictly in order. <b>Tap the stop</b> to see everyone who's waiting.</li>
-                <li><b>Tap a bus</b> to drive it out of the depot. It can only leave if nothing is in the way of its arrow.</li>
+                <li><b>Tap a vehicle</b> to drive it out of the depot the way its arrow points. It can only leave if nothing is in its path. Cars seat 4, minibuses 6 and coaches 10.</li>
                 <li>Buses wait in the <b>bays</b>. Passengers board the bus of their colour, and a full bus departs.</li>
                 <li>Bays are limited, and some levels lock a few. Fill them with the wrong colours and you're <b>stuck</b>, so plan ahead.</li>
             </ol>
@@ -371,7 +374,7 @@
         var KEY_STARS = 'depotdash_stars';
         var KEY_SEEN = 'depotdash_instructionsSeen';
         var DIR_NAME = { U: 'up', D: 'down', L: 'left', R: 'right' };
-        var ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+        var ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg>';
         // One fixed, non-directional shape per colour (shown only in colour-blind mode)
         var SHAPES = [
             '<circle cx="12" cy="12" r="8.5"/>',                                                         // Red: circle
@@ -459,27 +462,35 @@
         }
 
         // ---------- rendering ----------
+        var COMPASS = ['right', 'down-right', 'down', 'down-left', 'left', 'up-left', 'up', 'up-right'];
+        function facing(a) { return COMPASS[Math.round(((a % 360) + 360) % 360 / 45) % 8]; }
+        function seatCols(cap) { return cap === 10 ? 5 : cap === 6 ? 3 : 2; }
+        // Vehicles are drawn pointing right, then rotated to their heading about their centre
+        function vehicleTransform(v, dx, dy) {
+            return (dx || dy ? 'translate(' + dx + 'px,' + dy + 'px) ' : '') + 'rotate(' + v.a + 'deg)';
+        }
         function renderYard() {
             yard.innerHTML = '';
             level.buses.forEach(function (b, i) {
                 if (st.removed[i]) return;
-                var horiz = b.dir === 'L' || b.dir === 'R';
                 var pal = E.PALETTE[b.colour];
                 var btn = document.createElement('button');
-                btn.className = 'bus dir-' + b.dir;
+                btn.className = 'bus dir-R type-' + b.type;
                 btn.dataset.id = i;
                 btn.style.setProperty('--c', pal.hex);
                 btn.style.setProperty('--ink', pal.ink);
-                btn.style.left = b.x * cell + 'px';
-                btn.style.top = b.y * cell + 'px';
-                btn.style.width = (horiz ? b.len : 1) * cell + 'px';
-                btn.style.height = (horiz ? 1 : b.len) * cell + 'px';
-                btn.setAttribute('aria-label', pal.name + ' bus, ' + b.cap + ' seats, facing ' + DIR_NAME[b.dir]);
+                btn.style.setProperty('--ar', (-b.a) + 'deg');
+                btn.style.left = (b.x - b.len / 2) * cell + 'px';
+                btn.style.top = (b.y - b.wid / 2) * cell + 'px';
+                btn.style.width = b.len * cell + 'px';
+                btn.style.height = b.wid * cell + 'px';
+                btn.style.transform = vehicleTransform(b);
+                btn.setAttribute('aria-label', pal.name + ' ' + E.TYPES[b.type].name + ', ' + b.cap + ' seats, facing ' + facing(b.a));
                 var dots = '';
                 for (var d = 0; d < b.cap; d++) dots += '<span class="dot"></span>';
                 btn.innerHTML = '<span class="body"><span class="screen"></span>' +
                     '<span class="seats" aria-hidden="true">' + shapeSvg(b.colour) +
-                    '<span class="dots" style="--cols:' + (b.cap === 6 ? 3 : 2) + '">' + dots + '</span></span>' +
+                    '<span class="dots" style="--cols:' + seatCols(b.cap) + '">' + dots + '</span></span>' +
                     '<span class="arrow">' + ARROW + '</span></span>';
                 yard.appendChild(btn);
             });
@@ -488,7 +499,7 @@
             var pal = E.PALETTE[b.colour], pips = '';
             for (var i = 0; i < b.cap; i++) pips += '<span class="pip' + (i < b.filled ? ' on' : '') + '"></span>';
             return '<div class="bay-bus" style="--c:' + pal.hex + ';--ink:' + pal.ink + '">' +
-                shapeSvg(b.colour) + '<span class="pips" style="--cols:' + (b.cap === 6 ? 3 : 2) + '">' + pips + '</span></div>';
+                shapeSvg(b.colour) + '<span class="pips" style="--cols:' + seatCols(b.cap) + (b.cap === 10 ? ';--pip:6px;--pgap:3px' : '') + '">' + pips + '</span></div>';
         }
         var LOCK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
         function fillSlot(slot, i) {
@@ -639,7 +650,7 @@
             var baysTxt = level.bays + ' bay' + (level.bays === 1 ? '' : 's');
             if (n === 1) setStatus('Tap a bus whose arrow has a clear road out.');
             else if (level.tough) setStatus('Tough level · ' + baysTxt + ', no spare. Think before you tap!');
-            else setStatus(level.buses.length + ' buses · ' + baysTxt + (level.minBays && level.bays === level.minBays ? ', no spare' : ''));
+            else setStatus(level.buses.length + ' vehicles · ' + baysTxt + (level.minBays && level.bays === level.minBays ? ', no spare' : ''));
         }
         function afterMove() {
             renderControls();
@@ -677,12 +688,11 @@
 
         // ---------- taps (several buses can move at once) ----------
         function busEl(id) { return yard.querySelector('.bus[data-id="' + id + '"]'); }
-        var DV = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
         async function onTap(id) {
             if (building || anyModalOpen()) return;
             var node = busEl(id);
             if (!node || node.dataset.leaving || node.dataset.bumping) return;
-            var b = level.buses[id], v = DV[b.dir];
+            var b = level.buses[id], v = [E.cosD(b.a), E.sinD(b.a)];
             var res = E.tap(st, id);   // takes effect immediately: the bay is reserved now
             if (res.type === 'blocked') {
                 buzz(18);
@@ -691,9 +701,9 @@
                 var blocker = busEl(res.blocker);
                 if (blocker) animate(blocker.querySelector('.body'), [{ filter: 'brightness(1)' }, { filter: 'brightness(1.6)' }, { filter: 'brightness(1)' }], { duration: 380 });
                 await animate(node, [
-                    { transform: 'translate(0,0)' },
-                    { transform: 'translate(' + v[0] * nudge + 'px,' + v[1] * nudge + 'px)', offset: 0.45 },
-                    { transform: 'translate(0,0)' }
+                    { transform: vehicleTransform(b) },
+                    { transform: vehicleTransform(b, v[0] * nudge, v[1] * nudge), offset: 0.45 },
+                    { transform: vehicleTransform(b) }
                 ], { duration: 260 + res.dist * 40, easing: 'ease-in-out' });
                 delete node.dataset.bumping;
                 return;
@@ -712,10 +722,10 @@
             arriving[res.bay] = true;
             renderSlot(res.bay);
             renderControls();
-            var cells = res.dist + b.len + 1;
+            var cells = res.dist + b.len + 1.5;
             await animate(node, [
-                { transform: 'translate(0,0)' },
-                { transform: 'translate(' + v[0] * cells * cell + 'px,' + v[1] * cells * cell + 'px)' }
+                { transform: vehicleTransform(b) },
+                { transform: vehicleTransform(b, v[0] * cells * cell, v[1] * cells * cell) }
             ], { duration: 150 + cells * 32, easing: 'cubic-bezier(.55,0,.9,.55)', fill: 'forwards' });
             if (myGen !== gen) return;
             node.remove();
