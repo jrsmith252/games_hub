@@ -1,7 +1,7 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
    Pages and assets are fetched network-first, so updates show up straight away when online.
    Bump CACHE_VERSION (and the version in the hub footer) when releasing. */
-const CACHE_VERSION = 'v1.5.0';
+const CACHE_VERSION = 'v1.6.0';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [

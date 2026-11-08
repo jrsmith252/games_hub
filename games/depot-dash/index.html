@@ -51,6 +51,78 @@
         .level-btn .tough { color: var(--gold); font-weight: 600; }
 
         .game { width: 100%; max-width: 480px; margin: 0 auto; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+        /* ---------- the cartoon world ---------- */
+        body { background: #3f7a44; }
+        .top-bar { background: #142033; }
+        main.game {
+            background:
+                radial-gradient(circle at 30% 40%, rgba(255,255,255,0.07) 0 2px, transparent 3px) 0 0 / 23px 23px,
+                radial-gradient(circle at 70% 70%, rgba(0,0,0,0.09) 0 2px, transparent 3px) 0 0 / 17px 17px,
+                linear-gradient(180deg, #4e8f4f, #437f45);
+            max-width: none;
+        }
+        main.game > * { width: 100%; max-width: 480px; margin-left: auto; margin-right: auto; }
+        .yard-wrap { position: relative; }
+        .scenery { position: absolute; inset: 0; pointer-events: none; }
+        .tree {
+            position: absolute; border-radius: 50%;
+            background: radial-gradient(circle at 35% 32%, #8fd07f 0 18%, #5fa752 40%, #3d7a39 72%, #2f6230);
+            box-shadow: 3px 5px 0 rgba(0,0,0,0.18);
+        }
+        .tree::after { content: ''; position: absolute; left: 22%; top: 18%; width: 30%; height: 26%; border-radius: 50%; background: rgba(255,255,255,0.14); }
+        .bush { position: absolute; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #79bd68, #3f8040 70%); box-shadow: 2px 3px 0 rgba(0,0,0,0.15); }
+        /* Bus station: paving under a canopy */
+        section#stop {
+            background:
+                linear-gradient(rgba(0,0,0,0.10) 1px, transparent 1px) 0 0 / 18px 18px,
+                linear-gradient(90deg, rgba(0,0,0,0.10) 1px, transparent 1px) 0 0 / 18px 18px,
+                #8d97a8;
+            border: 0; border-radius: 12px; padding-top: 16px !important;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.18);
+        }
+        section#stop::before {
+            content: ''; position: absolute; left: 6px; right: 6px; top: 0; height: 10px; border-radius: 0 0 6px 6px;
+            background: linear-gradient(#3a4a66, #2c3a54); box-shadow: 0 3px 4px rgba(0,0,0,0.25);
+        }
+        #stop .queue-count, #stop .feeder { color: #1f2937; }
+        #stop .queue-count b, #stop .feeder b { color: #0f172a; }
+        .stop-sign { background: #1d4ed8; color: #fff; }
+        #stop .platform {
+            background:
+                linear-gradient(rgba(0,0,0,0.12) 1px, transparent 1px) 0 0 / 18px 18px,
+                linear-gradient(90deg, rgba(0,0,0,0.12) 1px, transparent 1px) 0 0 / 18px 18px,
+                #737d8f;
+            border-bottom: 4px solid #facc15; border-radius: 6px;
+        }
+        .fig svg.person { stroke: rgba(15,23,42,0.45); stroke-width: 0.8; }
+        /* The road with painted bus bays */
+        .bays {
+            background:
+                linear-gradient(90deg, transparent 0 46%, rgba(255,255,255,0.0) 46%),
+                #3b4252;
+            padding: 6px 6px 8px; border-radius: 8px;
+            box-shadow: inset 0 3px 0 #b8bfcb, inset 0 -3px 0 #b8bfcb;
+        }
+        .bay { background: transparent; }
+        .bay-empty { color: rgba(250,204,21,0.55) !important; font-size: 0.7rem !important; letter-spacing: 1px; }
+        /* The depot: an asphalt car park with a concrete kerb and faded markings */
+        .yard {
+            background-color: #4a5160 !important;
+            background-image:
+                radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.6px),
+                radial-gradient(rgba(0,0,0,0.18) 1px, transparent 1.6px),
+                radial-gradient(ellipse at 30% 60%, rgba(0,0,0,0.16) 0 6%, transparent 7%),
+                radial-gradient(ellipse at 75% 25%, rgba(0,0,0,0.12) 0 5%, transparent 6%),
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.12) 0 2px, transparent 2px calc(var(--cell) * 1.25)),
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.12) 0 2px, transparent 2px calc(var(--cell) * 1.25)) !important;
+            background-size: 7px 7px, 11px 11px, 100% 100%, 100% 100%, 100% calc(var(--cell) * 0.9), 100% calc(var(--cell) * 0.9) !important;
+            background-position: 0 0, 3px 5px, 0 0, 0 0, 0 0, 0 100% !important;
+            background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat !important;
+            box-shadow: 0 0 0 5px #c3c9d3, 0 0 0 7px #8b93a1, 0 6px 0 7px rgba(0,0,0,0.15) !important;
+            border-radius: 10px !important;
+        }
+        .status { color: #eef6ee; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .ctrl { background: rgba(20,32,51,0.92); }
 
         /* Bus stop queue */
         .stop {
@@ -121,7 +193,9 @@
             .platform[data-size="l"] .fig { width: 24px; height: 30px; }
             .platform[data-size="m"] .fig { width: 21px; height: 27px; }
             .platform[data-size="s"] .fig { width: 19px; height: 24px; }
-            .bay { height: 50px; }
+            .bay { height: 46px; }
+            .bays { padding: 4px 5px 5px; }
+            section#stop { padding-top: 13px !important; }
             .ctrl { min-height: 44px; font-size: 0.85rem; }
             .status { font-size: 0.8rem; min-height: 1em; }
         }
@@ -356,6 +430,7 @@
         <section class="bays" id="bays" aria-label="Bays"></section>
 
         <div class="yard-wrap" id="yardWrap">
+            <div class="scenery" id="scenery" aria-hidden="true"></div>
             <div class="yard" id="yard" aria-label="Depot"></div>
         </div>
 
@@ -523,6 +598,43 @@
             yard.style.setProperty('--cell', cell + 'px');
         }
 
+        // ---------- scenery ----------
+        function renderScenery() {
+            var sc = $('scenery'), wrap = $('yardWrap');
+            if (!sc) return;
+            var W = wrap.clientWidth, H = wrap.clientHeight;
+            var yw = cell * level.cols, yh = cell * level.rows;
+            var mx = (W - yw) / 2, my = (H - yh) / 2;
+            var seed = level.number * 9301 + 49297, html = '';
+            var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+            var tree = function (x, y, r) {
+                html += '<span class="tree" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + 2 * r + 'px;height:' + 2 * r + 'px"></span>';
+            };
+            var bush = function (x, y, r) {
+                html += '<span class="bush" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + 2 * r + 'px;height:' + 1.6 * r + 'px"></span>';
+            };
+            // Side margins: a row of trees when there's room, otherwise small bushes
+            [0, 1].forEach(function (side) {
+                var m = mx - 10;
+                if (mx < 14) return;
+                var cx = side ? W - mx / 2 - 4 : mx / 2 + 4;
+                for (var y = 14; y < H - 10; y += (m >= 26 ? 38 : 26) + rnd() * 14) {
+                    if (m >= 26) tree(cx + (rnd() - 0.5) * 6, y, Math.min(17, m / 2) + rnd() * 3);
+                    else bush(cx, y, Math.max(5, Math.min(9, (mx - 6) / 2)));
+                }
+            });
+            // Top and bottom margins
+            [0, 1].forEach(function (side) {
+                var m = my - 10;
+                if (m < 14) return;
+                var cy = side ? H - my / 2 - 3 : my / 2 + 3;
+                for (var x = mx + 18; x < W - mx - 10; x += 44 + rnd() * 20) {
+                    if (m >= 26) tree(x, cy, Math.min(15, m / 2) + rnd() * 3); else bush(x, cy, Math.min(9, m / 2));
+                }
+            });
+            sc.innerHTML = html;
+        }
+
         // ---------- rendering ----------
         var COMPASS = ['right', 'down-right', 'down', 'down-left', 'left', 'up-left', 'up', 'up-right'];
         function facing(a) { return COMPASS[Math.round(((a % 360) + 360) % 360 / 45) % 8]; }
@@ -578,7 +690,7 @@
                 slot.innerHTML = bayBusHtml(b);
                 slot.setAttribute('aria-label', E.PALETTE[b.colour].name + ' bus, ' + b.filled + ' of ' + b.cap + ' seats taken');
             } else {
-                slot.innerHTML = '<span class="bay-empty" aria-hidden="true">' + (b ? '…' : 'P') + '</span>';
+                slot.innerHTML = '<span class="bay-empty" aria-hidden="true">' + (b ? '…' : 'BUS') + '</span>';
                 slot.setAttribute('aria-label', b ? 'Bus on its way' : 'Empty bay');
             }
         }
@@ -694,7 +806,7 @@
         }
         function renderAll() {
             // Bays, queue and labels first: the depot is sized from the space left below them
-            renderBays(); renderQueue(); renderControls(); renderLevelLabel(); layout(); renderYard();
+            renderBays(); renderQueue(); renderControls(); renderLevelLabel(); layout(); renderYard(); renderScenery();
         }
 
         // ---------- level flow ----------
@@ -706,42 +818,63 @@
             if (window.Worker && /^https?:$/.test(location.protocol)) {
                 worker = new Worker('worker.js');
                 worker.onmessage = function (e) {
-                    var n = e.data.n, lvl = e.data.level;
-                    if (!lvl) lvl = E.generate(n);            // worker failed: build here instead
-                    levelCache[n] = lvl;
-                    (pending[n] || []).forEach(function (cb) { cb(lvl); });
-                    delete pending[n];
+                    var key = e.data.n + '@' + e.data.shape, lvl = e.data.level;
+                    if (!lvl) lvl = E.generate(e.data.n, e.data.shape);   // worker failed: build here instead
+                    levelCache[key] = lvl;
+                    (pending[key] || []).forEach(function (cb) { cb(lvl); });
+                    delete pending[key];
                 };
                 worker.onerror = function () { worker = null; };
             }
         } catch (e) { worker = null; }
+        // The depot is shaped to fit this screen (same size and difficulty, different rectangle)
+        function screenShape() {
+            var wrap = $('yardWrap');
+            var top = wrap.getBoundingClientRect().top;
+            var statusH = $('status').offsetParent ? Math.max($('status').offsetHeight, 18) : 0;
+            var availH = window.innerHeight - top - statusH - $('controls').offsetHeight - 28;
+            var availW = Math.max(200, wrap.clientWidth);
+            return E.shapeFor(Math.max(0.8, availH / availW));
+        }
+        var shape = 1.3;
         function getLevel(n, cb) {
-            if (levelCache[n]) { cb(levelCache[n]); return; }
-            if (!worker) { setTimeout(function () { levelCache[n] = E.generate(n); cb(levelCache[n]); }, 30); return; }
-            if (pending[n]) { pending[n].push(cb); return; }
-            pending[n] = [cb];
-            worker.postMessage({ n: n });
+            var key = n + '@' + shape;
+            if (levelCache[key]) { cb(levelCache[key]); return; }
+            if (!worker) { setTimeout(function () { levelCache[key] = E.generate(n, shape); cb(levelCache[key]); }, 30); return; }
+            if (pending[key]) { pending[key].push(cb); return; }
+            pending[key] = [cb];
+            worker.postMessage({ n: n, shape: shape });
         }
         function prefetch(n) {
-            if (!worker || levelCache[n] || pending[n]) return;
-            pending[n] = [];
-            worker.postMessage({ n: n });
+            var key = n + '@' + shape;
+            if (!worker || levelCache[key] || pending[key]) return;
+            pending[key] = [];
+            worker.postMessage({ n: n, shape: shape });
         }
         function startLevel(n) {
             levelNo = n;
             gen++; inflight = 0; arriving = {}; settling = false; settleAgain = false;
             building = true;
-            if (!levelCache[n]) setStatus('Building level ' + n + '…');
+            // Lay out the station and bays for this level type first, so the space left for the depot is measured correctly
+            $('stop').classList.toggle('pmode', E.params(n).mode === 'platform');
+            if (!baysEl.children.length) baysEl.innerHTML = new Array(E.BASE_BAYS + 1).join('<div class="bay"></div>');
+            if (E.params(n).mode === 'platform' && !$('platform').children.length) $('platform').innerHTML = '<span class="fig"></span>';
+            shape = screenShape();
+            if (!levelCache[n + '@' + shape]) setStatus('Building level ' + n + '…');
             var myGen = gen;
             getLevel(n, function (lvl) {
                 if (myGen !== gen) return;               // another level was chosen meanwhile
-                Object.keys(levelCache).forEach(function (k) { if (+k !== n && +k !== n + 1) delete levelCache[k]; });
+                Object.keys(levelCache).forEach(function (k) {
+                    var kn = parseInt(k, 10);
+                    if (kn !== n && kn !== n + 1) delete levelCache[k];
+                });
                 buildLevel(n, lvl);
                 prefetch(n + 1);
             });
         }
         function buildLevel(n, lvl) {
             level = lvl;
+            window.__depotLevel = lvl;   // read by the automated play-tests
             st = E.createState(level);
             building = false;
             ['winModal', 'stuckModal', 'levelModal'].forEach(closeModal);
@@ -1013,7 +1146,7 @@
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
                 if (active()) { pendingLayout = true; return; }
-                layout(); renderYard(); renderQueue();
+                layout(); renderYard(); renderQueue(); renderScenery();
             }, 120);
         });
 
