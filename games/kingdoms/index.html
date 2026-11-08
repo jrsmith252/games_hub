@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Kingdoms — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #f5f1ea;
+            --card: #fffdf8;
+            --royal: #33264f;
+            --royal-2: #4a3872;
+            --gold: #e0b44c;
+            --ink: #1e1b2e;
+            --ink-soft: #5f5a72;
+            --line: #d9d2c3;
+            --wall: #2b2340;
+            --hint: #2563eb;
+            --wrong: #dc2626;
+            --ok: #15803d;
+        }
+        html, body.kingdoms { height: 100%; }
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink);
+        }
+        body.kingdoms { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; }
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none;
+            padding: 6px 12px; background: var(--royal); color: #fff; border-bottom: 3px solid var(--gold); position: relative; z-index: 20;
+        }
+        .icon-btn {
+            width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
+        }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--gold); letter-spacing: 0.5px; }
+        .level-btn { background: none; border: 0; font: inherit; color: #fff; font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; opacity: 0.92; }
+        .level-btn .tough { color: var(--gold); font-weight: 700; }
+
+        main { flex: 1; min-height: 0; width: 100%; max-width: 560px; margin: 0 auto; padding: 10px 12px 6px; display: flex; flex-direction: column; align-items: center; }
+        .goal { font-size: 0.88rem; color: var(--ink-soft); text-align: center; margin-bottom: 8px; line-height: 1.35; }
+        .goal b { color: var(--ink); }
+        .goal .count { display: inline-block; margin-top: 4px; padding: 2px 12px; border-radius: 999px; background: #ebe4f6; font-weight: 700; color: var(--royal-2); }
+        .board-area { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding-bottom: 6px; }
+        .board {
+            display: grid; border: 3px solid var(--wall); border-radius: 8px; overflow: hidden;
+            touch-action: none; box-shadow: 0 6px 18px rgba(43,35,64,0.18); background: var(--wall);
+        }
+        .cell {
+            position: relative; border: 0; padding: 0; margin: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font: inherit; color: var(--ink); outline-offset: -3px;
+        }
+        .cell .x { width: 34%; height: 34%; opacity: 0.55; }
+        .cell .x path { stroke: var(--ink); stroke-width: 3.4; stroke-linecap: round; fill: none; }
+        .cell .crown { width: 64%; height: 64%; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25)); }
+        .cell .tag { position: absolute; left: 3px; top: 1px; font-size: 0.6rem; font-weight: 700; color: rgba(30,27,46,0.55); pointer-events: none; }
+        .cell.bad { background-image: repeating-linear-gradient(45deg, rgba(220,38,38,0.28) 0 5px, transparent 5px 10px) !important; }
+        .cell.bad .crown path.body { fill: var(--wrong); }
+        .cell.hinted { box-shadow: inset 0 0 0 3px var(--hint); animation: pulse 1s ease-in-out infinite; }
+        .cell.focus { box-shadow: inset 0 0 0 2px rgba(37,99,235,0.6); }
+        .cell.wrong { box-shadow: inset 0 0 0 3px var(--wrong); }
+        .cell.pop .crown { animation: pop 0.25s ease-out; }
+        @keyframes pulse { 50% { box-shadow: inset 0 0 0 3px rgba(37,99,235,0.3); } }
+        @keyframes pop { 0% { transform: scale(0.5); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+        .board.won .cell .crown { animation: shine 0.9s ease-in-out; }
+        @keyframes shine { 50% { transform: scale(1.18) rotate(-6deg); } }
+
+        .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(245,241,234,0.97); border-top: 1px solid var(--line); position: relative; z-index: 20; }
+        .controls .row { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; }
+        .ctrl {
+            flex: 1; min-height: 48px; border-radius: 12px; border: 2px solid rgba(30,27,46,0.18); background: var(--card); color: var(--ink);
+            font: inherit; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+        }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .ctrl.primary { background: var(--royal); color: #fff; border-color: var(--royal); }
+        .ctrl small { font-weight: 500; opacity: 0.8; font-size: 0.72rem; }
+        .hint-bar { display: none; max-width: 560px; margin: 0 auto 8px; background: #eff6ff; border: 2px solid var(--hint); border-radius: 12px; padding: 10px 12px; font-size: 0.9rem; line-height: 1.4; color: #1e3a8a; }
+        .hint-bar.show { display: block; }
+        .hint-bar.mistake { background: #fef2f2; border-color: var(--wrong); color: #7f1d1d; }
+        .hint-bar.info { background: #fff7ed; border-color: #ea580c; color: #7c2d12; }
+        .hint-bar b { display: block; margin-bottom: 2px; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(30,27,46,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 390px; background: var(--card); border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--royal); }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 14px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 14px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal ol b { color: var(--ink); }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .example { display: flex; justify-content: center; margin: 4px 0 12px; }
+        .stars { font-size: 2.2rem; letter-spacing: 6px; margin: 2px 0 10px; color: #d6cdb9; }
+        .stars .lit { color: #d97706; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--royal); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(30,27,46,0.22); }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+        .toggle-row b { display: block; font-size: 0.95rem; color: var(--ink); }
+        .toggle-row small { display: block; color: var(--ink-soft); font-size: 0.8rem; margin-top: 2px; }
+        .switch { position: relative; flex: none; width: 50px; height: 30px; }
+        .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+        .switch .track { position: absolute; inset: 0; border-radius: 999px; background: #cbd5e1; transition: background 0.2s; pointer-events: none; }
+        .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .switch input:checked + .track { background: var(--ok); }
+        .switch input:checked + .track::after { transform: translateX(20px); }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .level-cell small { font-size: 0.6rem; color: #d97706; letter-spacing: 1px; min-height: 0.8em; }
+        .level-cell.current { border: 2px solid var(--royal); }
+        .level-cell.tough { background: #fbf3dc; }
+        .win-crown { width: 64px; height: 64px; margin: 0 auto 4px; display: block; }
+        .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
+        .toast.show { opacity: 1; }
+        .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
+        @media (max-height: 640px) {
+            .goal { font-size: 0.8rem; margin-bottom: 5px; }
+            main { padding-top: 6px; }
+            .ctrl { min-height: 44px; }
+        }
+    </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Kingdoms</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg>
+        </button>
+    </header>
+
+    <main>
+        <p class="goal" id="goal"></p>
+        <div class="board-area" id="boardArea">
+            <div class="board" id="board" role="grid" aria-label="Kingdoms board"></div>
+        </div>
+    </main>
+
+    <div class="controls">
+        <div class="hint-bar" id="hintBar" role="status" aria-live="polite"></div>
+        <div class="row">
+            <button class="ctrl" id="undoBtn" aria-label="Undo">
+                <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo
+            </button>
+            <button class="ctrl primary" id="hintBtn">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small id="hintLeft">2 left</small>
+            </button>
+            <button class="ctrl" id="clearBtn">
+                <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Clear
+            </button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <div class="example" id="example" aria-hidden="true"></div>
+            <ol>
+                <li>The board is split into coloured <b>kingdoms</b>. Place one <b>crown</b> in every <b>row</b>, every <b>column</b> and every <b>kingdom</b>.</li>
+                <li>Crowns can't <b>touch</b>, not even corner to corner.</li>
+                <li>Tap a square once for <b>✕</b> (no crown here), twice for a <b>crown</b>, three times to clear it. Drag across squares to cross out several at once.</li>
+                <li>Every level has exactly one answer, and you can always reach it by reasoning. You never need to guess.</li>
+                <li>Crowns that break a rule turn <b>red</b>, so you can spot a clash straight away.</li>
+            </ol>
+            <p>Stuck? <b>Hint</b> points out a wrong mark or explains the next step. You get <b>2 hints</b> per level: no hints for 3 stars, one for 2 stars, two for 1 star. Undo and Clear are free.</p>
+            <label class="toggle-row" for="autoToggle">
+                <span><b>Auto-cross</b><small>Placing a crown crosses out the squares it rules out. Removing the crown takes them away again.</small></span>
+                <span class="switch"><input type="checkbox" id="autoToggle" role="switch"><span class="track"></span></span>
+            </label>
+            <label class="toggle-row" for="lettersToggle">
+                <span><b>Kingdom letters</b><small>Show a letter in each kingdom, so you don't need to tell colours apart. Helpful for colour blindness.</small></span>
+                <span class="switch"><input type="checkbox" id="lettersToggle" role="switch"><span class="track"></span></span>
+            </label>
+            <button class="btn" id="helpClose">Let's play</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <svg class="win-crown" viewBox="0 0 24 24" aria-hidden="true"><path class="body" d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z" fill="#e0b44c" stroke="#8a6414" stroke-width="1.2" stroke-linejoin="round"/><rect x="5" y="18.5" width="14" height="2.5" rx="1" fill="#c99630"/></svg>
+            <h2 id="winTitle">All kingdoms crowned!</h2>
+            <div class="stars" id="winStars"></div>
+            <p id="winText"></p>
+            <button class="btn" id="nextBtn">Next level</button>
+            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="clearModal" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+        <div class="modal">
+            <h2 id="clearTitle">Clear the board?</h2>
+            <p>This removes all your crowns and crosses. Hints already used still count.</p>
+            <button class="btn" id="clearYes">Clear board</button>
+            <button class="btn secondary" id="clearNo">Keep going</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <button class="modal-x" id="levelX" aria-label="Close">✕</button>
+            <h2 id="levelTitle">Levels</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Kingdoms';   // one place to rename the game
+        var E = window.KingdomsEngine, S = window.HubStorage;
+        var KEY_PROGRESS = 'kingdoms_progress', KEY_STARS = 'kingdoms_stars', KEY_STATE = 'kingdoms_state',
+            KEY_SEEN = 'kingdoms_instructionsSeen', KEY_AUTO = 'kingdoms_autocross',
+            KEY_LETTERS = 'hub_colourBlindShapes';   // hub-wide colour-blind aid setting (shared with Depot Dash)
+        var $ = function (id) { return document.getElementById(id); };
+        var COLOURS = ['#c9b5ee', '#ffc48c', '#9fc4f5', '#b5df9b', '#d6d6dc', '#f5a3a3', '#f2de7a', '#93d9cf', '#f3b2d6', '#dcc39f'];
+        var NAMES = ['purple', 'orange', 'blue', 'green', 'grey', 'red', 'yellow', 'teal', 'pink', 'sand'];
+        var CROWN = '<svg class="crown" viewBox="0 0 24 24" aria-hidden="true"><path class="body" d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z" fill="#e0b44c" stroke="#5c430e" stroke-width="1.3" stroke-linejoin="round"/><rect x="5" y="18.5" width="14" height="2.5" rx="1" fill="#b8892a" stroke="#5c430e" stroke-width="0.8"/></svg>';
+        var XMARK = '<svg class="x" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>';
+
+        document.body.classList.add('kingdoms');
+        document.title = GAME_NAME + ' — Game Hub';
+
+        // ---------- saved data ----------
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var stars = (function () {
+            var out = {};
+            try {
+                var o = JSON.parse(S.getString(KEY_STARS, '{}'));
+                if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; });
+            } catch (e) { /* ignore */ }
+            return out;
+        })();
+        var autoCross = S.getString(KEY_AUTO, 'true') !== 'false';
+        var letters = S.getFlag(KEY_LETTERS);
+
+        var MAX_HINTS = 2;
+        var levelNo = progress.level, pz = null, marks = [], autoX = {}, history = [], hintsUsed = 0, solved = false;
+        var hintInfo = null, colourOf = [], elapsed = 0, lastTick = 0;
+
+        // ---------- helpers ----------
+        function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 1600); }
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } var m = $(id).querySelector('.modal'); if (m) m.scrollTop = 0; }
+        function closeModal(id) { $(id).classList.remove('active'); }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function seeded(n) { var a = n * 2654435761 >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+        function kingdomName(k) { return 'the ' + NAMES[colourOf[k]] + ' kingdom' + (letters ? ' (' + String.fromCharCode(65 + k) + ')' : ''); }
+        function fillNames(text) {
+            var t = text.replace(/\{R(\d+)\}/g, function (_, k) { return kingdomName(+k); })
+                        .replace(/\{(r|c)s([\d.]+)\}/g, function (_, k, list) { return lineList(k === 'r' ? 'rows' : 'columns', list.split('.').map(Number)); })
+                        .replace(/\{r(\d+)\}/g, function (_, r) { return 'row ' + (+r + 1); })
+                        .replace(/\{c(\d+)\}/g, function (_, c) { return 'column ' + (+c + 1); });
+            return t.charAt(0).toUpperCase() + t.slice(1);
+        }
+        // [3,4,5] -> "rows 4 to 6"; [1,4] -> "rows 2 and 5"
+        function lineList(word, idx) {
+            var n = idx.map(function (x) { return x + 1; });
+            var run = n.every(function (x, i) { return i === 0 || x === n[i - 1] + 1; });
+            if (run && n.length > 2) return word + ' ' + n[0] + ' to ' + n[n.length - 1];
+            return word + ' ' + (n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]);
+        }
+        function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        function fmtTime(ms) { var s = Math.round(ms / 1000), m = Math.floor(s / 60); s %= 60; return m + ':' + (s < 10 ? '0' : '') + s; }
+
+        // ---------- state ----------
+        function saveState() {
+            S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, marks: marks, ax: autoX, hints: hintsUsed, solved: solved, t: Math.round(elapsed) }));
+        }
+        function loadState(n) {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.marks) || o.marks.length !== pz.N * pz.N) return false;
+                if (o.marks.some(function (m) { return m !== 0 && m !== 1 && m !== 2; })) return false;
+                marks = o.marks; autoX = o.ax && typeof o.ax === 'object' ? o.ax : {};
+                hintsUsed = Math.min(MAX_HINTS, Math.max(0, o.hints | 0)); solved = !!o.solved; elapsed = Math.max(0, +o.t || 0);
+                return true;
+            } catch (e) { return false; }
+        }
+
+        // ---------- play ----------
+        function startLevel(n) {
+            levelNo = n;
+            pz = E.generate(n);
+            history = []; hintInfo = null;
+            // Colours per level: a seeded shuffle so neighbouring levels look different
+            var r = seeded(n), idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            for (var i = idx.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+            colourOf = idx;
+            if (!loadState(n)) { marks = []; for (i = 0; i < pz.N * pz.N; i++) marks.push(0); autoX = {}; hintsUsed = 0; solved = false; elapsed = 0; }
+            ['winModal', 'levelModal', 'clearModal'].forEach(closeModal);
+            hideHint();
+            if (hintsUsed > 0 && !solved) {
+                var nb = $('hintBar'); nb.className = 'hint-bar show info';
+                nb.innerHTML = '<b>Welcome back</b>You\'ve already used ' + hintsUsed + ' of your ' + MAX_HINTS + ' hints here, so the best you can get this time is ' +
+                    (3 - hintsUsed) + ' star' + (3 - hintsUsed === 1 ? '' : 's') + '. Once it\'s solved you can replay it for a fresh try at 3 stars.';
+            }
+            $('levelBtn').innerHTML = 'Level ' + n + (pz.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
+            buildBoard(); paint(); renderControls(); saveState();
+            lastTick = Date.now();
+        }
+        function buildBoard() {
+            var N = pz.N, board = $('board'), area = $('boardArea');
+            var side = Math.floor(Math.min(area.clientWidth, area.clientHeight, 520));
+            var cell = Math.floor((side - 6) / N);
+            board.style.gridTemplateColumns = 'repeat(' + N + ', ' + cell + 'px)';
+            board.style.gridTemplateRows = 'repeat(' + N + ', ' + cell + 'px)';
+            var html = '', thick = Math.max(2, Math.round(cell / 18)) + 'px solid var(--wall)', thin = '1px solid rgba(43,35,64,0.18)';
+            for (var i = 0; i < N * N; i++) {
+                var r = Math.floor(i / N), c = i % N, g = pz.reg[i];
+                var bt = r > 0 && pz.reg[i - N] !== g ? thick : r > 0 ? thin : '0';
+                var bl = c > 0 && pz.reg[i - 1] !== g ? thick : c > 0 ? thin : '0';
+                html += '<button class="cell" role="gridcell" data-i="' + i + '" style="background-color:' + COLOURS[colourOf[g]] +
+                    ';border-top:' + bt + ';border-left:' + bl + '"></button>';
+            }
+            board.innerHTML = html;
+            board.style.fontSize = Math.max(10, cell * 0.3) + 'px';
+            board.classList.toggle('won', false);
+        }
+        function paint(popCell) {
+            var N = pz.N, bad = {}; E.conflicts(pz, marks).forEach(function (i) { bad[i] = 1; });
+            var cells = $('board').children, crowns = 0;
+            for (var i = 0; i < N * N; i++) {
+                var el = cells[i], m = marks[i];
+                if (m === 2) crowns++;
+                var tag = letters ? '<span class="tag">' + String.fromCharCode(65 + pz.reg[i]) + '</span>' : '';
+                el.innerHTML = tag + (m === 2 ? CROWN : m === 1 ? XMARK : '');
+                el.className = 'cell' + (bad[i] ? ' bad' : '') + (i === popCell ? ' pop' : '');
+                el.setAttribute('aria-label', 'Row ' + (Math.floor(i / N) + 1) + ', column ' + (i % N + 1) + ', ' + NAMES[colourOf[pz.reg[i]]] + ' kingdom' +
+                    (letters ? ' ' + String.fromCharCode(65 + pz.reg[i]) : '') + ', ' + (m === 2 ? 'crown' + (bad[i] ? ', clashes with another crown' : '') : m === 1 ? 'crossed out' : 'empty'));
+            }
+            if (hintInfo) {
+                (hintInfo.focus || []).forEach(function (j) { cells[j].classList.add('focus'); });
+                hintInfo.cells.forEach(function (j) { cells[j].classList.add(hintInfo.mistake ? 'wrong' : 'hinted'); });
+            }
+            $('goal').innerHTML = 'One <b>crown</b> in every row, column and kingdom. No touching.<br><span class="count">' + crowns + ' of ' + N + ' crowns</span>';
+        }
+        function renderControls() {
+            $('undoBtn').disabled = history.length === 0 || solved;
+            var left = Math.max(0, MAX_HINTS - hintsUsed);
+            $('hintBtn').disabled = solved || left === 0;
+            $('hintLeft').textContent = left ? left + ' left' : 'none left';
+            $('hintBtn').setAttribute('aria-label', 'Hint, ' + left + ' of ' + MAX_HINTS + ' left. Each hint costs a star.');
+            $('clearBtn').disabled = solved;
+        }
+        function pushHistory() {
+            history.push({ m: marks.slice(), ax: JSON.stringify(autoX) });
+            if (history.length > 400) history.shift();
+        }
+        // Set one square, keeping auto-crosses in step with crowns
+        function setMark(i, v) {
+            var was = marks[i];
+            if (was === v) return;
+            marks[i] = v;
+            if (was === 2 && autoX[i]) {
+                // Take away the crosses this crown added, unless another crown still rules them out
+                var still = {};
+                Object.keys(autoX).forEach(function (k) { if (+k !== i && marks[+k] === 2) autoX[k].forEach(function (j) { still[j] = 1; }); });
+                autoX[i].forEach(function (j) { if (!still[j] && marks[j] === 1) marks[j] = 0; });
+                delete autoX[i];
+            }
+            if (v === 2 && autoCross) {
+                var added = [];
+                E.shadow(pz, i).forEach(function (j) { if (marks[j] === 0) { marks[j] = 1; added.push(j); } });
+                // crosses another crown already added also belong to this one, so removing either keeps them right
+                Object.keys(autoX).forEach(function (k) { autoX[k].forEach(function (j) { if (added.indexOf(j) < 0 && E.shadow(pz, i).indexOf(j) >= 0) added.push(j); }); });
+                if (added.length) autoX[i] = added;
+            }
+        }
+        function afterChange(popCell) {
+            if (hintInfo) { hintInfo = null; hideHint(); }
+            paint(popCell); renderControls(); saveState();
+            if (E.isSolved(pz, marks)) onWin();
+        }
+        function cycle(i) {
+            if (solved) return;
+            pushHistory();
+            var next = marks[i] === 0 ? 1 : marks[i] === 1 ? 2 : 0;
+            setMark(i, next);
+            buzz(next === 2 ? 12 : 6);
+            afterChange(next === 2 ? i : -1);
+        }
+        function undo() {
+            if (!history.length || solved) return;
+            var h = history.pop(); marks = h.m; autoX = JSON.parse(h.ax);
+            hintInfo = null; hideHint(); paint(); renderControls(); saveState();
+        }
+
+        // ---------- touch: tap to cycle, drag to cross out ----------
+        var drag = null;
+        function cellAt(x, y) { var el = document.elementFromPoint(x, y); el = el && el.closest ? el.closest('.cell') : null; return el && el.parentNode === $('board') ? +el.dataset.i : -1; }
+        $('board').addEventListener('pointerdown', function (e) {
+            if (solved || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            var i = cellAt(e.clientX, e.clientY); if (i < 0) return;
+            drag = { start: i, mode: null, last: i, id: e.pointerId };
+            e.preventDefault();
+        });
+        $('board').addEventListener('pointermove', function (e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            var i = cellAt(e.clientX, e.clientY); if (i < 0 || i === drag.last) return;
+            if (!drag.mode) {
+                // Dragging from an empty square crosses out; from a crossed one clears crosses
+                drag.mode = marks[drag.start] === 1 ? 'clear' : 'x';
+                pushHistory();
+                apply(drag.start);
+            }
+            apply(i); drag.last = i;
+            paint();
+        });
+        function apply(i) {
+            if (drag.mode === 'x' && marks[i] === 0) { marks[i] = 1; buzz(4); }
+            else if (drag.mode === 'clear' && marks[i] === 1) { marks[i] = 0; buzz(4); }
+        }
+        function endDrag(e) {
+            if (!drag || (e && e.pointerId !== drag.id)) return;
+            var d = drag; drag = null;
+            if (!d.mode) { if (e && e.type === 'pointerup') cycle(d.start); }
+            else afterChange(-1);
+        }
+        $('board').addEventListener('pointerup', endDrag);
+        $('board').addEventListener('pointercancel', endDrag);
+        // Keyboard: Enter/Space on a focused square
+        $('board').addEventListener('click', function (e) { if (e.detail !== 0) return; var b = e.target.closest('.cell'); if (b) cycle(+b.dataset.i); });
+        $('board').addEventListener('keydown', function (e) {
+            var b = e.target.closest('.cell'); if (!b) return;
+            var i = +b.dataset.i, N = pz.N, to = -1;
+            if (e.key === 'ArrowRight' && i % N < N - 1) to = i + 1;
+            if (e.key === 'ArrowLeft' && i % N > 0) to = i - 1;
+            if (e.key === 'ArrowDown' && i + N < N * N) to = i + N;
+            if (e.key === 'ArrowUp' && i - N >= 0) to = i - N;
+            if (to >= 0) { e.preventDefault(); $('board').children[to].focus(); }
+        });
+
+        // ---------- hints ----------
+        function showHint() {
+            if (solved || hintsUsed >= MAX_HINTS) return;
+            var h = E.hint(pz, marks);
+            if (!h) { toast('Nothing to add: check your crowns'); return; }
+            hintsUsed++;
+            hintInfo = h;
+            renderControls();
+            var bar = $('hintBar');
+            bar.className = 'hint-bar show' + (h.mistake ? ' mistake' : '');
+            var head = h.mistake ? 'Something\'s not right' : h.kind === 'crown' ? 'Next step: place a crown' : 'Next step: cross ' + (h.cells.length === 1 ? 'this square' : 'these squares') + ' out';
+            bar.innerHTML = '<b>' + head + '</b>' + esc(fillNames(h.why));
+            paint(); saveState();
+        }
+        function hideHint() { $('hintBar').className = 'hint-bar'; }
+        function starsFor() { return hintsUsed === 0 ? 3 : hintsUsed === 1 ? 2 : 1; }
+
+        // ---------- winning ----------
+        function confetti() {
+            try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            var colours = ['#e0b44c', '#33264f', '#9fc4f5', '#f5a3a3', '#b5df9b', '#c9b5ee'];
+            for (var i = 0; i < 50; i++) {
+                var c = document.createElement('span');
+                c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = colours[i % colours.length];
+                document.body.appendChild(c);
+                if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }],
+                    { duration: 1400 + Math.random() * 900, delay: Math.random() * 250, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
+                a.onfinish = (function (el) { return function () { el.remove(); }; })(c);
+            }
+        }
+        function onWin() {
+            tick();
+            solved = true; hideHint();
+            var s = starsFor();
+            if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
+            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
+            S.setObject(KEY_PROGRESS, progress);
+            S.setString(KEY_STARS, JSON.stringify(stars));
+            // Tidy up: clear leftover crosses so the finished board shows just the crowns
+            for (var i = 0; i < marks.length; i++) if (marks[i] === 1) marks[i] = 0;
+            saveState(); renderControls(); paint();
+            $('board').classList.add('won'); buzz(40); confetti();
+            var html = ''; for (i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
+            $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
+            $('winText').textContent = (s === 3 ? 'Solved with no hints' : 'Solved with ' + hintsUsed + ' hint' + (hintsUsed === 1 ? '' : 's')) +
+                ' in ' + fmtTime(elapsed) + '.' + (s === 3 ? '' : ' Try again without for 3 stars.');
+            $('replayBtn').style.display = s === 3 ? 'none' : '';
+            setTimeout(function () { openModal('winModal'); }, 700);
+        }
+        // Time only counts while the page is on screen
+        function tick() {
+            var now = Date.now();
+            if (!solved && !document.hidden && lastTick) elapsed += Math.min(now - lastTick, 5000);
+            lastTick = now;
+        }
+        setInterval(function () { tick(); }, 1000);
+        document.addEventListener('visibilitychange', function () { tick(); if (document.hidden && pz) saveState(); });
+
+        // ---------- levels ----------
+        function openLevels() {
+            var html = '', max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) {
+                var s = stars[n] || 0, str = ''; for (var i = 0; i < s; i++) str += '★';
+                html += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (E.isTough(n) ? ' tough' : '') + '" data-level="' + n + '" aria-label="Level ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>';
+            }
+            $('levelGrid').innerHTML = html;
+            openModal('levelModal');
+            var cur = $('levelGrid').querySelector('.current'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+        }
+        // A tiny solved example for the help screen
+        function drawExample() {
+            var ex = { N: 4, reg: [0, 0, 1, 1, 0, 2, 2, 1, 3, 3, 2, 1, 3, 3, 2, 2], crowns: [1, 7, 8, 14] };
+            var cols = ['#c9b5ee', '#ffc48c', '#9fc4f5', '#b5df9b'], s = 30, html = '<div class="board" style="grid-template-columns:repeat(4,' + s + 'px);grid-template-rows:repeat(4,' + s + 'px);border-width:2px;box-shadow:none">';
+            for (var i = 0; i < 16; i++) {
+                var r = Math.floor(i / 4), c = i % 4, g = ex.reg[i];
+                var bt = r > 0 && ex.reg[i - 4] !== g ? '2px solid var(--wall)' : r > 0 ? '1px solid rgba(43,35,64,0.18)' : '0';
+                var bl = c > 0 && ex.reg[i - 1] !== g ? '2px solid var(--wall)' : c > 0 ? '1px solid rgba(43,35,64,0.18)' : '0';
+                html += '<div class="cell" style="cursor:default;background:' + cols[g] + ';border-top:' + bt + ';border-left:' + bl + '">' + (ex.crowns.indexOf(i) >= 0 ? CROWN : '') + '</div>';
+            }
+            $('example').innerHTML = html + '</div>';
+        }
+
+        // ---------- wiring ----------
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', showHint);
+        $('clearBtn').addEventListener('click', function () { openModal('clearModal'); });
+        $('clearYes').addEventListener('click', function () {
+            pushHistory(); for (var i = 0; i < marks.length; i++) marks[i] = 0; autoX = {}; hintInfo = null; hideHint();
+            closeModal('clearModal'); paint(); renderControls(); saveState();
+        });
+        $('clearNo').addEventListener('click', function () { closeModal('clearModal'); });
+        $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo + 1); });
+        $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo); });
+        function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        $('autoToggle').checked = autoCross;
+        $('autoToggle').addEventListener('change', function () { autoCross = this.checked; S.setString(KEY_AUTO, autoCross ? 'true' : 'false'); });
+        $('lettersToggle').checked = letters;
+        $('lettersToggle').addEventListener('change', function () { letters = this.checked; S.setFlag(KEY_LETTERS, letters); paint(); });
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelX').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) {
+            var b = e.target.closest('.level-cell'); if (!b) return;
+            var n = +b.dataset.level;
+            if (n === levelNo) { closeModal('levelModal'); return; }
+            S.setString(KEY_STATE, 'null');
+            startLevel(n);
+        });
+        // Tapping the dark backdrop closes pop-ups that are safe to close
+        ['helpModal', 'levelModal', 'clearModal'].forEach(function (id) {
+            $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } });
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { if ($('helpModal').classList.contains('active')) closeHelp(); ['levelModal', 'clearModal'].forEach(closeModal); }
+        });
+        var rt = null;
+        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { buildBoard(); paint(); }, 150); });
+
+        drawExample();
+        startLevel(levelNo);
+        if (solved) $('board').classList.add('won');
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        window.__kingdoms = function () { return { pz: pz, marks: marks }; };   // read by the automated play-tests
+    })();
+    </script>
+</body>
+</html>

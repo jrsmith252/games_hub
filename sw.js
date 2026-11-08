@@ -1,11 +1,11 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
    Pages and assets are fetched network-first, so updates show up straight away when online.
    Bump CACHE_VERSION (and the version in the hub footer) when releasing. */
-const CACHE_VERSION = 'v1.9.2';
+const CACHE_VERSION = 'v1.10.0';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [
-  'breakout', 'connect-four', 'deduce', 'depot-dash', 'hangman', 'lights-out', 'memory-match', 'minesweeper', 'simon',
+  'breakout', 'connect-four', 'deduce', 'depot-dash', 'hangman', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'simon',
   'sliding-puzzle', 'snake', 'sudoku', 'tetris', 'tic-tac-toe', 'twenty48', 'word-search'
 ];
 
@@ -28,6 +28,7 @@ const PRECACHE = [
   'games/depot-dash/engine.js',
   'games/depot-dash/worker.js',
   'games/deduce/engine.js',
+  'games/kingdoms/engine.js',
   ...GAMES.map((g) => 'games/' + g + '/index.html')
 ];
 
