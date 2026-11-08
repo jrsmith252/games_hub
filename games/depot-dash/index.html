@@ -384,6 +384,13 @@
         .modal {
             width: 100%; max-width: 360px; background: var(--bg-card); border: 1px solid var(--line);
             border-radius: 20px; padding: 24px 20px 20px; text-align: center;
+            position: relative; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px);
+            overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+        }
+        .modal-close {
+            position: sticky; top: -12px; float: right; margin: -12px -8px 0 0; z-index: 2;
+            width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+            background: var(--bg-raise); color: var(--text-primary); font-size: 1.3rem; line-height: 1; cursor: pointer;
         }
         .modal h2 { font-family: 'Fraunces', serif; font-size: 1.45rem; margin-bottom: 8px; }
         .modal p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; margin-bottom: 16px; }
@@ -479,6 +486,7 @@
 
     <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
         <div class="modal">
+            <button class="modal-close" id="helpX" aria-label="Close how to play">✕</button>
             <h2 id="helpTitle">How to play</h2>
             <ol>
                 <li>Passengers wait on the <b>platform</b>. Anyone whose colour matches a parked bus walks on. Gaps fill from the <b>queue</b> on the left. On <b>Single file</b> levels they board strictly in order. <b>Tap the stop</b> to see everyone who's waiting.</li>
@@ -1175,7 +1183,12 @@
             S.setFlag(KEY_SHAPES, this.checked);
             applyShapes(this.checked);
         });
-        $('helpClose').addEventListener('click', function () { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); });
+        function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        // Tapping outside the box closes the help and level list (never the win or stuck screens)
+        $('helpModal').addEventListener('click', function (e) { if (e.target === this) closeHelp(); });
+        $('levelModal').addEventListener('click', function (e) { if (e.target === this) closeModal('levelModal'); });
         $('levelBtn').addEventListener('click', openLevels);
         $('levelClose').addEventListener('click', function () { closeModal('levelModal'); });
         $('levelGrid').addEventListener('click', function (e) {
