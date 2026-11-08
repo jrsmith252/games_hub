@@ -155,11 +155,12 @@
 
     // ---------- difficulty curve ----------
     function params(n) {
-        var cols = Math.min(7, 4 + Math.floor((n + 1) / 6));      // 4..7
-        var rows = Math.min(9, 5 + Math.floor(n / 5));            // 5..9
+        // The depot keeps growing for the first ~40 levels: up to 10 x 13 and around 50 vehicles
+        var cols = Math.min(10, 4 + Math.floor((n + 1) / 4));     // 4..10
+        var rows = Math.min(13, 5 + Math.floor(n / 3));           // 5..13
         var colours = Math.min(6, 2 + Math.floor((n + 1) / 4));   // 2..6
         var maxBuses = Math.floor(cols * rows / 2.3);
-        var buses = Math.max(3, Math.min(maxBuses, 3 + Math.floor(n * 0.8)));
+        var buses = Math.max(3, Math.min(maxBuses, 3 + Math.floor(n * 1.15)));
         // How many buses the intended solution parks at once (bays are 5)
         var maxPark = n <= 1 ? 1 : n <= 3 ? 2 : n <= 6 ? 3 : n <= 15 ? 4 : 5;
         // The solution must genuinely need this many bays at its busiest moment
@@ -172,9 +173,11 @@
         var minBlocked = n <= 2 ? 0 : 0.3;
         // Level type: "single" = strict single-file queue; "platform" = pick from a platform of waiting passengers
         var mode = (n <= 2 || n % 4 === 0) ? 'single' : 'platform';
-        var platform = mode === 'single' ? 1 : n <= 8 ? 10 : n <= 20 ? 8 : 7;
+        // Platform grows into a crowd; bigger levels mix passengers for more buses at once
+        var platform = mode === 'single' ? 1 : n <= 8 ? 10 : n <= 16 ? 12 : n <= 30 ? 14 : 16;
+        var mixGroup = n <= 16 ? 3 : 4;
         return { cols: cols, rows: rows, colours: colours, buses: buses, maxPark: maxPark, minPeak: minPeak,
-                 mode: mode, platform: platform,
+                 mode: mode, platform: platform, mixGroup: mixGroup,
                  removeBias: removeBias, mix: mix, angles: angles, minBlocked: minBlocked, bays: BASE_BAYS };
     }
 
@@ -302,7 +305,7 @@
             return true;
         }
         var tries = 0;
-        while (lvl.buses.length < p.buses && tries < 1400) {
+        while (lvl.buses.length < p.buses && tries < 3000) {
             tries++;
             var type = pickType(), T = TYPES[type], ang = pickAngle();
             var cx = 0.5 + r() * (p.cols - 1), cy = 0.5 + r() * (p.rows - 1);
@@ -356,8 +359,8 @@
         } else {
             // Platform levels: passengers for the next few buses arrive mixed together in short runs,
             // so several colours are on the platform at once and the player chooses what to serve.
-            for (var g = 0; g < service.length; g += 3) {
-                var pools = service.slice(g, g + 3).map(function (id) { return { c: lvl.buses[id].colour, n: lvl.buses[id].cap }; });
+            for (var g = 0; g < service.length; g += p.mixGroup) {
+                var pools = service.slice(g, g + p.mixGroup).map(function (id) { return { c: lvl.buses[id].colour, n: lvl.buses[id].cap }; });
                 for (;;) {
                     var avail = pools.filter(function (x) { return x.n > 0; });
                     if (!avail.length) break;
