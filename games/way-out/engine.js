@@ -191,7 +191,8 @@
         if (cache[n] && !tries) return cache[n];
         var P = plan(n), coloured = P.colours * P.per, best = null, bestGap = 1e9;
         tries = tries || 40; cap = cap || 60000;
-        for (var t = 0; t < tries; t++) {
+        // keep going past the usual number of tries if nothing usable has turned up yet
+        for (var t = 0; t < tries || (!best && t < tries * 6); t++) {
             var L = pack(n * 7919 + t * 104729 + 1, P);
             if (L.blocks.filter(function (b) { return b.col >= 0; }).length < coloured) continue;
             var m = mapPositions(L, cap);

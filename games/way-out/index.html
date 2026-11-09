@@ -56,10 +56,10 @@
         .bc { position: absolute; display: flex; align-items: center; justify-content: center; border: 0 solid rgba(20,15,40,0.55); }
         .stud { width: 46%; height: 46%; border-radius: 50%; background: rgba(255,255,255,0.28); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
         .stud svg { width: 64%; height: 64%; fill: rgba(255,255,255,0.95); }
-        .bc.crate { background-color: #b08d5f !important; background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0 2px, transparent 2px 12px); }
+        .bc.crate { background-color: #9c97ad !important; background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.09) 0 2px, transparent 2px 11px); border-color: rgba(40,35,60,0.6) !important; }
         .bc.crate .stud { display: none; }
         .pill.low b { color: #dc2626; }
-        .pill.stars b { color: #d97706; letter-spacing: 1px; }
+        .pill.starpill b { color: #d97706; letter-spacing: 1px; }
         .axis { width: 80%; height: 80%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
         .axis svg { width: 100%; height: 100%; stroke: rgba(255,255,255,0.95); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.3)); }
         .ghost { position: absolute; border: 3px dashed var(--hint); border-radius: 9px; background: rgba(14,165,233,0.12); pointer-events: none; z-index: 2; }
@@ -133,7 +133,7 @@
     <main>
         <div class="status" aria-live="polite">
             <span class="pill" id="clockPill">⏱ <b id="clock">0:00</b></span>
-            <span class="pill stars" id="starsPill" aria-label="Stars you can still get"><b id="liveStars">★★★</b></span>
+            <span class="pill starpill" id="starsPill" aria-label="Stars you can still get"><b id="liveStars">★★★</b></span>
             <span class="pill">Left <b id="left">0</b></span>
         </div>
         <div class="board-area" id="boardArea"><div class="board" id="board" aria-label="Way Out board"></div></div>
@@ -327,7 +327,8 @@
             if (built[n]) return cb && cb(built[n]);
             if (prebuilt === null) { prebuiltWaiting.push(function () { getLevel(n, cb); }); return; }
             if (prebuilt[n - 1] && prebuilt[n - 1].number === n) { built[n] = prebuilt[n - 1]; return cb && cb(built[n]); }
-            if (prebuilt.length >= 150 && n > prebuilt.length) { built[n] = E.variant(prebuilt[(n - 1) % prebuilt.length], n); return cb && cb(built[n]); }
+            // past the shipped levels: the hard half (51-150) again, turned and later mirrored
+            if (prebuilt.length >= 150 && n > prebuilt.length) { built[n] = E.variant(prebuilt[50 + (n - 151) % 100], n); return cb && cb(built[n]); }
             if (!worker) { built[n] = E.generate(n); return cb && cb(built[n]); }
             if (waiting[n]) { if (cb) waiting[n].push(cb); return; }
             waiting[n] = cb ? [cb] : [];
@@ -351,8 +352,8 @@
         var cmap = [0, 1, 2, 3, 4, 5, 6, 7];
         function build() {
             // Colours vary by level (seeded, so a level always looks the same)
-            var a = (levelNo * 2654435761) >>> 0; cmap = [0, 1, 2, 3, 4, 5, 6, 7];
-            for (var ci = 7; ci > 0; ci--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var cj = a % (ci + 1); var tmp = cmap[ci]; cmap[ci] = cmap[cj]; cmap[cj] = tmp; }
+            var a = (levelNo * 2654435761) >>> 0; cmap = [0, 1, 2, 3, 4, 5, 6];
+            for (var ci = 6; ci > 0; ci--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var cj = a % (ci + 1); var tmp = cmap[ci]; cmap[ci] = cmap[cj]; cmap[cj] = tmp; }
             var area = $('boardArea'), board = $('board');
             var wall = 12;
             var cell = Math.floor(Math.min((area.clientWidth - wall * 2) / L.C, (area.clientHeight - wall * 2) / L.R, 64));
@@ -386,7 +387,7 @@
                     var isMid = false;   // every piece slides along its length, so no arrows needed
                     var crate = b.col < 0;
                     inner += '<div class="bc' + (crate ? ' crate' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + radius + ';' + bord +
-                        ';background:' + (crate ? '#b08d5f' : COLOURS[cmap[b.col]]) + '">' +
+                        ';background:' + (crate ? '#9c97ad' : COLOURS[cmap[b.col]]) + '">' +
                         (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : '<span class="stud">' + (showSyms && !crate ? SYMS[cmap[b.col]] : '') + '</span>') + '</div>';
                 });
                 var e = E.extent(b.shape);
