@@ -126,8 +126,8 @@
 
     <main>
         <div class="status" aria-live="polite">
-            <span class="pill" id="movesPill">Moves <b id="moves">0</b></span>
-            <span class="pill">★★★ in <b id="par">0</b></span>
+            <span class="pill" id="clockPill">⏱ <b id="clock">0:00</b></span>
+            <span class="pill" id="targetPill">★★★ under <b id="target">0:00</b></span>
             <span class="pill">Left <b id="left">0</b></span>
         </div>
         <div class="board-area" id="boardArea"><div class="board" id="board" aria-label="Way Out board"></div></div>
@@ -152,10 +152,14 @@
                 <li><b>Drag</b> a block to slide it around the board. Blocks can't pass through each other or the grey stones.</li>
                 <li>Each block leaves through a <b>door of its own colour</b> in the wall. Drag it into the door and out it goes, as long as the <b>whole block fits</b> through the opening.</li>
                 <li>Blocks with <b>arrows</b> only move the way the arrows point.</li>
-                <li>Clear every block. Each time you pick a block up and put it down counts as <b>one move</b>.</li>
-                <li>Finish within the target for <b>3 stars</b> (the target is always possible), or a couple over for 2. There's no timer, so take your time.</li>
+                <li>Clear every block. The clock counts up while you play: beat the <b>target time</b> for <b>3 stars</b>, or finish within half as long again for 2. You can't run out of time.</li>
+                <li>The clock pauses whenever this help, the level list or another app is open.</li>
             </ol>
             <p>Stuck? <b>Hint</b> shows a good next move. You get <b>2 hints</b> per level, and each one costs a star. Undo and Restart are free.</p>
+            <label class="toggle-row" for="clockToggle">
+                <span><b>Hide the clock</b><small>Play without watching the time. Stars still go by how long you take.</small></span>
+                <span class="switch"><input type="checkbox" id="clockToggle" role="switch"><span class="track"></span></span>
+            </label>
             <label class="toggle-row" for="symToggle">
                 <span><b>Colour symbols</b><small>Show a symbol on each block and door, so you don't need to tell colours apart. Helpful for colour blindness.</small></span>
                 <span class="switch"><input type="checkbox" id="symToggle" role="switch"><span class="track"></span></span>
@@ -224,6 +228,24 @@
 
         var MAX_HINTS = 2;
         var levelNo = progress.level, L = null, blocks = [], moves = 0, history = [], hintsUsed = 0, solved = false, hintMove = null;
+        var elapsed = 0, lastTick = 0, hideClock = S.getString('wayout_hideClock', 'false') === 'true';
+        // Target time: a little thinking time, plus time per move needed, plus extra for each block that must be moved aside
+        function targetMs() { return (6 + L.par * 3.5 + L.extra * 8 + (L.tough ? 5 : 0)) * 1000; }
+        function twoStarMs() { return targetMs() * 1.5; }
+        function fmt(ms) { var t = Math.floor(ms / 1000), m = Math.floor(t / 60); t %= 60; return m + ':' + (t < 10 ? '0' : '') + t; }
+        function paused() { return solved || document.hidden || $('helpModal').classList.contains('active') || $('levelModal').classList.contains('active'); }
+        function tick() {
+            var now = Date.now();
+            if (lastTick && !paused()) elapsed += Math.min(now - lastTick, 2000);
+            lastTick = now;
+            showClock();
+        }
+        function showClock() {
+            if (!L) return;
+            $('clock').textContent = hideClock ? 'hidden' : fmt(elapsed);
+            $('clockPill').classList.toggle('over', !hideClock && elapsed > targetMs());
+            $('targetPill').style.display = hideClock ? 'none' : '';
+        }
         var geo = null, drag = null;
 
         function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 1600); }
@@ -233,7 +255,7 @@
 
         // ---------- state ----------
         function saveState() {
-            S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, h: hintsUsed, s: solved }));
+            S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, t: Math.round(elapsed), h: hintsUsed, s: solved }));
         }
         function loadState(n) {
             try {
@@ -253,7 +275,7 @@
                         occ[y * L.C + x2] = i;
                     }
                 }
-                blocks = bs; moves = Math.max(0, o.m | 0); hintsUsed = Math.min(MAX_HINTS, Math.max(0, o.h | 0)); solved = !!o.s;
+                blocks = bs; moves = Math.max(0, o.m | 0); elapsed = Math.max(0, +o.t || 0); hintsUsed = Math.min(MAX_HINTS, Math.max(0, o.h | 0)); solved = !!o.s;
                 return true;
             } catch (e) { return false; }
         }
@@ -261,7 +283,8 @@
         // ---------- level ----------
         function startLevel(n) {
             levelNo = n; L = E.generate(n); history = []; hintMove = null;
-            if (!loadState(n)) { blocks = E.cloneBlocks(L.blocks); moves = 0; hintsUsed = 0; solved = false; }
+            if (!loadState(n)) { blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; hintsUsed = 0; solved = false; }
+            lastTick = Date.now();
             ['winModal', 'levelModal'].forEach(closeModal);
             hideHint();
             if (hintsUsed > 0 && !solved) {
@@ -269,7 +292,7 @@
                 nb.innerHTML = '<b>Welcome back</b>You\'ve used ' + hintsUsed + ' of your ' + MAX_HINTS + ' hints here, so the best you can get this time is ' + (3 - hintsUsed) + ' star' + (3 - hintsUsed === 1 ? '' : 's') + '. Restart doesn\'t reset hints.';
             }
             $('levelBtn').innerHTML = 'Level ' + n + (L.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
-            $('par').textContent = L.par;
+            $('target').textContent = fmt(targetMs());
             build(); renderAll(); saveState();
         }
         function build() {
@@ -321,8 +344,7 @@
         }
         function renderAll() {
             blocks.forEach(function (b) { place(b); });
-            $('moves').textContent = moves;
-            $('movesPill').classList.toggle('over', moves > L.par);
+            showClock();
             $('left').textContent = blocks.filter(function (b) { return !b.out; }).length;
             $('undoBtn').disabled = !history.length || solved;
             $('restartBtn').disabled = solved || (moves === 0 && !history.length);
@@ -458,11 +480,11 @@
             }
         }
         function starsFor() {
-            var byMoves = moves <= L.par ? 3 : moves <= L.par + 2 ? 2 : 1;
-            return Math.min(byMoves, 3 - hintsUsed);
+            var byTime = elapsed <= targetMs() ? 3 : elapsed <= twoStarMs() ? 2 : 1;
+            return Math.min(byTime, 3 - hintsUsed);
         }
         function onWin() {
-            solved = true; hideHint();
+            tick(); solved = true; hideHint();
             var s = starsFor();
             if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
             if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
@@ -470,9 +492,11 @@
             saveState(); renderAll(); buzz(40); confetti();
             var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
             $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
-            var parts = ['Cleared in ' + moves + ' move' + (moves === 1 ? '' : 's') + ' (target ' + L.par + ')'];
+            var parts = ['Cleared in ' + fmt(elapsed) + ' (3-star time ' + fmt(targetMs()) + ')'];
             if (hintsUsed) parts.push('with ' + hintsUsed + ' hint' + (hintsUsed === 1 ? '' : 's'));
-            $('winText').textContent = parts.join(' ') + '.' + (s === 3 ? '' : moves > L.par ? ' It can be done in ' + L.par + '.' : ' Try again without hints for 3 stars.');
+            var tip = s === 3 ? '' : hintsUsed && elapsed <= targetMs() ? ' Try again without hints for 3 stars.' :
+                ' Tip: it can be cleared in ' + L.par + ' moves, so plan the order before you start dragging.';
+            $('winText').textContent = parts.join(' ') + '.' + tip;
             $('replayBtn').style.display = s === 3 ? 'none' : '';
             setTimeout(function () { openModal('winModal'); }, 400);
         }
@@ -497,6 +521,10 @@
         $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
         $('helpClose').addEventListener('click', closeHelp);
         $('helpX').addEventListener('click', closeHelp);
+        $('clockToggle').checked = hideClock;
+        $('clockToggle').addEventListener('change', function () { hideClock = this.checked; S.setString('wayout_hideClock', hideClock ? 'true' : 'false'); showClock(); });
+        setInterval(tick, 250);
+        document.addEventListener('visibilitychange', function () { tick(); if (document.hidden && L) saveState(); });
         $('symToggle').checked = showSyms;
         $('symToggle').addEventListener('change', function () { showSyms = this.checked; S.setFlag(KEY_SYM, showSyms); build(); renderAll(); });
         $('levelBtn').addEventListener('click', openLevels);
@@ -517,7 +545,7 @@
 
         startLevel(levelNo);
         if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
-        window.__wayout = function () { return { L: L, blocks: blocks, moves: moves }; };   // read by the automated play-tests
+        window.__wayout = function () { return { L: L, blocks: blocks, moves: moves, elapsed: elapsed }; };   // read by the automated play-tests
     })();
     </script>
 </body>
