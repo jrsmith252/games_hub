@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Balance — Game Hub</title>
+    <title>Leaf &amp; Drop — Game Hub</title>
     <link rel="stylesheet" href="../../shared/fonts.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -112,7 +112,7 @@
     <header class="top-bar">
         <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
         <div class="title-block">
-            <div class="game-title" id="gameTitle">Balance</div>
+            <div class="game-title" id="gameTitle">Leaf &amp; Drop</div>
             <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
         </div>
         <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
@@ -120,7 +120,7 @@
 
     <main>
         <p class="goal" id="goal"></p>
-        <div class="board-area" id="boardArea"><div class="board" id="board" role="grid" aria-label="Balance board"></div></div>
+        <div class="board-area" id="boardArea"><div class="board" id="board" role="grid" aria-label="Leaf and Drop board"></div></div>
     </main>
 
     <div class="controls">
@@ -184,7 +184,7 @@
     <script>
     (function () {
         'use strict';
-        var GAME_NAME = 'Balance';   // one place to rename the game
+        var GAME_NAME = 'Leaf & Drop';   // one place to rename the game
         var E = window.BalanceEngine, S = window.HubStorage;
         var KEY_PROGRESS = 'balance_progress', KEY_STARS = 'balance_stars', KEY_STATE = 'balance_state', KEY_SEEN = 'balance_instructionsSeen';
         var $ = function (id) { return document.getElementById(id); };
