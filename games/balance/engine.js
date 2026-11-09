@@ -1,4 +1,4 @@
-/* Balance: puzzle generator and solver.
+/* Leaf & Drop: puzzle generator and solver.
    Rules: fill every square with one of two symbols so that
      - each row and each column has the same number of each symbol,
      - no more than two of the same symbol sit next to each other in a row or column,
@@ -227,7 +227,7 @@
             if (score > bestScore) { best = pz; bestScore = score; }
             if (meets && (!P.needHard || res.hard >= (P.minHard || 1))) break;
         }
-        if (!best) throw new Error('Balance: no puzzle for level ' + n);
+        if (!best) throw new Error('Leaf & Drop: no puzzle for level ' + n);
         delete best.lines; best.lines = makeLines(N);
         cache[n] = best;
         return best;
