@@ -33,20 +33,22 @@
         T4: [[0, 0], [0, 1], [0, 2], [1, 1]]
     };
     var EASY = ['dot', 'bar2h', 'bar2v', 'bar2h', 'bar2v', 'sq', 'L3a', 'L3b'];
-    var ALL = Object.keys(SHAPES);
+    var ALL = Object.keys(SHAPES).filter(function (k) { return k !== 'dot'; }).concat(['bar2h', 'bar2v', 'bar3h', 'bar3v']);   // few single squares: they slip through gaps too easily
 
     // ---------- level plan ----------
     function plan(n) {
         var tough = n >= 10 && n % 5 === 0;
         var p;
-        if (n <= 1) p = { R: 5, C: 5, blocks: 3, colours: 2, shapes: EASY, axis: 0, stones: 0, extra: 0 };
-        else if (n <= 3) p = { R: 6, C: 5, blocks: 4 + (n - 2), colours: 3, shapes: EASY, axis: 0, stones: 0, extra: 0 };
-        else if (n <= 6) p = { R: 6, C: 6, blocks: 6, colours: 3, shapes: EASY, axis: 0, stones: 0, extra: n >= 5 ? 1 : 0 };
-        else if (n <= 12) p = { R: 7, C: 6, blocks: 7 + (n % 2), colours: 4, shapes: ALL, axis: 0, stones: n >= 9 ? 1 : 0, extra: 1 };
-        else if (n <= 25) p = { R: 8, C: 6, blocks: 9, colours: 4 + (n % 2), shapes: ALL, axis: n >= 15 ? 0.25 : 0, stones: 1, extra: 1 };
-        else p = { R: 8, C: 7, blocks: 10 + (n % 3), colours: 5 + (n % 2), shapes: ALL, axis: 0.3, stones: 1 + (n % 2), extra: 1 };
-        if (tough) p.extra = 2;
+        // fill: how much of the board the blocks cover; extra: blocks you must move aside first
+        if (n <= 1) p = { R: 5, C: 5, fill: 0.36, colours: 2, shapes: EASY, axis: 0, stones: 0, extra: 0 };
+        else if (n <= 3) p = { R: 6, C: 5, fill: 0.45, colours: 3, shapes: EASY, axis: 0, stones: 0, extra: n === 3 ? 1 : 0 };
+        else if (n <= 6) p = { R: 6, C: 6, fill: 0.55, colours: 3, shapes: EASY, axis: 0, stones: 0, extra: 1 };
+        else if (n <= 12) p = { R: 7, C: 6, fill: 0.62, colours: 4, shapes: ALL, axis: n >= 9 ? 0.15 : 0, stones: n >= 9 ? 1 : 0, extra: n % 3 === 0 ? 2 : 1 };
+        else if (n <= 25) p = { R: 8, C: 6, fill: 0.65, colours: 4 + (n % 2), shapes: ALL, axis: 0.25, stones: 1, extra: 2 };
+        else p = { R: 8, C: 7, fill: 0.68, colours: 5 + (n % 2), shapes: ALL, axis: 0.3, stones: 1 + (n % 2), extra: n % 3 === 0 ? 3 : 2 };
+        if (tough) p.extra += 1;
         p.tough = tough;
+        p.blocks = 40;   // upper bound; filling stops at the fill target
         return p;
     }
     function isTough(n) { return plan(n).tough; }
@@ -154,6 +156,7 @@
             }
         }
         for (var d = 0; d <= maxExtra && !best && nodes <= budget; d++) rec(blocks, d, []);
+        solve.complete = nodes <= budget;   // false when the search ran out of budget
         if (!best) return null;
         return { extra: best.filter(function (m) { return !m.exit; }).length, moves: best };
     }
@@ -192,8 +195,9 @@
         var L = { R: R, C: C, stones: [], doors: doors, blocks: [] };
         for (var s = 0; s < P.stones; s++) L.stones.push(1 * C + 1 + Math.floor(r() * (C - 2)) + Math.floor(r() * (R - 2)) * C);
         L.stones = L.stones.filter(function (v, i, a) { return a.indexOf(v) === i; });
-        var placed = [], placedOrder = [];
-        for (var bi = 0; bi < P.blocks * 3 && placed.length < P.blocks; bi++) {
+        var placed = [], placedOrder = [], events = [];
+        var area = R * C - L.stones.length, covered = 0;
+        for (var bi = 0; bi < 120 && covered < P.fill * area; bi++) {
             var d = doors[Math.floor(r() * doors.length)];
             var axis = r() < P.axis ? (d.side === 'top' || d.side === 'bottom' ? 'v' : 'h') : null;
             var shapes = P.shapes.filter(function (sh) { return shapeFitsDoor(sh, d, axis); });
@@ -211,13 +215,16 @@
             spots.sort(function (a, c2) { return dist(c2, d, R, C) - dist(a, d, R, C); });
             var pick = spots[Math.floor(Math.pow(r(), 2) * Math.min(spots.length, 12))];
             b.r = pick[0]; b.c = pick[1];
-            placed.push(b); placedOrder.push(b.id);
+            placed.push(b); placedOrder.push(b.id); covered += SHAPES[b.shape].length;
+            events.push({ place: b.id });
             // Sometimes push an earlier block into the newcomer's way out. Played forwards, that block
             // then has to be moved aside first: the "shuffle" moves that make later levels tricky.
-            if (P.extra > 0 && placed.length >= 3 && r() < 0.55) blockExit(L, placed, b, r);
+            // More of these on harder levels
+            if (P.extra > 0 && placed.length >= 3 && r() < Math.min(0.95, 0.45 + 0.2 * P.extra)) { var sh = blockExit(L, placed, b, r); if (sh) events.push(sh); }
         }
-        if (placed.length < P.blocks) return null;
+        if (covered < (P.fill - 0.06) * area) return null;
         L.blocks = placed;
+        L.events = events;
         return L;
     }
     function blockExit(L, placed, y, r) {
@@ -229,29 +236,60 @@
                 var or = x.r, oc = x.c;
                 x.r = spots[k][0]; x.c = spots[k][1];
                 var occ2 = makeOcc(L, placed);
-                if (!reach(L, occ2, y).exitFrom) return true;
+                if (!reach(L, occ2, y).exitFrom) return { shift: x.id, from: [or, oc] };
                 x.r = or; x.c = oc;
             }
         }
-        return false;
+        return null;
     }
     function dist(p, d, R, C) {
         return d.side === 'top' ? p[0] : d.side === 'bottom' ? R - p[0] : d.side === 'left' ? p[1] : C - p[1];
     }
 
+    // Played forwards, the construction undone step by step is a guaranteed solution
+    function constructionPlan(L) {
+        var bs = cloneBlocks(L.blocks), out = [];
+        for (var i = L.events.length - 1; i >= 0; i--) {
+            var ev = L.events[i], occ = makeOcc(L, bs);
+            if (ev.shift !== undefined) {
+                var x = bs[ev.shift];
+                if (!reach(L, occ, x).spots.some(function (p) { return p[0] === ev.from[0] && p[1] === ev.from[1]; })) return null;
+                x.r = ev.from[0]; x.c = ev.from[1];
+                out.push({ id: x.id, exit: false, r: x.r, c: x.c });
+            } else {
+                var b = bs[ev.place], rc = reach(L, occ, b);
+                if (!rc.exitFrom) return null;
+                out.push({ id: b.id, exit: true, r: rc.exitFrom[0], c: rc.exitFrom[1] });
+                b.out = true;
+            }
+        }
+        return bs.every(function (b) { return b.out; }) ? out : null;
+    }
     var cache = {};
     function generate(n) {
         if (cache[n]) return cache[n];
         var P = plan(n), r = rng(n * 92821 + 7), best = null, bestScore = -1;
-        for (var attempt = 0; attempt < 80; attempt++) {
+        // A fixed number of tries (not a time limit), so every device builds exactly the same level
+        for (var attempt = 0; attempt < 140; attempt++) {
             var L = generateOnce(n, P, r);
             if (!L) continue;
-            // Fewest repositioning moves (searching up to the target + 1 more)
-            var sol = solve(L, L.blocks, Math.max(P.extra, 1) + 1, 5000);
-            if (!sol) continue;   // too tangled to prove a par; try another
-            var score = sol.extra >= P.extra ? 100 - Math.abs(sol.extra - P.extra) : sol.extra;
-            if (score > bestScore) { best = L; bestScore = score; best.par = L.blocks.length + sol.extra; best.extra = sol.extra; best.plan = sol.moves; }
-            if (sol.extra === P.extra) break;
+            var cplan = constructionPlan(L);
+            if (!cplan) continue;
+            // Is there a solution with fewer than the planned number of blocks moved aside?
+            var easy = P.extra > 0 ? solve(L, L.blocks, P.extra - 1, 6000) : solve(L, L.blocks, 0, 6000);
+            var easyDone = solve.complete;
+            var extra, moves, score;
+            if (easy) { extra = easy.extra; moves = easy.moves; score = extra; }
+            else if (easyDone) {
+                // Proven to need at least the planned number; find the exact answer if we can
+                var exact = solve(L, L.blocks, P.extra, 6000);
+                if (exact) { extra = exact.extra; moves = exact.moves; }
+                else { moves = cplan; extra = cplan.filter(function (m) { return !m.exit; }).length; }
+                score = 100 + Math.min(extra, P.extra + 1);
+            } else continue;
+            if (moves.length > cplan.length) moves = cplan;
+            if (score > bestScore) { best = L; bestScore = score; best.par = moves.length; best.extra = Math.min(extra, P.extra + 2); best.plan = moves; }
+            if (score >= 100 + P.extra) break;
         }
         if (!best) throw new Error('Way Out: no level ' + n);
         best.number = n; best.tough = P.tough;
@@ -261,6 +299,8 @@
 
     // Next move from a position, or null if no plan is found within reach
     function hint(L, blocks) {
+        var atStart = blocks.every(function (b, i) { return !b.out && b.r === L.blocks[i].r && b.c === L.blocks[i].c; });
+        if (atStart && L.plan && L.plan.length) return L.plan[0];
         var sol = solve(L, blocks, 3, 6000);
         if (!sol || !sol.moves.length) return null;
         return sol.moves[0];
