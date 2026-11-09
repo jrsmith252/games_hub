@@ -281,6 +281,10 @@
                 <span><b>Auto-cross</b><small>When you place a ✓, fill the rest of its row and column with ✗</small></span>
                 <span class="switch"><input type="checkbox" id="autoToggle" role="switch"><span class="track"></span></span>
             </label>
+            <label class="toggle-row" for="bigToggle">
+                <span><b>Larger squares</b><small>Bigger squares that are easier to tap. On bigger cases you'll scroll the board to see it all.</small></span>
+                <span class="switch"><input type="checkbox" id="bigToggle" role="switch"><span class="track"></span></span>
+            </label>
             <button class="btn" id="helpClose">Start investigating</button>
         </div>
     </div>
@@ -341,6 +345,7 @@
             return out;
         })();
         var autoCross = S.getString(KEY_AUTO, 'true') !== 'false';
+        var bigCells = S.getString('caseclosed_bigcells', 'false') === 'true';
 
         var MAX_HINTS = 2;   // 1 hint = 2 stars, 2 hints = 1 star
         // autoX: crosses that auto-cross added for each tick, so removing the tick can take them away again
@@ -383,15 +388,21 @@
             var board = $('board'), n = pz.size, k = pz.k;
             var R = rowCats(), C = colCats();
             var avail = $('boardScroll').clientWidth - 24;
-            var catW = 20, labW = k >= 4 ? 80 : 92, catH = 20;
+            var catW = 20, catH = 20;
             // column headings only as tall as the longest label needs
             var ctx2 = (renderBoard._c || (renderBoard._c = document.createElement('canvas'))).getContext('2d');
             ctx2.font = '12.5px "DM Sans", sans-serif';
             var longest = 0;
             C.forEach(function (c) { pz.cats[c].labels.forEach(function (l) { longest = Math.max(longest, ctx2.measureText(l).width); }); });
             var headH = Math.max(40, Math.min(92, Math.ceil(longest) + 16));
+            // row labels only as wide as the longest one needs
+            ctx2.font = '14px "DM Sans", sans-serif';
+            var longRow = 0;
+            R.forEach(function (c) { pz.cats[c].labels.forEach(function (l) { longRow = Math.max(longRow, ctx2.measureText(l).width); }); });
+            var labW = Math.max(52, Math.min(k >= 4 ? 80 : 92, Math.ceil(longRow) + 18));
+            // Squares shrink to fit the screen (down to 28px); "Larger squares" keeps them bigger and lets the board scroll
             var cell = Math.floor((avail - catW - labW) / (n * C.length));
-            cell = Math.max(32, Math.min(46, cell));
+            cell = Math.max(bigCells ? 38 : 28, Math.min(46, cell));
             var W = catW + labW + n * C.length * cell, H = catH + headH + n * R.length * cell;
             board.style.width = W + 'px'; board.style.height = H + 'px';
             var html = '';
@@ -653,6 +664,8 @@
         $('replayBtn').addEventListener('click', function () { resetCase(levelNo); });
         $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
         $('helpClose').addEventListener('click', function () { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); });
+        $('bigToggle').checked = bigCells;
+        $('bigToggle').addEventListener('change', function () { bigCells = this.checked; S.setString('caseclosed_bigcells', bigCells ? 'true' : 'false'); renderBoard(); });
         $('autoToggle').checked = autoCross;
         $('autoToggle').addEventListener('change', function () { autoCross = this.checked; S.setString(KEY_AUTO, autoCross ? 'true' : 'false'); });
         $('levelBtn').addEventListener('click', openLevels);
