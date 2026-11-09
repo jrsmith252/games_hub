@@ -45,10 +45,12 @@
         .door svg { width: 12px; height: 12px; fill: #fff; opacity: 0.95; }
         .door.hinted { animation: doorPulse 1s ease-in-out infinite; }
         @keyframes doorPulse { 50% { filter: brightness(1.35); } }
-        .block { position: absolute; left: 0; top: 0; cursor: grab; transition: transform 70ms linear; z-index: 3; }
+        .block { position: absolute; left: 0; top: 0; cursor: grab; transition: transform 70ms linear; z-index: 3; pointer-events: none; }
+        .block .bc { pointer-events: auto; }   /* only a block's own squares respond: L-shapes' empty corners must not steal taps */
+        .block.leaving .bc { pointer-events: none; }
         .block.dragging { z-index: 6; cursor: grabbing; transition: transform 50ms linear; }
         .block.dragging .bc { filter: brightness(1.08); }
-        .block.leaving { transition: transform 260ms ease-in, opacity 260ms ease-in; opacity: 0; }
+        .block.leaving { transition: transform 260ms ease-in, opacity 260ms ease-in; opacity: 0; pointer-events: none; }
         .block.hinted .bc { border-color: var(--hint); }
         .block.hinted { filter: drop-shadow(0 0 4px rgba(14,165,233,0.9)); }
         .bc { position: absolute; display: flex; align-items: center; justify-content: center; border: 0 solid rgba(20,15,40,0.55); }
@@ -196,8 +198,8 @@
         var KEY_PROGRESS = 'wayout_progress', KEY_STARS = 'wayout_stars', KEY_STATE = 'wayout_state', KEY_SEEN = 'wayout_instructionsSeen',
             KEY_SYM = 'hub_colourBlindShapes';   // hub-wide colour-blind aid (shared with other games)
         var $ = function (id) { return document.getElementById(id); };
-        var COLOURS = ['#e5484d', '#3b82f6', '#22a35a', '#f5b400', '#8e4ec6', '#f97316', '#e93d82', '#12a594'];
-        var CNAMES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'teal'];
+        var COLOURS = ['#e5484d', '#3b82f6', '#22a35a', '#f5b400', '#8e4ec6', '#f97316', '#e93d82', '#8d5a2b'];
+        var CNAMES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown'];
         // One symbol per colour (no arrows, so they can't be mistaken for directions)
         var SYMS = [
             '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>',
@@ -230,7 +232,7 @@
         var levelNo = progress.level, L = null, blocks = [], moves = 0, history = [], hintsUsed = 0, solved = false, hintMove = null;
         var elapsed = 0, lastTick = 0, hideClock = S.getString('wayout_hideClock', 'false') === 'true';
         // Target time: a little thinking time, plus time per move needed, plus extra for each block that must be moved aside
-        function targetMs() { return (6 + L.par * 3 + L.extra * 6 + (L.tough ? 5 : 0)) * 1000; }
+        function targetMs() { return Math.round(4 + L.par * 2.2 + Math.max(0, L.stuck || 0) * 3 + (L.tough ? 5 : 0)) * 1000; }
         function twoStarMs() { return targetMs() * 1.5; }
         function fmt(ms) { var t = Math.floor(ms / 1000), m = Math.floor(t / 60); t %= 60; return m + ':' + (t < 10 ? '0' : '') + t; }
         function ready() { return L && L.number === levelNo; }
@@ -293,9 +295,16 @@
             };
             worker.onerror = function () { worker = null; Object.keys(waiting).forEach(function (k) { var cbs = waiting[k]; delete waiting[k]; var lv = built[k] = E.generate(+k); cbs.forEach(function (cb) { cb(lv); }); }); };
         } catch (e) { worker = null; }
+        // Levels 1-150 ship ready-made (built with far more searching than a phone could do); later ones are built on the fly
+        var prebuilt = null, prebuiltWaiting = [];
+        fetch('levels.json').then(function (r) { return r.json(); }).then(function (a) { prebuilt = Array.isArray(a) ? a : []; })
+            .catch(function () { prebuilt = []; })
+            .then(function () { var w = prebuiltWaiting; prebuiltWaiting = []; w.forEach(function (f) { f(); }); });
         function getLevel(n, cb) {
-            if (built[n]) return cb(built[n]);
-            if (!worker) { built[n] = E.generate(n); return cb(built[n]); }
+            if (built[n]) return cb && cb(built[n]);
+            if (prebuilt === null) { prebuiltWaiting.push(function () { getLevel(n, cb); }); return; }
+            if (prebuilt[n - 1] && prebuilt[n - 1].number === n) { built[n] = prebuilt[n - 1]; return cb && cb(built[n]); }
+            if (!worker) { built[n] = E.generate(n); return cb && cb(built[n]); }
             if (waiting[n]) { if (cb) waiting[n].push(cb); return; }
             waiting[n] = cb ? [cb] : [];
             worker.postMessage(n);
@@ -402,7 +411,7 @@
         function restore(s) { s.b.forEach(function (x, i) { blocks[i].r = x[0]; blocks[i].c = x[1]; blocks[i].out = x[2]; }); moves = s.m; }
         $('board').addEventListener('pointerdown', function (e) {
             if (!ready() || solved || drag) return;
-            var el = e.target.closest('.block'); if (!el) return;
+            var el = e.target.closest('.block'); if (!el || el.classList.contains('leaving')) return;
             var b = blocks[+el.dataset.id]; if (b.out) return;
             e.preventDefault();
             try { $('board').setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }

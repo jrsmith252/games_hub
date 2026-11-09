@@ -44,9 +44,9 @@
         else if (n <= 3) p = { R: 6, C: 5, fill: 0.45, colours: 3, shapes: EASY, axis: 0, stones: 0, extra: n === 3 ? 1 : 0 };
         else if (n <= 6) p = { R: 6, C: 6, fill: 0.55, colours: 3, shapes: EASY, axis: 0, stones: 0, extra: 1 };
         else if (n <= 12) p = { R: 7, C: 6, fill: 0.62, colours: 4, shapes: ALL, axis: n >= 9 ? 0.15 : 0, stones: n >= 9 ? 1 : 0, extra: n % 3 === 0 ? 2 : 1 };
-        else if (n <= 25) p = { R: 8, C: 6, fill: 0.65, colours: 4 + (n % 2), shapes: ALL, axis: 0.25, stones: 1, extra: 2 };
-        else p = { R: 8, C: 7, fill: 0.68, colours: 5 + (n % 2), shapes: ALL, axis: 0.3, stones: 1 + (n % 2), extra: n % 3 === 0 ? 3 : 2 };
-        if (tough) p.extra += 1;
+        else if (n <= 25) p = { R: 8, C: 6, fill: 0.65, colours: 4 + (n % 2), shapes: ALL, axis: 0.4, stones: 1, extra: 2 };
+        else p = { R: 8, C: 7, fill: 0.68, colours: 5 + (n % 2), shapes: ALL, axis: 0.4, stones: 1 + (n % 2), extra: n % 3 === 0 ? 3 : 2 };
+        if (tough) { p.extra += 1; p.R = Math.min(p.R + 1, 9); p.fill += 0.03; }   // tough levels: a row bigger and a little fuller
         p.tough = tough;
         p.blocks = 40;   // upper bound; filling stops at the fill target
         return p;
@@ -173,7 +173,7 @@
         var used = {}, doors = [], tries = 0, cols = shuffle([0, 1, 2, 3, 4, 5, 6, 7], r).slice(0, k);
         while (doors.length < k && tries++ < 400) {
             var sl = slots[Math.floor(r() * slots.length)];
-            var dl = 1 + Math.floor(r() * 3); // 1-3 wide
+            var dl = r() < 0.55 ? 1 + Math.floor(r() * 2) : 3; // mostly narrow doors: shape and direction matter more
             if (sl.at + dl > sl.len) continue;
             var ok = true;
             for (var x = sl.at - 1; x <= sl.at + dl; x++) if (used[sl.side + x]) ok = false;   // keep a gap between doors
@@ -197,7 +197,7 @@
         L.stones = L.stones.filter(function (v, i, a) { return a.indexOf(v) === i; });
         var placed = [], placedOrder = [], events = [];
         var area = R * C - L.stones.length, covered = 0;
-        for (var bi = 0; bi < 120 && covered < P.fill * area; bi++) {
+        for (var bi = 0; bi < 400 && covered < P.fill * area; bi++) {
             var d = doors[Math.floor(r() * doors.length)];
             var axis = r() < P.axis ? (d.side === 'top' || d.side === 'bottom' ? 'v' : 'h') : null;
             var shapes = P.shapes.filter(function (sh) { return shapeFitsDoor(sh, d, axis); });
@@ -222,7 +222,7 @@
             // More of these on harder levels
             if (P.extra > 0 && placed.length >= 3 && r() < Math.min(0.95, 0.45 + 0.2 * P.extra)) { var sh = blockExit(L, placed, b, r); if (sh) events.push(sh); }
         }
-        if (covered < (P.fill - 0.06) * area) return null;
+        if (covered < (P.fill - 0.08) * area) return null;
         L.blocks = placed;
         L.events = events;
         return L;
@@ -265,34 +265,111 @@
         }
         return bs.every(function (b) { return b.out; }) ? out : null;
     }
+    // ---------- difficulty ----------
+    function exitsNow(L, bs) { var occ = makeOcc(L, bs), k = 0; bs.forEach(function (b) { if (!b.out && reach(L, occ, b).exitFrom) k++; }); return k; }
+    function greedyCount(L, bs) { var c = cloneBlocks(bs); greedy(L, c, null); return c.filter(function (b) { return b.out; }).length; }
+    function anyExit(L, bs) { var occ = makeOcc(L, bs); for (var i = 0; i < bs.length; i++) if (!bs[i].out && reach(L, occ, bs[i]).exitFrom) return true; return false; }
+    // Solve the way a player does: take out whatever can leave; when stuck, find the shortest set of
+    // moves that lets another block out. Counts how often you get stuck and how deep each unpick is.
+    function stagedSolve(L, blocks, maxDepth, budget) {
+        var bs = cloneBlocks(blocks), moves = [], stages = 0, deepest = 0;
+        for (var guard = 0; guard < 60; guard++) {
+            var log = [];
+            if (greedy(L, bs, log)) { moves = moves.concat(log); return { moves: moves, stages: stages, deepest: deepest }; }
+            moves = moves.concat(log);
+            var found = null, nodes = 0;
+            for (var d = 1; d <= maxDepth && !found; d++) {
+                (function rec(cur, depth, path) {
+                    if (found || nodes > budget) return;
+                    nodes++;
+                    if (depth === 0) { if (anyExit(L, cur)) found = { bs: cur, path: path }; return; }
+                    var occ = makeOcc(L, cur);
+                    for (var i = 0; i < cur.length && !found; i++) {
+                        if (cur[i].out) continue;
+                        var spots = reach(L, occ, cur[i]).spots;
+                        for (var k = 1; k < spots.length && !found; k++) {
+                            var nb = cloneBlocks(cur); nb[i].r = spots[k][0]; nb[i].c = spots[k][1];
+                            rec(nb, depth - 1, path.concat([{ id: cur[i].id, exit: false, r: spots[k][0], c: spots[k][1] }]));
+                        }
+                    }
+                })(bs, d, []);
+                if (found) deepest = Math.max(deepest, d);
+            }
+            if (!found) return null;
+            stages++; moves = moves.concat(found.path); bs = found.bs;
+        }
+        return null;
+    }
+    // Shuffle a solvable board into a more tangled one. Every move can be undone, so it stays solvable;
+    // we keep moves that leave fewer blocks free to leave.
+    // When stuck, how many single moves would let some block out? (fewer = you need to think further ahead)
+    function unlockers(L, bs, cap) {
+        var c = cloneBlocks(bs); if (greedy(L, c, null)) return 0;
+        var occ = makeOcc(L, c), k = 0;
+        for (var i = 0; i < c.length; i++) {
+            if (c[i].out) continue;
+            var spots = reach(L, occ, c[i]).spots, or = c[i].r, oc = c[i].c;
+            for (var s2 = 1; s2 < spots.length; s2++) {
+                c[i].r = spots[s2][0]; c[i].c = spots[s2][1];
+                if (anyExit(L, c)) { k++; if (k >= cap) { c[i].r = or; c[i].c = oc; return k; } }
+            }
+            c[i].r = or; c[i].c = oc;
+        }
+        return k;
+    }
+    function tangle(L, bs, r, steps, deep) {
+        var log = [];
+        var cost = function () { return greedyCount(L, bs) * 3 + exitsNow(L, bs) * 2 + (deep ? unlockers(L, bs, 12) : 0); };
+        var cur = cost();
+        for (var t = 0; t < steps; t++) {
+            var b = bs[Math.floor(r() * bs.length)], occ = makeOcc(L, bs), spots = reach(L, occ, b).spots;
+            if (spots.length < 2) continue;
+            var to = spots[1 + Math.floor(r() * (spots.length - 1))], from = [b.r, b.c];
+            b.r = to[0]; b.c = to[1];
+            var c = cost();
+            if (c <= cur) { cur = c; log.push({ id: b.id, from: from }); }
+            else { b.r = from[0]; b.c = from[1]; }
+        }
+        return log;
+    }
+    // How hard a level is, roughly as a player feels it
+    function difficulty(st, nBlocks) { return st ? st.stages * 10 + Math.max(0, st.deepest - 1) * 14 + (st.moves.length - nBlocks) * 2 : 70; }
+    function wantDifficulty(n) {
+        var base = n <= 2 ? 0 : n <= 4 ? 18 : n <= 9 ? 32 : n <= 19 ? 46 : 56;
+        return base + (isTough(n) ? 20 : 0);
+    }
+
     var cache = {};
-    function generate(n) {
-        if (cache[n]) return cache[n];
-        var P = plan(n), r = rng(n * 92821 + 7), best = null, bestScore = -1;
+    // tries: how many boards to build and compare (the shipped levels were made with many more)
+    function generate(n, tries) {
+        if (cache[n] && !tries) return cache[n];
+        var P = plan(n), r = rng(n * 92821 + 7), best = null, bestGap = 1e9, want = wantDifficulty(n);
         // A fixed number of tries (not a time limit), so every device builds exactly the same level
-        for (var attempt = 0; attempt < 140; attempt++) {
+        for (var attempt = 0; attempt < (tries || 24); attempt++) {
             var L = generateOnce(n, P, r);
             if (!L) continue;
             var cplan = constructionPlan(L);
             if (!cplan) continue;
-            // Is there a solution with fewer than the planned number of blocks moved aside?
-            var easy = P.extra > 0 ? solve(L, L.blocks, P.extra - 1, 6000) : solve(L, L.blocks, 0, 6000);
-            var easyDone = solve.complete;
-            var extra, moves, score;
-            if (easy) { extra = easy.extra; moves = easy.moves; score = extra; }
-            else if (easyDone) {
-                // Proven to need at least the planned number; find the exact answer if we can
-                var exact = solve(L, L.blocks, P.extra, 6000);
-                if (exact) { extra = exact.extra; moves = exact.moves; }
-                else { moves = cplan; extra = cplan.filter(function (m) { return !m.exit; }).length; }
-                score = 100 + Math.min(extra, P.extra + 1);
-            } else continue;
-            if (moves.length > cplan.length) moves = cplan;
-            if (score > bestScore) { best = L; bestScore = score; best.par = moves.length; best.extra = Math.min(extra, P.extra + 2); best.plan = moves; }
-            if (score >= 100 + P.extra) break;
+            var start0 = cloneBlocks(L.blocks);
+            var tl = n <= 2 ? [] : tangle(L, L.blocks, r, 60 + 6 * Math.min(n, 30), false);
+            // Undo the tangling, then the construction: a guaranteed way through
+            var back = [];
+            for (var i = tl.length - 1; i >= 0; i--) back.push({ id: tl[i].id, exit: false, r: tl[i].from[0], c: tl[i].from[1] });
+            var fullPlan = back.concat(cplan);
+            var st = stagedSolve(L, L.blocks, 3, 3000);
+            var planMoves = st && st.moves.length <= fullPlan.length ? st.moves : fullPlan;
+            var D = difficulty(st, L.blocks.length);
+            var gap = D < want ? (want - D) * 2 : D - want;   // too easy counts double
+            if (gap < bestGap) {
+                bestGap = gap; best = L; best.plan = planMoves; best.par = planMoves.length;
+                best.extra = planMoves.filter(function (m) { return !m.exit; }).length; best.difficulty = D; best.stuck = st ? st.stages : -1;
+            }
+            if (gap <= 3 && !tries) break;
+            void start0;
         }
         if (!best) throw new Error('Way Out: no level ' + n);
         best.number = n; best.tough = P.tough;
+        delete best.events;
         cache[n] = best;
         return best;
     }
@@ -301,12 +378,14 @@
     function hint(L, blocks) {
         var atStart = blocks.every(function (b, i) { return !b.out && b.r === L.blocks[i].r && b.c === L.blocks[i].c; });
         if (atStart && L.plan && L.plan.length) return L.plan[0];
+        var st = stagedSolve(L, blocks, 3, 4000);
+        if (st && st.moves.length) return st.moves[0];
         var sol = solve(L, blocks, 3, 6000);
         if (!sol || !sol.moves.length) return null;
         return sol.moves[0];
     }
 
-    var api = { generate: generate, plan: plan, isTough: isTough, SHAPES: SHAPES, cellsAt: cellsAt, extent: extent, makeOcc: makeOcc, fits: fits,
+    var api = { generate: generate, wantDifficulty: wantDifficulty, stagedSolve: stagedSolve, plan: plan, isTough: isTough, SHAPES: SHAPES, cellsAt: cellsAt, extent: extent, makeOcc: makeOcc, fits: fits,
                 canExitVia: canExitVia, exitDoor: exitDoor, reach: reach, solve: solve, hint: hint, cloneBlocks: cloneBlocks, axisAllows: axisAllows, DIRS: DIRS, SIDE_DIR: SIDE_DIR };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.WayOutEngine = api;
