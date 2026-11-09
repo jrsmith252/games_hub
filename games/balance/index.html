@@ -212,6 +212,8 @@
         var MAX_HINTS = 2;
         var levelNo = progress.level, pz = null, marks = [], history = [], hintsUsed = 0, solved = false, hintInfo = null, elapsed = 0, lastTick = 0;
         var geo = null;
+        // New rule breaks only show after a short pause, so passing through a leaf on the way to a drop doesn't flash red
+        var REVEAL_MS = 1000, shownBad = {}, revealTimer = null;
 
         function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 1600); }
         function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } var m = $(id).querySelector('.modal'); if (m) m.scrollTop = 0; }
@@ -275,9 +277,12 @@
             board.innerHTML = html;
             board.classList.remove('won');
         }
-        function paint(popCell) {
-            var N = pz.N, cf = E.conflicts(pz, marks), bad = {}, badS = {};
-            cf.cells.forEach(function (i) { bad[i] = 1; }); cf.signs.forEach(function (k) { badS[k] = 1; });
+        function paint(popCell, holdNew) {
+            var N = pz.N, cf = E.conflicts(pz, marks), bad = {}, badS = {}, now = {};
+            cf.cells.forEach(function (i) { now['c' + i] = 1; }); cf.signs.forEach(function (k) { now['s' + k] = 1; });
+            if (!holdNew) shownBad = now;
+            else { var keep = {}; Object.keys(shownBad).forEach(function (key) { if (now[key]) keep[key] = 1; }); shownBad = keep; }
+            Object.keys(shownBad).forEach(function (key) { if (key.charAt(0) === 'c') bad[+key.slice(1)] = 1; else badS[+key.slice(1)] = 1; });
             var cells = $('board').querySelectorAll('.cell'), filled = 0;
             for (var i = 0; i < N * N; i++) {
                 var el = cells[i], m = marks[i], g = pz.given[i] >= 0;
@@ -309,8 +314,10 @@
             marks[i] = marks[i] === -1 ? 0 : marks[i] === 0 ? 1 : -1;
             buzz(marks[i] >= 0 ? 8 : 4);
             if (hintInfo) { hintInfo = null; hideHint(); }
-            paint(marks[i] >= 0 ? i : -1); renderControls(); saveState();
-            if (E.isSolved(pz, marks)) onWin();
+            paint(marks[i] >= 0 ? i : -1, true); renderControls(); saveState();
+            clearTimeout(revealTimer);
+            if (E.isSolved(pz, marks)) { onWin(); return; }
+            revealTimer = setTimeout(function () { paint(-1); }, REVEAL_MS);
         }
         function undo() {
             if (!history.length || solved) return;
