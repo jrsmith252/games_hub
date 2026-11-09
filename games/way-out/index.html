@@ -56,6 +56,10 @@
         .bc { position: absolute; display: flex; align-items: center; justify-content: center; border: 0 solid rgba(20,15,40,0.55); }
         .stud { width: 46%; height: 46%; border-radius: 50%; background: rgba(255,255,255,0.28); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
         .stud svg { width: 64%; height: 64%; fill: rgba(255,255,255,0.95); }
+        .bc.crate { background-color: #9c97ad !important; background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.09) 0 2px, transparent 2px 11px); border-color: rgba(40,35,60,0.6) !important; }
+        .bc.crate .stud { display: none; }
+        .pill.low b { color: #dc2626; }
+        .pill.starpill b { color: #d97706; letter-spacing: 1px; }
         .axis { width: 80%; height: 80%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
         .axis svg { width: 100%; height: 100%; stroke: rgba(255,255,255,0.95); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.3)); }
         .ghost { position: absolute; border: 3px dashed var(--hint); border-radius: 9px; background: rgba(14,165,233,0.12); pointer-events: none; z-index: 2; }
@@ -129,7 +133,7 @@
     <main>
         <div class="status" aria-live="polite">
             <span class="pill" id="clockPill">⏱ <b id="clock">0:00</b></span>
-            <span class="pill" id="targetPill">★★★ under <b id="target">0:00</b></span>
+            <span class="pill starpill" id="starsPill" aria-label="Stars you can still get"><b id="liveStars">★★★</b></span>
             <span class="pill">Left <b id="left">0</b></span>
         </div>
         <div class="board-area" id="boardArea"><div class="board" id="board" aria-label="Way Out board"></div></div>
@@ -139,7 +143,6 @@
         <div class="hint-bar" id="hintBar" role="status" aria-live="polite"></div>
         <div class="row">
             <button class="ctrl" id="undoBtn" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
-            <button class="ctrl primary" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small id="hintLeft">2 left</small></button>
             <button class="ctrl" id="restartBtn"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Restart</button>
         </div>
     </div>
@@ -151,15 +154,15 @@
             <button class="modal-x" id="helpX" aria-label="Close">✕</button>
             <h2 id="helpTitle">How to play</h2>
             <ol>
-                <li><b>Drag</b> a block to slide it around the board. Blocks can't pass through each other or the grey stones.</li>
-                <li>Each block leaves through a <b>door of its own colour</b> in the wall. Drag it into the door and out it goes, as long as the <b>whole block fits</b> through the opening.</li>
-                <li>Blocks with <b>arrows</b> only move the way the arrows point.</li>
-                <li>Clear every block. The clock counts up while you play: beat the <b>target time</b> for <b>3 stars</b>, or finish within half as long again for 2. You can't run out of time.</li>
-                <li>The clock pauses whenever this help, the level list or another app is open.</li>
+                <li><b>Drag</b> a piece to slide it. Every piece slides only <b>along its length</b>, like cars in a traffic jam.</li>
+                <li>Each coloured block leaves through the <b>door of its colour</b> in the wall: slide it into the door and out it goes.</li>
+                <li>Grey <b>crates</b> never leave. Shuffle them (and other blocks) to make space.</li>
+                <li>Get every coloured block out before the <b>clock runs out</b>. Finish with half the time left for <b>3 stars</b>, a quarter for <b>2</b>. Out of time? Try again: it's free.</li>
+                <li>The clock pauses while this help, the level list or another app is open.</li>
             </ol>
-            <p>Stuck? <b>Hint</b> shows a good next move. You get <b>2 hints</b> per level, and each one costs a star. Undo and Restart are free.</p>
+            <p>Undo is free but the clock keeps running. Restart starts the level, and the clock, again.</p>
             <label class="toggle-row" for="clockToggle">
-                <span><b>Hide the clock</b><small>Play without watching the time. Stars still go by how long you take.</small></span>
+                <span><b>No time limit</b><small>The clock counts up instead and you can't run out. Stars still go by how quickly you finish.</small></span>
                 <span class="switch"><input type="checkbox" id="clockToggle" role="switch"><span class="track"></span></span>
             </label>
             <label class="toggle-row" for="symToggle">
@@ -177,6 +180,15 @@
             <p id="winText"></p>
             <button class="btn" id="nextBtn">Next level</button>
             <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="timeModal" role="dialog" aria-modal="true" aria-labelledby="timeTitle">
+        <div class="modal">
+            <h2 id="timeTitle">Out of time</h2>
+            <p id="timeText"></p>
+            <button class="btn" id="retryBtn">Try again</button>
+            <button class="btn secondary" id="relaxBtn">Play without a time limit</button>
         </div>
     </div>
 
@@ -230,24 +242,35 @@
 
         var MAX_HINTS = 2;
         var levelNo = progress.level, L = null, blocks = [], moves = 0, history = [], hintsUsed = 0, solved = false, hintMove = null;
-        var elapsed = 0, lastTick = 0, hideClock = S.getString('wayout_hideClock', 'false') === 'true';
+        var elapsed = 0, lastTick = 0, noLimit = S.getString('wayout_noLimit', 'false') === 'true', timedOut = false;
         // Target time: a little thinking time, plus time per move needed, plus extra for each block that must be moved aside
-        function targetMs() { return Math.round(4 + L.par * 2.2 + Math.max(0, L.stuck || 0) * 3 + (L.tough ? 5 : 0)) * 1000; }
-        function twoStarMs() { return targetMs() * 1.5; }
+        // Time allowed: thinking time plus a few seconds for each move in the shortest solution
+        function limitMs() { return Math.round(15 + L.par * 4.5) * 1000; }
+        function liveStars() { var f = elapsed / limitMs(); return f <= 0.5 ? 3 : f <= 0.75 ? 2 : 1; }
+        function outOfTime() {
+            timedOut = true; buzz(60);
+            var left = blocks.filter(function (b) { return !b.out && b.col >= 0; }).length, total = L.blocks.filter(function (b) { return b.col >= 0; }).length;
+            $('timeText').textContent = 'You got ' + (total - left) + ' of ' + total + ' blocks out. It can be done in ' + L.par + ' moves. Trying again is free.';
+            openModal('timeModal');
+        }
         function fmt(ms) { var t = Math.floor(ms / 1000), m = Math.floor(t / 60); t %= 60; return m + ':' + (t < 10 ? '0' : '') + t; }
         function ready() { return L && L.number === levelNo; }
-        function paused() { return !ready() || solved || document.hidden || $('helpModal').classList.contains('active') || $('levelModal').classList.contains('active'); }
+        function paused() { return !ready() || solved || timedOut || $('timeModal').classList.contains('active') || document.hidden || $('helpModal').classList.contains('active') || $('levelModal').classList.contains('active'); }
         function tick() {
             var now = Date.now();
             if (lastTick && !paused()) elapsed += Math.min(now - lastTick, 2000);
             lastTick = now;
             showClock();
+            if (ready() && !solved && !noLimit && !timedOut && elapsed >= limitMs()) outOfTime();
         }
         function showClock() {
             if (!L) return;
-            $('clock').textContent = hideClock ? 'hidden' : fmt(elapsed);
-            $('clockPill').classList.toggle('over', !hideClock && elapsed > targetMs());
-            $('targetPill').style.display = hideClock ? 'none' : '';
+            var left = Math.max(0, limitMs() - elapsed);
+            $('clock').textContent = noLimit ? fmt(elapsed) : fmt(Math.ceil(left / 1000) * 1000);
+            $('clockPill').classList.toggle('low', !noLimit && left < 10000);
+            $('clockPill').setAttribute('aria-label', noLimit ? 'Time taken' : 'Time left');
+            var st = liveStars(), str = ''; for (var i = 0; i < 3; i++) str += i < st ? '★' : '☆';
+            $('liveStars').textContent = str;
         }
         var geo = null, drag = null;
 
@@ -258,12 +281,12 @@
 
         // ---------- state ----------
         function saveState() {
-            S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, t: Math.round(elapsed), h: hintsUsed, s: solved }));
+            S.setString(KEY_STATE, JSON.stringify({ v: 2, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, t: Math.round(elapsed), h: hintsUsed, s: solved }));
         }
         function loadState(n) {
             try {
                 var o = JSON.parse(S.getString(KEY_STATE, 'null'));
-                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.b) || o.b.length !== L.blocks.length) return false;
+                if (!o || o.v !== 2 || o.level !== n || !Array.isArray(o.b) || o.b.length !== L.blocks.length) return false;
                 var bs = E.cloneBlocks(L.blocks);
                 for (var i = 0; i < bs.length; i++) { var x = o.b[i]; if (!Array.isArray(x)) return false; bs[i].r = x[0] | 0; bs[i].c = x[1] | 0; bs[i].out = !!x[2]; }
                 // reject anything that doesn't fit (old or damaged saves)
@@ -278,7 +301,7 @@
                         occ[y * L.C + x2] = i;
                     }
                 }
-                blocks = bs; moves = Math.max(0, o.m | 0); elapsed = Math.max(0, +o.t || 0); hintsUsed = Math.min(MAX_HINTS, Math.max(0, o.h | 0)); solved = !!o.s;
+                blocks = bs; moves = Math.max(0, o.m | 0); elapsed = Math.max(0, +o.t || 0); hintsUsed = 0; solved = !!o.s;
                 return true;
             } catch (e) { return false; }
         }
@@ -304,6 +327,8 @@
             if (built[n]) return cb && cb(built[n]);
             if (prebuilt === null) { prebuiltWaiting.push(function () { getLevel(n, cb); }); return; }
             if (prebuilt[n - 1] && prebuilt[n - 1].number === n) { built[n] = prebuilt[n - 1]; return cb && cb(built[n]); }
+            // past the shipped levels: the hard half (51-150) again, turned and later mirrored
+            if (prebuilt.length >= 150 && n > prebuilt.length) { built[n] = E.variant(prebuilt[50 + (n - 151) % 100], n); return cb && cb(built[n]); }
             if (!worker) { built[n] = E.generate(n); return cb && cb(built[n]); }
             if (waiting[n]) { if (cb) waiting[n].push(cb); return; }
             waiting[n] = cb ? [cb] : [];
@@ -316,19 +341,19 @@
         }
         function showLevel(n) {
             if (!loadState(n)) { blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; hintsUsed = 0; solved = false; }
-            solved = solved && blocks.every(function (b) { return b.out; });
+            solved = solved && E.cleared(blocks);
             lastTick = Date.now();
             ['winModal', 'levelModal'].forEach(closeModal);
             hideHint();
-            if (hintsUsed > 0 && !solved) {
-                var nb = $('hintBar'); nb.className = 'hint-bar show info';
-                nb.innerHTML = '<b>Welcome back</b>You\'ve used ' + hintsUsed + ' of your ' + MAX_HINTS + ' hints here, so the best you can get this time is ' + (3 - hintsUsed) + ' star' + (3 - hintsUsed === 1 ? '' : 's') + '. Restart doesn\'t reset hints.';
-            }
             $('levelBtn').innerHTML = 'Level ' + n + (L.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
-            $('target').textContent = fmt(targetMs());
+            timedOut = false;
             build(); renderAll(); saveState();
         }
+        var cmap = [0, 1, 2, 3, 4, 5, 6, 7];
         function build() {
+            // Colours vary by level (seeded, so a level always looks the same)
+            var a = (levelNo * 2654435761) >>> 0; cmap = [0, 1, 2, 3, 4, 5, 6];
+            for (var ci = 6; ci > 0; ci--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var cj = a % (ci + 1); var tmp = cmap[ci]; cmap[ci] = cmap[cj]; cmap[cj] = tmp; }
             var area = $('boardArea'), board = $('board');
             var wall = 12;
             var cell = Math.floor(Math.min((area.clientWidth - wall * 2) / L.C, (area.clientHeight - wall * 2) / L.R, 64));
@@ -343,7 +368,7 @@
                 var x, y, w, h, t = wall - 3;
                 if (d.side === 'top' || d.side === 'bottom') { x = wall + d.start * cell + 3; w = d.len * cell - 6; h = t; y = d.side === 'top' ? 1 : wall + L.R * cell + 2; }
                 else { y = wall + d.start * cell + 3; h = d.len * cell - 6; w = t; x = d.side === 'left' ? 1 : wall + L.C * cell + 2; }
-                html += '<div class="door" data-d="' + i + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + COLOURS[d.col] + '" aria-label="' + CNAMES[d.col] + ' door">' + (showSyms ? SYMS[d.col] : '') + '</div>';
+                html += '<div class="door" data-d="' + i + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + COLOURS[cmap[d.col]] + '" aria-label="' + CNAMES[cmap[d.col]] + ' door">' + (showSyms ? SYMS[cmap[d.col]] : '') + '</div>';
             });
             blocks.forEach(function (b) {
                 var s = E.SHAPES[b.shape], inner = '', own = {};
@@ -359,13 +384,14 @@
                     var w = cell - (Lf ? g : 0) - (Rt ? g : 0), h = cell - (T ? g : 0) - (B ? g : 0);
                     var radius = (T && Lf ? rad : 0) + 'px ' + (T && Rt ? rad : 0) + 'px ' + (B && Rt ? rad : 0) + 'px ' + (B && Lf ? rad : 0) + 'px';
                     var bord = 'border-width:' + (T ? bw : 0) + 'px ' + (Rt ? bw : 0) + 'px ' + (B ? bw + 2 : 0) + 'px ' + (Lf ? bw : 0) + 'px';
-                    var isMid = b.axis && p === mid;
-                    inner += '<div class="bc" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + radius + ';' + bord +
-                        ';background:' + COLOURS[b.col] + '">' +
-                        (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : '<span class="stud">' + (showSyms ? SYMS[b.col] : '') + '</span>') + '</div>';
+                    var isMid = false;   // every piece slides along its length, so no arrows needed
+                    var crate = b.col < 0;
+                    inner += '<div class="bc' + (crate ? ' crate' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + radius + ';' + bord +
+                        ';background:' + (crate ? '#9c97ad' : COLOURS[cmap[b.col]]) + '">' +
+                        (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : '<span class="stud">' + (showSyms && !crate ? SYMS[cmap[b.col]] : '') + '</span>') + '</div>';
                 });
                 var e = E.extent(b.shape);
-                html += '<div class="block" data-id="' + b.id + '" role="button" aria-label="' + CNAMES[b.col] + ' block' + (b.axis ? (b.axis === 'h' ? ', moves left and right only' : ', moves up and down only') : '') + '" style="width:' + (e.w * cell) + 'px;height:' + (e.h * cell) + 'px">' + inner + '</div>';
+                html += '<div class="block" data-id="' + b.id + '" role="button" aria-label="' + (b.col < 0 ? 'crate' : CNAMES[cmap[b.col]] + ' block') + (b.axis ? (b.axis === 'h' ? ', slides left and right' : ', slides up and down') : '') + '" style="width:' + (e.w * cell) + 'px;height:' + (e.h * cell) + 'px">' + inner + '</div>';
             });
             board.innerHTML = html;
         }
@@ -378,13 +404,9 @@
         function renderAll() {
             blocks.forEach(function (b) { place(b); });
             showClock();
-            $('left').textContent = blocks.filter(function (b) { return !b.out; }).length;
+            $('left').textContent = blocks.filter(function (b) { return !b.out && b.col >= 0; }).length;
             $('undoBtn').disabled = !history.length || solved;
             $('restartBtn').disabled = solved || (moves === 0 && !history.length);
-            var left = Math.max(0, MAX_HINTS - hintsUsed);
-            $('hintBtn').disabled = solved || left === 0;
-            $('hintLeft').textContent = left ? left + ' left' : 'none left';
-            $('hintBtn').setAttribute('aria-label', 'Hint, ' + left + ' of ' + MAX_HINTS + ' left. Each hint costs a star.');
             // hint highlights
             $('board').querySelectorAll('.ghost').forEach(function (g) { g.remove(); });
             $('board').querySelectorAll('.block.hinted, .door.hinted').forEach(function (x) { x.classList.remove('hinted'); });
@@ -410,7 +432,7 @@
         function snapshot() { return { b: blocks.map(function (b) { return [b.r, b.c, b.out]; }), m: moves }; }
         function restore(s) { s.b.forEach(function (x, i) { blocks[i].r = x[0]; blocks[i].c = x[1]; blocks[i].out = x[2]; }); moves = s.m; }
         $('board').addEventListener('pointerdown', function (e) {
-            if (!ready() || solved || drag) return;
+            if (!ready() || solved || timedOut || drag) return;
             var el = e.target.closest('.block'); if (!el || el.classList.contains('leaving')) return;
             var b = blocks[+el.dataset.id]; if (b.out) return;
             e.preventDefault();
@@ -457,7 +479,7 @@
             buzz(15);
             drag = null; hintMove = null; hideHint();
             renderAll(); saveState();
-            if (blocks.every(function (x) { return x.out; })) setTimeout(onWin, 300);
+            if (E.cleared(blocks)) setTimeout(onWin, 300);
         }
         function endDrag(e) {
             if (!drag || (e && e.pointerId !== drag.id)) return;
@@ -479,10 +501,11 @@
             restore(history.pop()); hintMove = null; hideHint();
             build(); renderAll(); saveState();
         }
+        function restartFresh() { timedOut = false; solved = false; history = []; blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; lastTick = Date.now(); build(); renderAll(); saveState(); }
         function restart() {
             if (!ready() || solved) return;
             history.push(snapshot());
-            blocks = E.cloneBlocks(L.blocks); moves = 0; hintMove = null; hideHint();
+            blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; timedOut = false; hintMove = null; hideHint();
             build(); renderAll(); saveState();
         }
         function showHint() {
@@ -513,8 +536,7 @@
             }
         }
         function starsFor() {
-            var byTime = elapsed <= targetMs() ? 3 : elapsed <= twoStarMs() ? 2 : 1;
-            return Math.min(byTime, 3 - hintsUsed);
+            return liveStars();
         }
         function onWin() {
             tick(); solved = true; hideHint();
@@ -525,11 +547,9 @@
             saveState(); renderAll(); buzz(40); confetti();
             var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
             $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
-            var parts = ['Cleared in ' + fmt(elapsed) + ' (3-star time ' + fmt(targetMs()) + ')'];
-            if (hintsUsed) parts.push('with ' + hintsUsed + ' hint' + (hintsUsed === 1 ? '' : 's'));
-            var tip = s === 3 ? '' : hintsUsed && elapsed <= targetMs() ? ' Try again without hints for 3 stars.' :
-                ' Tip: it can be cleared in ' + L.par + ' moves, so plan the order before you start dragging.';
-            $('winText').textContent = parts.join(' ') + '.' + tip;
+            var used = 'Cleared in ' + fmt(elapsed) + (noLimit ? '' : ' with ' + fmt(Math.max(0, limitMs() - elapsed)) + ' to spare') + ' and ' + moves + ' moves (fewest possible: ' + L.par + ').';
+            var tip = s === 3 ? '' : ' 3 stars needs it done within ' + fmt(limitMs() / 2) + '.';
+            $('winText').textContent = used + tip;
             $('replayBtn').style.display = s === 3 ? 'none' : '';
             setTimeout(function () { openModal('winModal'); }, 400);
         }
@@ -546,7 +566,6 @@
         }
 
         $('undoBtn').addEventListener('click', undo);
-        $('hintBtn').addEventListener('click', showHint);
         $('restartBtn').addEventListener('click', restart);
         $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo + 1); });
         $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo); });
@@ -554,8 +573,11 @@
         $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
         $('helpClose').addEventListener('click', closeHelp);
         $('helpX').addEventListener('click', closeHelp);
-        $('clockToggle').checked = hideClock;
-        $('clockToggle').addEventListener('change', function () { hideClock = this.checked; S.setString('wayout_hideClock', hideClock ? 'true' : 'false'); showClock(); });
+        $('clockToggle').checked = noLimit;
+        function setNoLimit(v) { noLimit = v; $('clockToggle').checked = v; S.setString('wayout_noLimit', v ? 'true' : 'false'); showClock(); }
+        $('clockToggle').addEventListener('change', function () { setNoLimit(this.checked); });
+        $('retryBtn').addEventListener('click', function () { closeModal('timeModal'); restartFresh(); });
+        $('relaxBtn').addEventListener('click', function () { closeModal('timeModal'); setNoLimit(true); timedOut = false; lastTick = Date.now(); });
         setInterval(tick, 250);
         document.addEventListener('visibilitychange', function () { tick(); if (document.hidden && L) saveState(); });
         $('symToggle').checked = showSyms;
@@ -578,7 +600,7 @@
 
         startLevel(levelNo);
         if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
-        window.__wayout = function () { return { L: L, blocks: blocks, moves: moves, elapsed: elapsed }; };   // read by the automated play-tests
+        window.__wayout = function () { return { L: L, blocks: blocks, moves: moves, elapsed: elapsed, limit: L && limitMs() }; };   // read by the automated play-tests
     })();
     </script>
 </body>
