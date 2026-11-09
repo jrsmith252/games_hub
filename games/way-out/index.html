@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Way Out — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #ece9f6;
+            --card: #fcfbff;
+            --deep: #2a2350;
+            --accent: #ffb547;
+            --ink: #1f1b33;
+            --ink-soft: #5d5875;
+            --line: #d6d1e8;
+            --floor: #f7f5fc;
+            --floor-2: #efecf8;
+            --wall: #3d3566;
+            --hint: #0ea5e9;
+        }
+        html, body.wayout { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.wayout { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); position: relative; z-index: 20; }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); letter-spacing: 0.5px; }
+        .level-btn { background: none; border: 0; font: inherit; color: #fff; font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; opacity: 0.92; }
+        .level-btn .tough { color: var(--accent); font-weight: 700; }
+
+        main { flex: 1; min-height: 0; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 12px 6px; display: flex; flex-direction: column; align-items: center; }
+        .status { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap; }
+        .pill { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; color: var(--ink-soft); }
+        .pill b { color: var(--ink); }
+        .pill.over b { color: #b45309; }
+        .board-area { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+        .board { position: relative; background: var(--wall); border-radius: 14px; box-shadow: 0 8px 22px rgba(42,35,80,0.25); touch-action: none; }
+        .floor { position: absolute; border-radius: 6px; background-color: var(--floor);
+            background-image: linear-gradient(var(--floor-2) 1px, transparent 1px), linear-gradient(90deg, var(--floor-2) 1px, transparent 1px); }
+        .stone { position: absolute; border-radius: 6px; background-color: #4b4569; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.13) 0 4px, transparent 4px 9px); box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25); }
+        .door { position: absolute; border-radius: 4px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+        .door svg { width: 12px; height: 12px; fill: #fff; opacity: 0.95; }
+        .door.hinted { animation: doorPulse 1s ease-in-out infinite; }
+        @keyframes doorPulse { 50% { filter: brightness(1.35); } }
+        .block { position: absolute; left: 0; top: 0; cursor: grab; transition: transform 70ms linear; z-index: 3; }
+        .block.dragging { z-index: 6; cursor: grabbing; transition: transform 50ms linear; }
+        .block.dragging .bc { filter: brightness(1.08); }
+        .block.leaving { transition: transform 260ms ease-in, opacity 260ms ease-in; opacity: 0; }
+        .block.hinted .bc { border-color: var(--hint); }
+        .block.hinted { filter: drop-shadow(0 0 4px rgba(14,165,233,0.9)); }
+        .bc { position: absolute; display: flex; align-items: center; justify-content: center; border: 0 solid rgba(20,15,40,0.55); }
+        .stud { width: 46%; height: 46%; border-radius: 50%; background: rgba(255,255,255,0.28); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
+        .stud svg { width: 64%; height: 64%; fill: rgba(255,255,255,0.95); }
+        .axis { width: 80%; height: 80%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .axis svg { width: 100%; height: 100%; stroke: rgba(255,255,255,0.95); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.3)); }
+        .ghost { position: absolute; border: 3px dashed var(--hint); border-radius: 9px; background: rgba(14,165,233,0.12); pointer-events: none; z-index: 2; }
+
+        .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(236,233,246,0.97); border-top: 1px solid var(--line); position: relative; z-index: 20; }
+        .controls .row { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; }
+        .ctrl { flex: 1; min-height: 48px; border-radius: 12px; border: 2px solid rgba(31,27,51,0.18); background: var(--card); color: var(--ink); font: inherit; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .ctrl.primary { background: var(--deep); color: #fff; border-color: var(--deep); }
+        .ctrl small { font-weight: 500; opacity: 0.8; font-size: 0.72rem; }
+        .hint-bar { display: none; max-width: 560px; margin: 0 auto 8px; background: #f0f9ff; border: 2px solid var(--hint); border-radius: 12px; padding: 10px 12px; font-size: 0.9rem; line-height: 1.4; color: #0c4a6e; }
+        .hint-bar.show { display: block; }
+        .hint-bar.info { background: #fff7ed; border-color: #ea580c; color: #7c2d12; }
+        .hint-bar b { display: block; margin-bottom: 2px; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(25,20,45,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 390px; background: var(--card); border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--deep); }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 14px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 14px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal ol b { color: var(--ink); }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .stars { font-size: 2.2rem; letter-spacing: 6px; margin: 2px 0 10px; color: #d4d0e2; }
+        .stars .lit { color: #d97706; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(31,27,51,0.22); }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+        .toggle-row b { display: block; font-size: 0.95rem; color: var(--ink); }
+        .toggle-row small { display: block; color: var(--ink-soft); font-size: 0.8rem; margin-top: 2px; }
+        .switch { position: relative; flex: none; width: 50px; height: 30px; }
+        .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+        .switch .track { position: absolute; inset: 0; border-radius: 999px; background: #cbd5e1; transition: background 0.2s; pointer-events: none; }
+        .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .switch input:checked + .track { background: #15803d; }
+        .switch input:checked + .track::after { transform: translateX(20px); }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .level-cell small { font-size: 0.6rem; color: #d97706; letter-spacing: 1px; min-height: 0.8em; }
+        .level-cell.current { border: 2px solid var(--deep); }
+        .level-cell.tough { background: #fbf3dc; }
+        .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
+        .toast.show { opacity: 1; }
+        .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
+        @media (max-height: 640px) { .status { margin-bottom: 5px; } .ctrl { min-height: 44px; } }
+    </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Way Out</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+    </header>
+
+    <main>
+        <div class="status" aria-live="polite">
+            <span class="pill" id="movesPill">Moves <b id="moves">0</b></span>
+            <span class="pill">★★★ in <b id="par">0</b></span>
+            <span class="pill">Left <b id="left">0</b></span>
+        </div>
+        <div class="board-area" id="boardArea"><div class="board" id="board" aria-label="Way Out board"></div></div>
+    </main>
+
+    <div class="controls">
+        <div class="hint-bar" id="hintBar" role="status" aria-live="polite"></div>
+        <div class="row">
+            <button class="ctrl" id="undoBtn" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
+            <button class="ctrl primary" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small id="hintLeft">2 left</small></button>
+            <button class="ctrl" id="restartBtn"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Restart</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li><b>Drag</b> a block to slide it around the board. Blocks can't pass through each other or the grey stones.</li>
+                <li>Each block leaves through a <b>door of its own colour</b> in the wall. Drag it into the door and out it goes, as long as the <b>whole block fits</b> through the opening.</li>
+                <li>Blocks with <b>arrows</b> only move the way the arrows point.</li>
+                <li>Clear every block. Each time you pick a block up and put it down counts as <b>one move</b>.</li>
+                <li>Finish within the target for <b>3 stars</b> (the target is always possible), or a couple over for 2. There's no timer, so take your time.</li>
+            </ol>
+            <p>Stuck? <b>Hint</b> shows a good next move. You get <b>2 hints</b> per level, and each one costs a star. Undo and Restart are free.</p>
+            <label class="toggle-row" for="symToggle">
+                <span><b>Colour symbols</b><small>Show a symbol on each block and door, so you don't need to tell colours apart. Helpful for colour blindness.</small></span>
+                <span class="switch"><input type="checkbox" id="symToggle" role="switch"><span class="track"></span></span>
+            </label>
+            <button class="btn" id="helpClose">Let's play</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <h2 id="winTitle">All clear!</h2>
+            <div class="stars" id="winStars"></div>
+            <p id="winText"></p>
+            <button class="btn" id="nextBtn">Next level</button>
+            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <button class="modal-x" id="levelX" aria-label="Close">✕</button>
+            <h2 id="levelTitle">Levels</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Way Out';   // one place to rename the game
+        var E = window.WayOutEngine, S = window.HubStorage;
+        var KEY_PROGRESS = 'wayout_progress', KEY_STARS = 'wayout_stars', KEY_STATE = 'wayout_state', KEY_SEEN = 'wayout_instructionsSeen',
+            KEY_SYM = 'hub_colourBlindShapes';   // hub-wide colour-blind aid (shared with other games)
+        var $ = function (id) { return document.getElementById(id); };
+        var COLOURS = ['#e5484d', '#3b82f6', '#22a35a', '#f5b400', '#8e4ec6', '#f97316', '#e93d82', '#12a594'];
+        var CNAMES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'teal'];
+        // One symbol per colour (no arrows, so they can't be mistaken for directions)
+        var SYMS = [
+            '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>',
+            '<svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="2"/></svg>',
+            '<svg viewBox="0 0 24 24"><path d="M12 3l9 9-9 9-9-9z"/></svg>',
+            '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 16.8 6.2 20l1.4-6.4L2.7 9.2l6.5-.7z"/></svg>',
+            '<svg viewBox="0 0 24 24"><path d="M12 20.5S3.5 15 3.5 9A4.5 4.5 0 0 1 12 6.6 4.5 4.5 0 0 1 20.5 9c0 6-8.5 11.5-8.5 11.5z"/></svg>',
+            '<svg viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>',
+            '<svg viewBox="0 0 24 24"><path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/></svg>',
+            '<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18zm0 5a4 4 0 1 1 0 8 4 4 0 1 1 0-8z" fill-rule="evenodd"/></svg>'
+        ];
+        var ARROW_H = '<svg viewBox="0 0 24 24"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>';
+        var ARROW_V = '<svg viewBox="0 0 24 24"><path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/></svg>';
+
+        document.body.classList.add('wayout');
+        document.title = GAME_NAME + ' — Game Hub';
+
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var stars = (function () {
+            var out = {};
+            try {
+                var o = JSON.parse(S.getString(KEY_STARS, '{}'));
+                if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; });
+            } catch (e) { /* ignore */ }
+            return out;
+        })();
+        var showSyms = S.getFlag(KEY_SYM);
+
+        var MAX_HINTS = 2;
+        var levelNo = progress.level, L = null, blocks = [], moves = 0, history = [], hintsUsed = 0, solved = false, hintMove = null;
+        var geo = null, drag = null;
+
+        function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 1600); }
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } var m = $(id).querySelector('.modal'); if (m) m.scrollTop = 0; }
+        function closeModal(id) { $(id).classList.remove('active'); }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+
+        // ---------- state ----------
+        function saveState() {
+            S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, h: hintsUsed, s: solved }));
+        }
+        function loadState(n) {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.b) || o.b.length !== L.blocks.length) return false;
+                var bs = E.cloneBlocks(L.blocks);
+                for (var i = 0; i < bs.length; i++) { var x = o.b[i]; if (!Array.isArray(x)) return false; bs[i].r = x[0] | 0; bs[i].c = x[1] | 0; bs[i].out = !!x[2]; }
+                // reject anything that doesn't fit (old or damaged saves)
+                var occ = []; for (i = 0; i < L.R * L.C; i++) occ.push(-1);
+                L.stones.forEach(function (s) { occ[s] = -2; });
+                for (i = 0; i < bs.length; i++) {
+                    if (bs[i].out) continue;
+                    var cs = E.cellsAt(bs[i], bs[i].r, bs[i].c);
+                    for (var k = 0; k < cs.length; k++) {
+                        var y = cs[k][0], x2 = cs[k][1];
+                        if (y < 0 || x2 < 0 || y >= L.R || x2 >= L.C || occ[y * L.C + x2] !== -1) return false;
+                        occ[y * L.C + x2] = i;
+                    }
+                }
+                blocks = bs; moves = Math.max(0, o.m | 0); hintsUsed = Math.min(MAX_HINTS, Math.max(0, o.h | 0)); solved = !!o.s;
+                return true;
+            } catch (e) { return false; }
+        }
+
+        // ---------- level ----------
+        function startLevel(n) {
+            levelNo = n; L = E.generate(n); history = []; hintMove = null;
+            if (!loadState(n)) { blocks = E.cloneBlocks(L.blocks); moves = 0; hintsUsed = 0; solved = false; }
+            ['winModal', 'levelModal'].forEach(closeModal);
+            hideHint();
+            if (hintsUsed > 0 && !solved) {
+                var nb = $('hintBar'); nb.className = 'hint-bar show info';
+                nb.innerHTML = '<b>Welcome back</b>You\'ve used ' + hintsUsed + ' of your ' + MAX_HINTS + ' hints here, so the best you can get this time is ' + (3 - hintsUsed) + ' star' + (3 - hintsUsed === 1 ? '' : 's') + '. Restart doesn\'t reset hints.';
+            }
+            $('levelBtn').innerHTML = 'Level ' + n + (L.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
+            $('par').textContent = L.par;
+            build(); renderAll(); saveState();
+        }
+        function build() {
+            var area = $('boardArea'), board = $('board');
+            var wall = 12;
+            var cell = Math.floor(Math.min((area.clientWidth - wall * 2) / L.C, (area.clientHeight - wall * 2) / L.R, 64));
+            geo = { cell: cell, wall: wall };
+            board.style.width = (L.C * cell + wall * 2) + 'px'; board.style.height = (L.R * cell + wall * 2) + 'px';
+            var html = '<div class="floor" style="left:' + wall + 'px;top:' + wall + 'px;width:' + (L.C * cell) + 'px;height:' + (L.R * cell) + 'px;background-size:' + cell + 'px ' + cell + 'px"></div>';
+            L.stones.forEach(function (s) {
+                var r = Math.floor(s / L.C), c = s % L.C;
+                html += '<div class="stone" style="left:' + (wall + c * cell + 3) + 'px;top:' + (wall + r * cell + 3) + 'px;width:' + (cell - 6) + 'px;height:' + (cell - 6) + 'px"></div>';
+            });
+            L.doors.forEach(function (d, i) {
+                var x, y, w, h, t = wall - 3;
+                if (d.side === 'top' || d.side === 'bottom') { x = wall + d.start * cell + 3; w = d.len * cell - 6; h = t; y = d.side === 'top' ? 1 : wall + L.R * cell + 2; }
+                else { y = wall + d.start * cell + 3; h = d.len * cell - 6; w = t; x = d.side === 'left' ? 1 : wall + L.C * cell + 2; }
+                html += '<div class="door" data-d="' + i + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + COLOURS[d.col] + '" aria-label="' + CNAMES[d.col] + ' door">' + (showSyms ? SYMS[d.col] : '') + '</div>';
+            });
+            blocks.forEach(function (b) {
+                var s = E.SHAPES[b.shape], inner = '', own = {};
+                s.forEach(function (p) { own[p[0] + ',' + p[1]] = 1; });
+                // the arrow sits on the square nearest the middle of the block
+                var cy = 0, cx = 0; s.forEach(function (p) { cy += p[0]; cx += p[1]; }); cy /= s.length; cx /= s.length;
+                var mid = s.slice().sort(function (a, z) { return (Math.abs(a[0] - cy) + Math.abs(a[1] - cx)) - (Math.abs(z[0] - cy) + Math.abs(z[1] - cx)); })[0];
+                var g = 3, rad = Math.round(cell * 0.18), bw = 2;
+                s.forEach(function (p) {
+                    // Squares of one block join up; outer edges get a gap, an outline and rounded corners
+                    var T = !own[(p[0] - 1) + ',' + p[1]], B = !own[(p[0] + 1) + ',' + p[1]], Lf = !own[p[0] + ',' + (p[1] - 1)], Rt = !own[p[0] + ',' + (p[1] + 1)];
+                    var x = p[1] * cell + (Lf ? g : 0), y = p[0] * cell + (T ? g : 0);
+                    var w = cell - (Lf ? g : 0) - (Rt ? g : 0), h = cell - (T ? g : 0) - (B ? g : 0);
+                    var radius = (T && Lf ? rad : 0) + 'px ' + (T && Rt ? rad : 0) + 'px ' + (B && Rt ? rad : 0) + 'px ' + (B && Lf ? rad : 0) + 'px';
+                    var bord = 'border-width:' + (T ? bw : 0) + 'px ' + (Rt ? bw : 0) + 'px ' + (B ? bw + 2 : 0) + 'px ' + (Lf ? bw : 0) + 'px';
+                    var isMid = b.axis && p === mid;
+                    inner += '<div class="bc" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + radius + ';' + bord +
+                        ';background:' + COLOURS[b.col] + '">' +
+                        (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : '<span class="stud">' + (showSyms ? SYMS[b.col] : '') + '</span>') + '</div>';
+                });
+                var e = E.extent(b.shape);
+                html += '<div class="block" data-id="' + b.id + '" role="button" aria-label="' + CNAMES[b.col] + ' block' + (b.axis ? (b.axis === 'h' ? ', moves left and right only' : ', moves up and down only') : '') + '" style="width:' + (e.w * cell) + 'px;height:' + (e.h * cell) + 'px">' + inner + '</div>';
+            });
+            board.innerHTML = html;
+        }
+        function place(b, el) {
+            el = el || $('board').querySelector('.block[data-id="' + b.id + '"]');
+            if (!el) return;
+            el.style.transform = 'translate(' + (geo.wall + b.c * geo.cell) + 'px,' + (geo.wall + b.r * geo.cell) + 'px)';
+            el.style.display = b.out ? 'none' : '';
+        }
+        function renderAll() {
+            blocks.forEach(function (b) { place(b); });
+            $('moves').textContent = moves;
+            $('movesPill').classList.toggle('over', moves > L.par);
+            $('left').textContent = blocks.filter(function (b) { return !b.out; }).length;
+            $('undoBtn').disabled = !history.length || solved;
+            $('restartBtn').disabled = solved || (moves === 0 && !history.length);
+            var left = Math.max(0, MAX_HINTS - hintsUsed);
+            $('hintBtn').disabled = solved || left === 0;
+            $('hintLeft').textContent = left ? left + ' left' : 'none left';
+            $('hintBtn').setAttribute('aria-label', 'Hint, ' + left + ' of ' + MAX_HINTS + ' left. Each hint costs a star.');
+            // hint highlights
+            $('board').querySelectorAll('.ghost').forEach(function (g) { g.remove(); });
+            $('board').querySelectorAll('.block.hinted, .door.hinted').forEach(function (x) { x.classList.remove('hinted'); });
+            if (hintMove) {
+                var hb = blocks[hintMove.id], el = $('board').querySelector('.block[data-id="' + hintMove.id + '"]');
+                if (el) el.classList.add('hinted');
+                if (hintMove.exit) {
+                    var occ = E.makeOcc(L, blocks), di = E.exitDoor(L, occ, hb, hintMove.r, hintMove.c);
+                    var dEl = $('board').querySelector('.door[data-d="' + di + '"]'); if (dEl) dEl.classList.add('hinted');
+                }
+                if (!hintMove.exit || hintMove.r !== hb.r || hintMove.c !== hb.c) {
+                    E.cellsAt(hb, hintMove.r, hintMove.c).forEach(function (p) {
+                        var g = document.createElement('div'); g.className = 'ghost';
+                        g.style.left = (geo.wall + p[1] * geo.cell + 2) + 'px'; g.style.top = (geo.wall + p[0] * geo.cell + 2) + 'px';
+                        g.style.width = (geo.cell - 4) + 'px'; g.style.height = (geo.cell - 4) + 'px';
+                        $('board').appendChild(g);
+                    });
+                }
+            }
+        }
+
+        // ---------- dragging ----------
+        function snapshot() { return { b: blocks.map(function (b) { return [b.r, b.c, b.out]; }), m: moves }; }
+        function restore(s) { s.b.forEach(function (x, i) { blocks[i].r = x[0]; blocks[i].c = x[1]; blocks[i].out = x[2]; }); moves = s.m; }
+        $('board').addEventListener('pointerdown', function (e) {
+            if (solved || drag) return;
+            var el = e.target.closest('.block'); if (!el) return;
+            var b = blocks[+el.dataset.id]; if (b.out) return;
+            e.preventDefault();
+            try { $('board').setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+            drag = { b: b, el: el, x0: e.clientX, y0: e.clientY, r0: b.r, c0: b.c, snap: snapshot(), id: e.pointerId, bumped: false };
+            el.classList.add('dragging');
+            buzz(5);
+        });
+        $('board').addEventListener('pointermove', function (e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            var b = drag.b, cell = geo.cell;
+            var tr = drag.r0 + Math.round((e.clientY - drag.y0) / cell), tc = drag.c0 + Math.round((e.clientX - drag.x0) / cell);
+            var occ = E.makeOcc(L, blocks), guard = 0;
+            while ((b.r !== tr || b.c !== tc) && guard++ < 40) {
+                var dr = tr - b.r, dc = tc - b.c;
+                var first = Math.abs(dr) >= Math.abs(dc) ? (dr ? (dr < 0 ? 'up' : 'down') : null) : (dc < 0 ? 'left' : 'right');
+                var second = Math.abs(dr) >= Math.abs(dc) ? (dc ? (dc < 0 ? 'left' : 'right') : null) : (dr ? (dr < 0 ? 'up' : 'down') : null);
+                if (tryStep(b, first, occ) || tryStep(b, second, occ)) { if (b.out) return; continue; }
+                break;
+            }
+            place(b, drag.el);
+        });
+        // One square in a direction; or out through a matching door
+        function tryStep(b, dir, occ) {
+            if (!dir || !E.axisAllows(b, dir)) return false;
+            var v = E.DIRS[dir], nr = b.r + v[0], nc = b.c + v[1];
+            if (E.fits(L, occ, b, nr, nc)) { b.r = nr; b.c = nc; return true; }
+            // pushing against the wall: is there a door it fits through?
+            for (var i = 0; i < L.doors.length; i++) {
+                var d = L.doors[i];
+                if (E.SIDE_DIR[d.side] !== dir) continue;
+                if (E.canExitVia(L, occ, b, b.r, b.c, d)) { leave(b, d); return true; }
+            }
+            if (!drag.bumped) { drag.bumped = true; buzz(3); }
+            return false;
+        }
+        function leave(b, d) {
+            var el = drag.el, v = E.DIRS[E.SIDE_DIR[d.side]], far = (L.R + L.C) * geo.cell * 0.5;
+            b.out = true; moves++;
+            history.push(drag.snap); if (history.length > 300) history.shift();
+            el.classList.remove('dragging'); el.classList.add('leaving');
+            el.style.transform = 'translate(' + (geo.wall + b.c * geo.cell + v[1] * far) + 'px,' + (geo.wall + b.r * geo.cell + v[0] * far) + 'px)';
+            setTimeout(function () { el.classList.remove('leaving'); el.style.display = 'none'; }, 280);
+            buzz(15);
+            drag = null; hintMove = null; hideHint();
+            renderAll(); saveState();
+            if (blocks.every(function (x) { return x.out; })) setTimeout(onWin, 300);
+        }
+        function endDrag(e) {
+            if (!drag || (e && e.pointerId !== drag.id)) return;
+            var d = drag; drag = null;
+            d.el.classList.remove('dragging');
+            if (d.b.r !== d.r0 || d.b.c !== d.c0) {
+                moves++; history.push(d.snap); if (history.length > 300) history.shift();
+                if (hintMove) { hintMove = null; hideHint(); }
+                saveState();
+            }
+            renderAll();
+        }
+        $('board').addEventListener('pointerup', endDrag);
+        $('board').addEventListener('pointercancel', endDrag);
+
+        // ---------- buttons ----------
+        function undo() {
+            if (!history.length || solved) return;
+            restore(history.pop()); hintMove = null; hideHint();
+            build(); renderAll(); saveState();
+        }
+        function restart() {
+            if (solved) return;
+            history.push(snapshot());
+            blocks = E.cloneBlocks(L.blocks); moves = 0; hintMove = null; hideHint();
+            build(); renderAll(); saveState();
+        }
+        function showHint() {
+            if (solved || hintsUsed >= MAX_HINTS) return;
+            var m = E.hint(L, blocks);
+            if (!m) { toast('Try Restart: this position is very tangled'); return; }
+            hintsUsed++; hintMove = m;
+            var b = blocks[m.id], bar = $('hintBar');
+            bar.className = 'hint-bar show';
+            bar.innerHTML = m.exit
+                ? '<b>Next: take the ' + CNAMES[b.col] + ' block out</b>' + (m.r === b.r && m.c === b.c ? 'It can leave through its door right now.' : 'Slide it to the outlined spot, then out through the flashing ' + CNAMES[b.col] + ' door.')
+                : '<b>Next: make some room</b>Move the ' + CNAMES[b.col] + ' block to the outlined spot. That clears the way for another block.';
+            renderAll(); saveState();
+        }
+        function hideHint() { $('hintBar').className = 'hint-bar'; }
+
+        // ---------- winning ----------
+        function confetti() {
+            try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            for (var i = 0; i < 50; i++) {
+                var c = document.createElement('span');
+                c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = COLOURS[i % COLOURS.length];
+                document.body.appendChild(c);
+                if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }],
+                    { duration: 1400 + Math.random() * 900, delay: Math.random() * 250, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
+                a.onfinish = (function (el) { return function () { el.remove(); }; })(c);
+            }
+        }
+        function starsFor() {
+            var byMoves = moves <= L.par ? 3 : moves <= L.par + 2 ? 2 : 1;
+            return Math.min(byMoves, 3 - hintsUsed);
+        }
+        function onWin() {
+            solved = true; hideHint();
+            var s = starsFor();
+            if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
+            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
+            S.setObject(KEY_PROGRESS, progress); S.setString(KEY_STARS, JSON.stringify(stars));
+            saveState(); renderAll(); buzz(40); confetti();
+            var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
+            $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
+            var parts = ['Cleared in ' + moves + ' move' + (moves === 1 ? '' : 's') + ' (target ' + L.par + ')'];
+            if (hintsUsed) parts.push('with ' + hintsUsed + ' hint' + (hintsUsed === 1 ? '' : 's'));
+            $('winText').textContent = parts.join(' ') + '.' + (s === 3 ? '' : moves > L.par ? ' It can be done in ' + L.par + '.' : ' Try again without hints for 3 stars.');
+            $('replayBtn').style.display = s === 3 ? 'none' : '';
+            setTimeout(function () { openModal('winModal'); }, 400);
+        }
+
+        function openLevels() {
+            var html = '', max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) {
+                var s = stars[n] || 0, str = ''; for (var i = 0; i < s; i++) str += '★';
+                html += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (E.isTough(n) ? ' tough' : '') + '" data-level="' + n + '" aria-label="Level ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>';
+            }
+            $('levelGrid').innerHTML = html;
+            openModal('levelModal');
+            var cur = $('levelGrid').querySelector('.current'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+        }
+
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', showHint);
+        $('restartBtn').addEventListener('click', restart);
+        $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo + 1); });
+        $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo); });
+        function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        $('symToggle').checked = showSyms;
+        $('symToggle').addEventListener('change', function () { showSyms = this.checked; S.setFlag(KEY_SYM, showSyms); build(); renderAll(); });
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelX').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) {
+            var b = e.target.closest('.level-cell'); if (!b) return;
+            var n = +b.dataset.level;
+            if (n === levelNo) { closeModal('levelModal'); return; }
+            S.setString(KEY_STATE, 'null'); startLevel(n);
+        });
+        ['helpModal', 'levelModal'].forEach(function (id) {
+            $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } });
+        });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if ($('helpModal').classList.contains('active')) closeHelp(); closeModal('levelModal'); } });
+        var rt = null;
+        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!drag) { build(); renderAll(); } }, 150); });
+
+        startLevel(levelNo);
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        window.__wayout = function () { return { L: L, blocks: blocks, moves: moves }; };   // read by the automated play-tests
+    })();
+    </script>
+</body>
+</html>
