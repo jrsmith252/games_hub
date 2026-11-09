@@ -230,10 +230,11 @@
         var levelNo = progress.level, L = null, blocks = [], moves = 0, history = [], hintsUsed = 0, solved = false, hintMove = null;
         var elapsed = 0, lastTick = 0, hideClock = S.getString('wayout_hideClock', 'false') === 'true';
         // Target time: a little thinking time, plus time per move needed, plus extra for each block that must be moved aside
-        function targetMs() { return (6 + L.par * 3.5 + L.extra * 8 + (L.tough ? 5 : 0)) * 1000; }
+        function targetMs() { return (6 + L.par * 3 + L.extra * 6 + (L.tough ? 5 : 0)) * 1000; }
         function twoStarMs() { return targetMs() * 1.5; }
         function fmt(ms) { var t = Math.floor(ms / 1000), m = Math.floor(t / 60); t %= 60; return m + ':' + (t < 10 ? '0' : '') + t; }
-        function paused() { return solved || document.hidden || $('helpModal').classList.contains('active') || $('levelModal').classList.contains('active'); }
+        function ready() { return L && L.number === levelNo; }
+        function paused() { return !ready() || solved || document.hidden || $('helpModal').classList.contains('active') || $('levelModal').classList.contains('active'); }
         function tick() {
             var now = Date.now();
             if (lastTick && !paused()) elapsed += Math.min(now - lastTick, 2000);
@@ -281,9 +282,32 @@
         }
 
         // ---------- level ----------
+        // Levels are built in a background worker (with a direct fallback), and the next one is prepared early
+        var built = {}, waiting = {}, worker = null;
+        try {
+            worker = new Worker('worker.js');
+            worker.onmessage = function (e) {
+                var d = e.data, cbs = waiting[d.n] || []; delete waiting[d.n];
+                var lv = d.level || E.generate(d.n);
+                built[d.n] = lv; cbs.forEach(function (cb) { cb(lv); });
+            };
+            worker.onerror = function () { worker = null; Object.keys(waiting).forEach(function (k) { var cbs = waiting[k]; delete waiting[k]; var lv = built[k] = E.generate(+k); cbs.forEach(function (cb) { cb(lv); }); }); };
+        } catch (e) { worker = null; }
+        function getLevel(n, cb) {
+            if (built[n]) return cb(built[n]);
+            if (!worker) { built[n] = E.generate(n); return cb(built[n]); }
+            if (waiting[n]) { if (cb) waiting[n].push(cb); return; }
+            waiting[n] = cb ? [cb] : [];
+            worker.postMessage(n);
+        }
         function startLevel(n) {
-            levelNo = n; L = E.generate(n); history = []; hintMove = null;
+            levelNo = n; history = []; hintMove = null;
+            if (!built[n]) { $('board').innerHTML = '<div style="color:#fff;padding:40px 30px;font-weight:600">Building level ' + n + '…</div>'; $('board').style.width = ''; $('board').style.height = ''; }
+            getLevel(n, function (lv) { if (levelNo !== n) return; L = lv; showLevel(n); getLevel(n + 1, null); });
+        }
+        function showLevel(n) {
             if (!loadState(n)) { blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; hintsUsed = 0; solved = false; }
+            solved = solved && blocks.every(function (b) { return b.out; });
             lastTick = Date.now();
             ['winModal', 'levelModal'].forEach(closeModal);
             hideHint();
@@ -377,7 +401,7 @@
         function snapshot() { return { b: blocks.map(function (b) { return [b.r, b.c, b.out]; }), m: moves }; }
         function restore(s) { s.b.forEach(function (x, i) { blocks[i].r = x[0]; blocks[i].c = x[1]; blocks[i].out = x[2]; }); moves = s.m; }
         $('board').addEventListener('pointerdown', function (e) {
-            if (solved || drag) return;
+            if (!ready() || solved || drag) return;
             var el = e.target.closest('.block'); if (!el) return;
             var b = blocks[+el.dataset.id]; if (b.out) return;
             e.preventDefault();
@@ -442,18 +466,18 @@
 
         // ---------- buttons ----------
         function undo() {
-            if (!history.length || solved) return;
+            if (!ready() || !history.length || solved) return;
             restore(history.pop()); hintMove = null; hideHint();
             build(); renderAll(); saveState();
         }
         function restart() {
-            if (solved) return;
+            if (!ready() || solved) return;
             history.push(snapshot());
             blocks = E.cloneBlocks(L.blocks); moves = 0; hintMove = null; hideHint();
             build(); renderAll(); saveState();
         }
         function showHint() {
-            if (solved || hintsUsed >= MAX_HINTS) return;
+            if (!ready() || solved || hintsUsed >= MAX_HINTS) return;
             var m = E.hint(L, blocks);
             if (!m) { toast('Try Restart: this position is very tangled'); return; }
             hintsUsed++; hintMove = m;
@@ -541,7 +565,7 @@
         });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if ($('helpModal').classList.contains('active')) closeHelp(); closeModal('levelModal'); } });
         var rt = null;
-        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!drag) { build(); renderAll(); } }, 150); });
+        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!drag && ready()) { build(); renderAll(); } }, 150); });
 
         startLevel(levelNo);
         if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
