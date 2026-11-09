@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Balance — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #eef4ef;
+            --card: #fbfdfb;
+            --deep: #1f4d3a;
+            --deep-2: #2f6b52;
+            --accent: #f2c14e;
+            --ink: #1a2b24;
+            --ink-soft: #55675e;
+            --line: #cfdcd3;
+            --cell: #ffffff;
+            --given: #dfe8e1;
+            --leaf: #2f9e44;
+            --drop: #1c6dd0;
+            --hint: #7c3aed;
+            --wrong: #dc2626;
+            --ok: #15803d;
+        }
+        html, body.balance { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.balance { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); position: relative; z-index: 20; }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); letter-spacing: 0.5px; }
+        .level-btn { background: none; border: 0; font: inherit; color: #fff; font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; opacity: 0.92; }
+        .level-btn .tough { color: var(--accent); font-weight: 700; }
+
+        main { flex: 1; min-height: 0; width: 100%; max-width: 560px; margin: 0 auto; padding: 10px 12px 6px; display: flex; flex-direction: column; align-items: center; }
+        .goal { font-size: 0.86rem; color: var(--ink-soft); text-align: center; margin-bottom: 8px; line-height: 1.4; }
+        .goal b { color: var(--ink); }
+        .goal .sym { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; }
+        .board-area { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding-bottom: 6px; }
+        .board { position: relative; background: #b9cbbf; border-radius: 12px; box-shadow: 0 6px 18px rgba(31,77,58,0.18); }
+        .board.half-v::after { content: ''; position: absolute; top: 6px; bottom: 6px; left: 50%; width: 2px; margin-left: -1px; background: rgba(31,77,58,0.25); pointer-events: none; }
+        .cell { position: absolute; border: 0; padding: 0; border-radius: 8px; background: var(--cell); cursor: pointer; display: flex; align-items: center; justify-content: center; outline-offset: -3px; }
+        .cell.given { background: var(--given); cursor: default; }
+        .cell svg.sym { width: 62%; height: 62%; }
+        .cell.given svg.sym { opacity: 0.92; }
+        .cell.bad { background-image: repeating-linear-gradient(45deg, rgba(220,38,38,0.22) 0 5px, transparent 5px 10px); box-shadow: inset 0 0 0 2px rgba(220,38,38,0.7); }
+        .cell.hinted { box-shadow: inset 0 0 0 3px var(--hint); animation: pulse 1s ease-in-out infinite; }
+        .cell.focus { box-shadow: inset 0 0 0 2px rgba(124,58,237,0.45); }
+        .cell.wrong { box-shadow: inset 0 0 0 3px var(--wrong); }
+        .cell.pop svg.sym { animation: pop 0.22s ease-out; }
+        @keyframes pulse { 50% { box-shadow: inset 0 0 0 3px rgba(124,58,237,0.25); } }
+        @keyframes pop { 0% { transform: scale(0.4); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+        .board.won .cell svg.sym { animation: shine 0.8s ease-in-out; }
+        @keyframes shine { 50% { transform: scale(1.18); } }
+        .sign { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #fff; border: 2px solid #6f8a7b; color: #3c5548; font-weight: 800; font-size: 14px; line-height: 16px; text-align: center; pointer-events: none; z-index: 2; }
+        .sign.bad { border-color: var(--wrong); color: var(--wrong); background: #fee2e2; }
+
+        .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(238,244,239,0.97); border-top: 1px solid var(--line); position: relative; z-index: 20; }
+        .controls .row { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; }
+        .ctrl { flex: 1; min-height: 48px; border-radius: 12px; border: 2px solid rgba(26,43,36,0.18); background: var(--card); color: var(--ink); font: inherit; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .ctrl.primary { background: var(--deep); color: #fff; border-color: var(--deep); }
+        .ctrl small { font-weight: 500; opacity: 0.8; font-size: 0.72rem; }
+        .hint-bar { display: none; max-width: 560px; margin: 0 auto 8px; background: #f5f3ff; border: 2px solid var(--hint); border-radius: 12px; padding: 10px 12px; font-size: 0.9rem; line-height: 1.4; color: #3b1d78; }
+        .hint-bar.show { display: block; }
+        .hint-bar.mistake { background: #fef2f2; border-color: var(--wrong); color: #7f1d1d; }
+        .hint-bar.info { background: #fff7ed; border-color: #ea580c; color: #7c2d12; }
+        .hint-bar b { display: block; margin-bottom: 2px; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(20,35,28,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 390px; background: var(--card); border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--deep); }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 14px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 14px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal ol b { color: var(--ink); }
+        .modal .sym { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .stars { font-size: 2.2rem; letter-spacing: 6px; margin: 2px 0 10px; color: #cdd6cf; }
+        .stars .lit { color: #d97706; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(26,43,36,0.22); }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .level-cell small { font-size: 0.6rem; color: #d97706; letter-spacing: 1px; min-height: 0.8em; }
+        .level-cell.current { border: 2px solid var(--deep); }
+        .level-cell.tough { background: #fbf3dc; }
+        .win-icon { width: 64px; height: 64px; margin: 0 auto 4px; display: block; }
+        .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
+        .toast.show { opacity: 1; }
+        .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
+        @media (max-height: 640px) { .goal { font-size: 0.8rem; margin-bottom: 5px; } main { padding-top: 6px; } .ctrl { min-height: 44px; } }
+    </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Balance</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+    </header>
+
+    <main>
+        <p class="goal" id="goal"></p>
+        <div class="board-area" id="boardArea"><div class="board" id="board" role="grid" aria-label="Balance board"></div></div>
+    </main>
+
+    <div class="controls">
+        <div class="hint-bar" id="hintBar" role="status" aria-live="polite"></div>
+        <div class="row">
+            <button class="ctrl" id="undoBtn" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
+            <button class="ctrl primary" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small id="hintLeft">2 left</small></button>
+            <button class="ctrl" id="clearBtn"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Clear</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li>Fill every square with a <span class="sym" data-sym="0"></span> <b>leaf</b> or a <span class="sym" data-sym="1"></span> <b>drop</b>.</li>
+                <li>Every row and every column has <b>the same number of each</b>: 3 and 3 on a 6 × 6 board, 4 and 4 on 8 × 8.</li>
+                <li><b>No more than two</b> of the same next to each other, across or down.</li>
+                <li>Squares joined by <b>=</b> are the same. Squares joined by <b>×</b> are different.</li>
+                <li>Tap a square for a leaf, again for a drop, again to clear it. Shaded squares are given and can't change.</li>
+                <li>Every level has exactly one answer, and you can always reach it by reasoning. You never need to guess. Anything breaking a rule turns <b>red</b>.</li>
+            </ol>
+            <p>Stuck? <b>Hint</b> points out a wrong square or explains the next step. You get <b>2 hints</b> per level: no hints for 3 stars, one for 2 stars, two for 1 star. Undo and Clear are free.</p>
+            <button class="btn" id="helpClose">Let's play</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <svg class="win-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#e8f5ec"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#15803d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h2 id="winTitle">Perfectly balanced!</h2>
+            <div class="stars" id="winStars"></div>
+            <p id="winText"></p>
+            <button class="btn" id="nextBtn">Next level</button>
+            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="clearModal" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+        <div class="modal">
+            <h2 id="clearTitle">Clear the board?</h2>
+            <p>This removes everything you've placed. Hints already used still count.</p>
+            <button class="btn" id="clearYes">Clear board</button>
+            <button class="btn secondary" id="clearNo">Keep going</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <button class="modal-x" id="levelX" aria-label="Close">✕</button>
+            <h2 id="levelTitle">Levels</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Balance';   // one place to rename the game
+        var E = window.BalanceEngine, S = window.HubStorage;
+        var KEY_PROGRESS = 'balance_progress', KEY_STARS = 'balance_stars', KEY_STATE = 'balance_state', KEY_SEEN = 'balance_instructionsSeen';
+        var $ = function (id) { return document.getElementById(id); };
+        // Two clearly different shapes as well as colours, so nobody has to rely on colour
+        var SYM = [
+            '<svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19C5 10 10 4.5 19.5 4.5 19.5 14 14 19 5 19z" fill="#2f9e44" stroke="#1b6b2c" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.5 18.5L15 9" stroke="#d9f2df" stroke-width="1.6" stroke-linecap="round"/></svg>',
+            '<svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8C9 7.2 5.8 10.6 5.8 14.6a6.2 6.2 0 0 0 12.4 0C18.2 10.6 15 7.2 12 2.8z" fill="#1c6dd0" stroke="#0f4a91" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.2 14.8a2.9 2.9 0 0 0 2.4 2.9" fill="none" stroke="#cfe3ff" stroke-width="1.6" stroke-linecap="round"/></svg>'
+        ];
+        var NAMES = ['leaf', 'drop'], PLURAL = ['leaves', 'drops'];
+
+        document.body.classList.add('balance');
+        document.title = GAME_NAME + ' — Game Hub';
+        document.querySelectorAll('.modal [data-sym]').forEach(function (el) { el.innerHTML = SYM[+el.dataset.sym]; });
+
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var stars = (function () {
+            var out = {};
+            try {
+                var o = JSON.parse(S.getString(KEY_STARS, '{}'));
+                if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; });
+            } catch (e) { /* ignore */ }
+            return out;
+        })();
+
+        var MAX_HINTS = 2;
+        var levelNo = progress.level, pz = null, marks = [], history = [], hintsUsed = 0, solved = false, hintInfo = null, elapsed = 0, lastTick = 0;
+        var geo = null;
+
+        function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 1600); }
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } var m = $(id).querySelector('.modal'); if (m) m.scrollTop = 0; }
+        function closeModal(id) { $(id).classList.remove('active'); }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        function fmtTime(ms) { var s = Math.round(ms / 1000), m = Math.floor(s / 60); s %= 60; return m + ':' + (s < 10 ? '0' : '') + s; }
+        function fillNames(text) {
+            var t = text.replace(/\{As\}/g, PLURAL[0]).replace(/\{Bs\}/g, PLURAL[1])
+                        .replace(/\{A\}/g, 'a ' + NAMES[0]).replace(/\{B\}/g, 'a ' + NAMES[1])
+                        .replace(/\{r(\d+)\}/g, function (_, r) { return 'row ' + (+r + 1); })
+                        .replace(/\{c(\d+)\}/g, function (_, c) { return 'column ' + (+c + 1); });
+            return t.charAt(0).toUpperCase() + t.slice(1);
+        }
+
+        function saveState() { S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, marks: marks, hints: hintsUsed, solved: solved, t: Math.round(elapsed) })); }
+        function loadState(n) {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.marks) || o.marks.length !== pz.N * pz.N) return false;
+                if (o.marks.some(function (m, i) { return (m !== -1 && m !== 0 && m !== 1) || (pz.given[i] >= 0 && m !== pz.given[i]); })) return false;
+                marks = o.marks; hintsUsed = Math.min(MAX_HINTS, Math.max(0, o.hints | 0)); solved = !!o.solved; elapsed = Math.max(0, +o.t || 0);
+                return true;
+            } catch (e) { return false; }
+        }
+
+        function startLevel(n) {
+            levelNo = n; pz = E.generate(n); history = []; hintInfo = null;
+            if (!loadState(n)) { marks = pz.given.slice(); hintsUsed = 0; solved = false; elapsed = 0; }
+            ['winModal', 'levelModal', 'clearModal'].forEach(closeModal);
+            hideHint();
+            if (hintsUsed > 0 && !solved) {
+                var nb = $('hintBar'); nb.className = 'hint-bar show info';
+                nb.innerHTML = '<b>Welcome back</b>You\'ve already used ' + hintsUsed + ' of your ' + MAX_HINTS + ' hints here, so the best you can get this time is ' +
+                    (3 - hintsUsed) + ' star' + (3 - hintsUsed === 1 ? '' : 's') + '. Once it\'s solved you can replay it for a fresh try at 3 stars.';
+            }
+            $('levelBtn').innerHTML = 'Level ' + n + (pz.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
+            buildBoard(); paint(); renderControls(); saveState();
+            if (solved) $('board').classList.add('won');
+            lastTick = Date.now();
+        }
+        function buildBoard() {
+            var N = pz.N, board = $('board'), area = $('boardArea');
+            var side = Math.floor(Math.min(area.clientWidth, area.clientHeight, 500));
+            var pad = 6, gap = N >= 8 ? 4 : 5;
+            var cell = Math.floor((side - pad * 2 - gap * (N - 1)) / N);
+            var W = pad * 2 + cell * N + gap * (N - 1);
+            geo = { cell: cell, pad: pad, gap: gap };
+            board.style.width = W + 'px'; board.style.height = W + 'px';
+            var html = '';
+            for (var i = 0; i < N * N; i++) {
+                var r = Math.floor(i / N), c = i % N;
+                html += '<button class="cell" role="gridcell" data-i="' + i + '" style="left:' + (pad + c * (cell + gap)) + 'px;top:' + (pad + r * (cell + gap)) + 'px;width:' + cell + 'px;height:' + cell + 'px"></button>';
+            }
+            pz.signs.forEach(function (s, k) {
+                var ra = Math.floor(s.a / N), ca = s.a % N, horiz = s.b === s.a + 1;
+                var x = pad + ca * (cell + gap) + (horiz ? cell + gap / 2 : cell / 2);
+                var y = pad + ra * (cell + gap) + (horiz ? cell / 2 : cell + gap / 2);
+                html += '<span class="sign" data-k="' + k + '" style="left:' + x + 'px;top:' + y + 'px" aria-hidden="true">' + (s.t === 'eq' ? '=' : '×') + '</span>';
+            });
+            board.innerHTML = html;
+            board.classList.remove('won');
+        }
+        function paint(popCell) {
+            var N = pz.N, cf = E.conflicts(pz, marks), bad = {}, badS = {};
+            cf.cells.forEach(function (i) { bad[i] = 1; }); cf.signs.forEach(function (k) { badS[k] = 1; });
+            var cells = $('board').querySelectorAll('.cell'), filled = 0;
+            for (var i = 0; i < N * N; i++) {
+                var el = cells[i], m = marks[i], g = pz.given[i] >= 0;
+                if (m >= 0) filled++;
+                el.innerHTML = m >= 0 ? SYM[m] : '';
+                el.className = 'cell' + (g ? ' given' : '') + (bad[i] ? ' bad' : '') + (i === popCell ? ' pop' : '');
+                el.setAttribute('aria-label', 'Row ' + (Math.floor(i / N) + 1) + ', column ' + (i % N + 1) + ', ' + (m >= 0 ? NAMES[m] : 'empty') + (g ? ', given' : '') + (bad[i] ? ', breaks a rule' : ''));
+                if (g) el.setAttribute('aria-disabled', 'true'); else el.removeAttribute('aria-disabled');
+            }
+            $('board').querySelectorAll('.sign').forEach(function (sg) { sg.classList.toggle('bad', !!badS[+sg.dataset.k]); });
+            if (hintInfo) {
+                (hintInfo.focus || []).forEach(function (j) { cells[j].classList.add('focus'); });
+                hintInfo.cells.forEach(function (j) { cells[j].classList.add(hintInfo.mistake ? 'wrong' : 'hinted'); });
+            }
+            $('goal').innerHTML = '<b>' + (N / 2) + '</b> <span class="sym">' + SYM[0] + '</span> and <b>' + (N / 2) + '</b> <span class="sym">' + SYM[1] + '</span> in every row and column. Never three in a row. ' +
+                '<b>=</b> same, <b>×</b> different.';
+        }
+        function renderControls() {
+            $('undoBtn').disabled = history.length === 0 || solved;
+            var left = Math.max(0, MAX_HINTS - hintsUsed);
+            $('hintBtn').disabled = solved || left === 0;
+            $('hintLeft').textContent = left ? left + ' left' : 'none left';
+            $('hintBtn').setAttribute('aria-label', 'Hint, ' + left + ' of ' + MAX_HINTS + ' left. Each hint costs a star.');
+            $('clearBtn').disabled = solved;
+        }
+        function tap(i) {
+            if (solved || pz.given[i] >= 0) return;
+            history.push(marks.slice()); if (history.length > 400) history.shift();
+            marks[i] = marks[i] === -1 ? 0 : marks[i] === 0 ? 1 : -1;
+            buzz(marks[i] >= 0 ? 8 : 4);
+            if (hintInfo) { hintInfo = null; hideHint(); }
+            paint(marks[i] >= 0 ? i : -1); renderControls(); saveState();
+            if (E.isSolved(pz, marks)) onWin();
+        }
+        function undo() {
+            if (!history.length || solved) return;
+            marks = history.pop(); hintInfo = null; hideHint(); paint(); renderControls(); saveState();
+        }
+        $('board').addEventListener('click', function (e) { var b = e.target.closest('.cell'); if (b) tap(+b.dataset.i); });
+        $('board').addEventListener('keydown', function (e) {
+            var b = e.target.closest('.cell'); if (!b) return;
+            var i = +b.dataset.i, N = pz.N, to = -1;
+            if (e.key === 'ArrowRight' && i % N < N - 1) to = i + 1;
+            if (e.key === 'ArrowLeft' && i % N > 0) to = i - 1;
+            if (e.key === 'ArrowDown' && i + N < N * N) to = i + N;
+            if (e.key === 'ArrowUp' && i - N >= 0) to = i - N;
+            if (to >= 0) { e.preventDefault(); $('board').querySelectorAll('.cell')[to].focus(); }
+        });
+
+        function showHint() {
+            if (solved || hintsUsed >= MAX_HINTS) return;
+            var h = E.hint(pz, marks);
+            if (!h) { toast('Nothing to add right now'); return; }
+            hintsUsed++; hintInfo = h; renderControls();
+            var bar = $('hintBar');
+            bar.className = 'hint-bar show' + (h.mistake ? ' mistake' : '');
+            var head = h.mistake ? 'Something\'s not right' : 'Next step: ' + (h.cells.length === 1 ? 'this square is ' + (h.vals[0] ? 'a drop' : 'a leaf') : 'these squares are ' + PLURAL[h.vals[0]]);
+            bar.innerHTML = '<b>' + head + '</b>' + esc(fillNames(h.why));
+            paint(); saveState();
+        }
+        function hideHint() { $('hintBar').className = 'hint-bar'; }
+        function starsFor() { return hintsUsed === 0 ? 3 : hintsUsed === 1 ? 2 : 1; }
+
+        function confetti() {
+            try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            var colours = ['#2f9e44', '#1c6dd0', '#f2c14e', '#1f4d3a', '#9fd8ad', '#8fbaf0'];
+            for (var i = 0; i < 50; i++) {
+                var c = document.createElement('span');
+                c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = colours[i % colours.length];
+                document.body.appendChild(c);
+                if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }],
+                    { duration: 1400 + Math.random() * 900, delay: Math.random() * 250, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
+                a.onfinish = (function (el) { return function () { el.remove(); }; })(c);
+            }
+        }
+        function onWin() {
+            tick(); solved = true; hideHint();
+            var s = starsFor();
+            if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
+            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
+            S.setObject(KEY_PROGRESS, progress); S.setString(KEY_STARS, JSON.stringify(stars));
+            saveState(); renderControls();
+            $('board').classList.add('won'); buzz(40); confetti();
+            var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
+            $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
+            $('winText').textContent = (s === 3 ? 'Solved with no hints' : 'Solved with ' + hintsUsed + ' hint' + (hintsUsed === 1 ? '' : 's')) +
+                ' in ' + fmtTime(elapsed) + '.' + (s === 3 ? '' : ' Try again without for 3 stars.');
+            $('replayBtn').style.display = s === 3 ? 'none' : '';
+            setTimeout(function () { openModal('winModal'); }, 700);
+        }
+        function tick() { var now = Date.now(); if (!solved && !document.hidden && lastTick) elapsed += Math.min(now - lastTick, 5000); lastTick = now; }
+        setInterval(tick, 1000);
+        document.addEventListener('visibilitychange', function () { tick(); if (document.hidden && pz) saveState(); });
+
+        function openLevels() {
+            var html = '', max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) {
+                var s = stars[n] || 0, str = ''; for (var i = 0; i < s; i++) str += '★';
+                html += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (E.isTough(n) ? ' tough' : '') + '" data-level="' + n + '" aria-label="Level ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>';
+            }
+            $('levelGrid').innerHTML = html;
+            openModal('levelModal');
+            var cur = $('levelGrid').querySelector('.current'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+        }
+
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', showHint);
+        $('clearBtn').addEventListener('click', function () { openModal('clearModal'); });
+        $('clearYes').addEventListener('click', function () { history.push(marks.slice()); marks = pz.given.slice(); hintInfo = null; hideHint(); closeModal('clearModal'); paint(); renderControls(); saveState(); });
+        $('clearNo').addEventListener('click', function () { closeModal('clearModal'); });
+        $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo + 1); });
+        $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo); });
+        function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelX').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) {
+            var b = e.target.closest('.level-cell'); if (!b) return;
+            var n = +b.dataset.level;
+            if (n === levelNo) { closeModal('levelModal'); return; }
+            S.setString(KEY_STATE, 'null'); startLevel(n);
+        });
+        ['helpModal', 'levelModal', 'clearModal'].forEach(function (id) {
+            $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } });
+        });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if ($('helpModal').classList.contains('active')) closeHelp(); ['levelModal', 'clearModal'].forEach(closeModal); } });
+        var rt = null;
+        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { buildBoard(); paint(); }, 150); });
+
+        startLevel(levelNo);
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        window.__balance = function () { return { pz: pz, marks: marks }; };   // read by the automated play-tests
+    })();
+    </script>
+</body>
+</html>
