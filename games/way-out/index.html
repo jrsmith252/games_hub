@@ -164,7 +164,7 @@
             <h2 id="helpTitle">How to play</h2>
             <ol>
                 <li><b>Drag</b> a block to slide it through the empty squares. Blocks can't pass through each other, and the board is packed, so you'll need to <b>shuffle blocks through the gaps</b> to make room.</li>
-                <li>Each coloured block leaves through the <b>door of its colour</b> in the wall, as long as the <b>whole block fits</b> through the opening.</li>
+                <li>Each coloured block leaves through the <b>door of its colour</b> in the wall, as long as the <b>whole block fits</b> through the opening. Slide it up to the door, or just let go (or tap it) when it has a clear straight run, and out it goes.</li>
                 <li>Blocks with <b>arrows</b> only slide the way the arrows point.</li>
                 <li>Some levels have grey <b>crates</b>: they never leave, so push them out of the way.</li>
                 <li>Get every coloured block out before the <b>clock runs out</b>. Finish with half the time left for <b>3 stars</b>, a quarter for <b>2</b>. Out of time? Try again: it's free. The clock pauses while this help, the level list or another app is open.</li>
@@ -505,8 +505,22 @@
                 if (tryStep(b, first, occ) || tryStep(b, second, occ)) { if (b.out) return; continue; }
                 break;
             }
+            // Touching its own door with a clear way through? Out it goes, no extra push needed
+            var gate = gateFor(b, true);
+            if (gate) { leave(b, gate); return; }
             place(b, drag.el);
         });
+        // The door this block can leave through from where it is (touching: only if it is right up against that wall)
+        function gateFor(b, touching) {
+            var occ = E.makeOcc(L, blocks), e = E.extent(b.shape);
+            for (var i = 0; i < L.doors.length; i++) {
+                var d = L.doors[i];
+                if (!E.canExitVia(L, occ, b, b.r, b.c, d)) continue;
+                var flush = d.side === 'top' ? b.r === 0 : d.side === 'bottom' ? b.r + e.h === L.R : d.side === 'left' ? b.c === 0 : b.c + e.w === L.C;
+                if (!touching || flush) return d;
+            }
+            return null;
+        }
         // One square in a direction; or out through a matching door
         function tryStep(b, dir, occ) {
             if (!dir || !E.axisAllows(b, dir)) return false;
@@ -535,6 +549,8 @@
         }
         function endDrag(e) {
             if (!drag || (e && e.pointerId !== drag.id)) return;
+            // Let go (or just tap) with a clear straight run to its door: it slides out by itself
+            if (e && e.type === 'pointerup') { var gate = gateFor(drag.b, false); if (gate) { leave(drag.b, gate); return; } }
             var d = drag; drag = null;
             d.el.classList.remove('dragging');
             if (d.b.r !== d.r0 || d.b.c !== d.c0) {
