@@ -61,6 +61,7 @@
         .bc.oneway .stud:empty { display: none; }   /* plain studs would sit on the direction arrows */
         .pill.low b { color: #dc2626; }
         .pill.starpill b { color: #d97706; letter-spacing: 1px; }
+        .nick { position: absolute; background: var(--floor); pointer-events: none; box-sizing: border-box; }
         .track { position: absolute; pointer-events: none; z-index: 1; }
         .track svg { width: 100%; height: 100%; overflow: visible; }
         .track path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
@@ -162,11 +163,10 @@
             <button class="modal-x" id="helpX" aria-label="Close">✕</button>
             <h2 id="helpTitle">How to play</h2>
             <ol>
-                <li><b>Drag</b> a block to slide it around. Blocks can't pass through each other.</li>
+                <li><b>Drag</b> a block to slide it through the empty squares. Blocks can't pass through each other, and the board is packed, so you'll need to <b>shuffle blocks through the gaps</b> to make room.</li>
                 <li>Each coloured block leaves through the <b>door of its colour</b> in the wall, as long as the <b>whole block fits</b> through the opening.</li>
                 <li>Blocks with <b>arrows</b> only slide the way the arrows point.</li>
                 <li>Some levels have grey <b>crates</b>: they never leave, so push them out of the way.</li>
-                <li><b>Tough</b> levels are traffic jams: every piece slides along its arrow, so you'll need to make space carefully.</li>
                 <li>Get every coloured block out before the <b>clock runs out</b>. Finish with half the time left for <b>3 stars</b>, a quarter for <b>2</b>. Out of time? Try again: it's free. The clock pauses while this help, the level list or another app is open.</li>
             </ol>
             <p>Undo is free but the clock keeps running. Restart starts the level, and the clock, again.</p>
@@ -256,8 +256,7 @@
         // Time allowed: thinking time plus a few seconds for each move in the shortest solution
         // Sorting levels are mostly about speed and order; jam levels need thinking time
         function limitMs() {
-            if (L.kind === 'jam') return Math.round(15 + L.par * 4.5) * 1000;
-            return Math.round(10 + L.par * 1.6 + Math.max(0, L.stuck || 0) * 3) * 1000;
+            return Math.round(20 + L.par * 3) * 1000;   // thinking time plus three seconds a move
         }
         function liveStars() { var f = elapsed / limitMs(); return f <= 0.5 ? 3 : f <= 0.75 ? 2 : 1; }
         function outOfTime() {
@@ -294,12 +293,12 @@
 
         // ---------- state ----------
         function saveState() {
-            S.setString(KEY_STATE, JSON.stringify({ v: 2, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, t: Math.round(elapsed), h: hintsUsed, s: solved }));
+            S.setString(KEY_STATE, JSON.stringify({ v: 3, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, t: Math.round(elapsed), h: hintsUsed, s: solved }));
         }
         function loadState(n) {
             try {
                 var o = JSON.parse(S.getString(KEY_STATE, 'null'));
-                if (!o || o.v !== 2 || o.level !== n || !Array.isArray(o.b) || o.b.length !== L.blocks.length) return false;
+                if (!o || o.v !== 3 || o.level !== n || !Array.isArray(o.b) || o.b.length !== L.blocks.length) return false;
                 var bs = E.cloneBlocks(L.blocks);
                 for (var i = 0; i < bs.length; i++) { var x = o.b[i]; if (!Array.isArray(x)) return false; bs[i].r = x[0] | 0; bs[i].c = x[1] | 0; bs[i].out = !!x[2]; }
                 // reject anything that doesn't fit (old or damaged saves)
@@ -340,11 +339,9 @@
             if (built[n]) return cb && cb(built[n]);
             if (prebuilt === null) { prebuiltWaiting.push(function () { getLevel(n, cb); }); return; }
             if (prebuilt[n - 1] && prebuilt[n - 1].number === n) { built[n] = prebuilt[n - 1]; return cb && cb(built[n]); }
-            // past the shipped levels: Tough jam levels reuse the later ones turned (and later mirrored);
-            // sorting levels are built fresh in the background
-            if (prebuilt.length >= 150 && n > prebuilt.length && E.kindOf(n) === 'jam') {
-                var jams = prebuilt.filter(function (x) { return x.kind === 'jam' && x.number > 50; });
-                built[n] = E.variant(jams[Math.floor((n - 151) / 5) % jams.length], n); built[n].kind = 'jam';
+            // past the shipped levels: the harder ones (51-150) come round again, mirrored a different way each time
+            if (prebuilt.length >= 150 && n > prebuilt.length) {
+                built[n] = E.variant(prebuilt[50 + (n - 151) % 100], n, 1 + Math.floor((n - 151) / 100) % 3);
                 return cb && cb(built[n]);
             }
             if (!worker) { built[n] = E.generate(n); return cb && cb(built[n]); }
@@ -412,15 +409,27 @@
                         ';background:' + (crate ? '#9c97ad' : COLOURS[cmap[b.col]]) + '">' +
                         (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : '<span class="stud">' + (showSyms && !crate ? SYMS[cmap[b.col]] : '') + '</span>') + '</div>';
                 });
+                // tidy the inside corners of L, T and S shapes: cut the little square that would poke into the gap
+                s.forEach(function (p) {
+                    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function (dd) {
+                        if (!own[(p[0] + dd[0]) + ',' + p[1]] || !own[p[0] + ',' + (p[1] + dd[1])] || own[(p[0] + dd[0]) + ',' + (p[1] + dd[1])]) return;
+                        var px = dd[1] > 0 ? (p[1] + 1) * cell - g : p[1] * cell, py = dd[0] < 0 ? p[0] * cell : (p[0] + 1) * cell - g;
+                        inner += '<div class="nick" style="left:' + px + 'px;top:' + py + 'px;width:' + g + 'px;height:' + g + 'px;border-' + (dd[1] > 0 ? 'left' : 'right') + ':' + bw + 'px solid rgba(20,15,40,0.55);border-' + (dd[0] < 0 ? 'bottom' : 'top') + ':' + bw + 'px solid rgba(20,15,40,0.55)"></div>';
+                    });
+                });
                 var e = E.extent(b.shape);
                 if (b.axis) {
                     // A groove with arrowheads along the piece shows which way it slides
                     var W = e.w * cell, H = e.h * cell, a2 = Math.max(5, cell * 0.12), crateP = b.col < 0;
                     var col2 = crateP ? 'rgba(40,35,60,0.55)' : 'rgba(255,255,255,0.85)', sw2 = Math.max(2, cell * 0.05);
                     var d2;
-                    if (b.axis === 'h') { var y2 = H / 2, x1 = cell * 0.22, x2 = W - cell * 0.22;
+                    // draw it along the longest straight run of the block's own squares
+                    var runs = {}; E.SHAPES[b.shape].forEach(function (p) { var k = b.axis === 'h' ? p[0] : p[1], v = b.axis === 'h' ? p[1] : p[0]; (runs[k] = runs[k] || []).push(v); });
+                    var line = Object.keys(runs).sort(function (x, y) { return runs[y].length - runs[x].length; })[0];
+                    var lo = Math.min.apply(null, runs[line]), hi = Math.max.apply(null, runs[line]);
+                    if (b.axis === 'h') { var y2 = (+line + 0.5) * cell, x1 = lo * cell + cell * 0.22, x2 = (hi + 1) * cell - cell * 0.22;
                         d2 = 'M' + x1 + ' ' + y2 + 'H' + x2 + 'M' + (x1 + a2) + ' ' + (y2 - a2) + 'L' + x1 + ' ' + y2 + 'L' + (x1 + a2) + ' ' + (y2 + a2) + 'M' + (x2 - a2) + ' ' + (y2 - a2) + 'L' + x2 + ' ' + y2 + 'L' + (x2 - a2) + ' ' + (y2 + a2); }
-                    else { var x3 = W / 2, y1 = cell * 0.22, y3 = H - cell * 0.22;
+                    else { var x3 = (+line + 0.5) * cell, y1 = lo * cell + cell * 0.22, y3 = (hi + 1) * cell - cell * 0.22;
                         d2 = 'M' + x3 + ' ' + y1 + 'V' + y3 + 'M' + (x3 - a2) + ' ' + (y1 + a2) + 'L' + x3 + ' ' + y1 + 'L' + (x3 + a2) + ' ' + (y1 + a2) + 'M' + (x3 - a2) + ' ' + (y3 - a2) + 'L' + x3 + ' ' + y3 + 'L' + (x3 + a2) + ' ' + (y3 - a2); }
                     inner += '<div class="track" style="left:0;top:0;width:' + W + 'px;height:' + H + 'px"><svg viewBox="0 0 ' + W + ' ' + H + '"><path d="' + d2 + '" stroke="' + col2 + '" stroke-width="' + sw2 + '"/></svg></div>';
                 }
@@ -590,7 +599,7 @@
             saveState(); renderAll(); buzz(40); confetti();
             var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
             $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
-            var used = 'Cleared in ' + fmt(elapsed) + (noLimit ? '' : ' with ' + fmt(Math.max(0, limitMs() - elapsed)) + ' to spare') + ' and ' + moves + ' moves (fewest possible: ' + L.par + ').';
+            var used = 'Cleared in ' + fmt(elapsed) + (noLimit ? '' : ' with ' + fmt(Math.max(0, limitMs() - elapsed)) + ' to spare') + ' and ' + moves + ' moves (our solution: ' + L.par + ').';
             var tip = s === 3 ? '' : ' 3 stars needs it done within ' + fmt(limitMs() / 2) + '.';
             $('winText').textContent = used + tip;
             $('replayBtn').style.display = s === 3 ? 'none' : '';
