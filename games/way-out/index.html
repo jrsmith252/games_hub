@@ -367,11 +367,15 @@
             timedOut = false;
             build(); renderAll(); saveState();
         }
-        var cmap = [0, 1, 2, 3, 4, 5, 6, 7];
+        var cmap = {};
         function build() {
             // Colours vary by level (seeded, so a level always looks the same)
-            var a = (levelNo * 2654435761) >>> 0; cmap = [0, 1, 2, 3, 4, 5, 6];
-            for (var ci = 6; ci > 0; ci--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var cj = a % (ci + 1); var tmp = cmap[ci]; cmap[ci] = cmap[cj]; cmap[cj] = tmp; }
+            var a = (levelNo * 2654435761) >>> 0, pal = [0, 1, 2, 3, 4, 5, 6];
+            for (var ci = 6; ci > 0; ci--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var cj = a % (ci + 1); var tmp = pal[ci]; pal[ci] = pal[cj]; pal[cj] = tmp; }
+            // each colour used on this level gets its own palette colour (levels use at most 7)
+            cmap = {}; var used = 0;
+            L.doors.forEach(function (d) { if (cmap[d.col] === undefined) cmap[d.col] = pal[used++ % 7]; });
+            blocks.forEach(function (b) { if (b.col >= 0 && cmap[b.col] === undefined) cmap[b.col] = pal[used++ % 7]; });
             var area = $('boardArea'), board = $('board');
             var wall = 12;
             var cell = Math.floor(Math.min((area.clientWidth - wall * 2) / L.C, (area.clientHeight - wall * 2) / L.R, 64));
