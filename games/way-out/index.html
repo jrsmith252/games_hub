@@ -54,12 +54,20 @@
         .block.hinted .bc { border-color: var(--hint); }
         .block.hinted { filter: drop-shadow(0 0 4px rgba(14,165,233,0.9)); }
         .bc { position: absolute; display: flex; align-items: center; justify-content: center; border: 0 solid rgba(20,15,40,0.55); }
-        .stud { width: 46%; height: 46%; border-radius: 50%; background: rgba(255,255,255,0.28); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
+        .stud { width: 38%; height: 38%; border-radius: 50%; background: rgba(255,255,255,0.28); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
         .stud svg { width: 64%; height: 64%; fill: rgba(255,255,255,0.95); }
         .bc.crate { background-color: #9c97ad !important; background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.09) 0 2px, transparent 2px 11px); border-color: rgba(40,35,60,0.6) !important; }
         .bc.crate .stud { display: none; }
+        .stud:empty { display: none; }   /* plain studs would sit on the direction arrows */
         .pill.low b { color: #dc2626; }
         .pill.starpill b { color: #d97706; letter-spacing: 1px; }
+        .track { position: absolute; pointer-events: none; z-index: 1; }
+        .track svg { width: 100%; height: 100%; overflow: visible; }
+        .track path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .block.nope { animation: nope 0.32s ease-in-out; }
+        @keyframes nope { 20% { translate: -3px 0; } 40% { translate: 3px 0; } 60% { translate: -2px 0; } 80% { translate: 2px 0; } }
+        .block.nope.vert { animation-name: nopeV; }
+        @keyframes nopeV { 20% { translate: 0 -3px; } 40% { translate: 0 3px; } 60% { translate: 0 -2px; } 80% { translate: 0 2px; } }
         .axis { width: 80%; height: 80%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
         .axis svg { width: 100%; height: 100%; stroke: rgba(255,255,255,0.95); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.3)); }
         .ghost { position: absolute; border: 3px dashed var(--hint); border-radius: 9px; background: rgba(14,165,233,0.12); pointer-events: none; z-index: 2; }
@@ -154,7 +162,7 @@
             <button class="modal-x" id="helpX" aria-label="Close">✕</button>
             <h2 id="helpTitle">How to play</h2>
             <ol>
-                <li><b>Drag</b> a piece to slide it. Every piece slides only <b>along its length</b>, like cars in a traffic jam.</li>
+                <li><b>Drag</b> a piece to slide it. Every piece slides only <b>along its length</b>, like cars in a traffic jam. The arrows on each piece show which way it goes.</li>
                 <li>Each coloured block leaves through the <b>door of its colour</b> in the wall: slide it into the door and out it goes.</li>
                 <li>Grey <b>crates</b> never leave. Shuffle them (and other blocks) to make space.</li>
                 <li>Get every coloured block out before the <b>clock runs out</b>. Finish with half the time left for <b>3 stars</b>, a quarter for <b>2</b>. Out of time? Try again: it's free.</li>
@@ -391,6 +399,17 @@
                         (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : '<span class="stud">' + (showSyms && !crate ? SYMS[cmap[b.col]] : '') + '</span>') + '</div>';
                 });
                 var e = E.extent(b.shape);
+                if (b.axis) {
+                    // A groove with arrowheads along the piece shows which way it slides
+                    var W = e.w * cell, H = e.h * cell, a2 = Math.max(5, cell * 0.12), crateP = b.col < 0;
+                    var col2 = crateP ? 'rgba(40,35,60,0.55)' : 'rgba(255,255,255,0.85)', sw2 = Math.max(2, cell * 0.05);
+                    var d2;
+                    if (b.axis === 'h') { var y2 = H / 2, x1 = cell * 0.22, x2 = W - cell * 0.22;
+                        d2 = 'M' + x1 + ' ' + y2 + 'H' + x2 + 'M' + (x1 + a2) + ' ' + (y2 - a2) + 'L' + x1 + ' ' + y2 + 'L' + (x1 + a2) + ' ' + (y2 + a2) + 'M' + (x2 - a2) + ' ' + (y2 - a2) + 'L' + x2 + ' ' + y2 + 'L' + (x2 - a2) + ' ' + (y2 + a2); }
+                    else { var x3 = W / 2, y1 = cell * 0.22, y3 = H - cell * 0.22;
+                        d2 = 'M' + x3 + ' ' + y1 + 'V' + y3 + 'M' + (x3 - a2) + ' ' + (y1 + a2) + 'L' + x3 + ' ' + y1 + 'L' + (x3 + a2) + ' ' + (y1 + a2) + 'M' + (x3 - a2) + ' ' + (y3 - a2) + 'L' + x3 + ' ' + y3 + 'L' + (x3 + a2) + ' ' + (y3 - a2); }
+                    inner += '<div class="track" style="left:0;top:0;width:' + W + 'px;height:' + H + 'px"><svg viewBox="0 0 ' + W + ' ' + H + '"><path d="' + d2 + '" stroke="' + col2 + '" stroke-width="' + sw2 + '"/></svg></div>';
+                }
                 html += '<div class="block" data-id="' + b.id + '" role="button" aria-label="' + (b.col < 0 ? 'crate' : CNAMES[cmap[b.col]] + ' block') + (b.axis ? (b.axis === 'h' ? ', slides left and right' : ', slides up and down') : '') + '" style="width:' + (e.w * cell) + 'px;height:' + (e.h * cell) + 'px">' + inner + '</div>';
             });
             board.innerHTML = html;
@@ -445,6 +464,16 @@
             if (!drag || e.pointerId !== drag.id) return;
             var b = drag.b, cell = geo.cell;
             var tr = drag.r0 + Math.round((e.clientY - drag.y0) / cell), tc = drag.c0 + Math.round((e.clientX - drag.x0) / cell);
+            // Dragged across its length? Give it a little shake so it's clear it only slides the other way
+            var ddx = (e.clientX - drag.x0) / cell, ddy = (e.clientY - drag.y0) / cell;
+            if (b.axis && !drag.shook && ((b.axis === 'v' && Math.abs(ddx) > 0.45 && Math.abs(ddx) > Math.abs(ddy) * 1.5) || (b.axis === 'h' && Math.abs(ddy) > 0.45 && Math.abs(ddy) > Math.abs(ddx) * 1.5))) {
+                drag.shook = true; buzz(20);
+                var el2 = drag.el; el2.classList.remove('nope', 'vert'); void el2.offsetWidth;
+                el2.classList.add('nope'); if (b.axis === 'h') el2.classList.add('vert');
+                setTimeout(function () { el2.classList.remove('nope', 'vert'); }, 360);
+            }
+            // Only follow the finger along the piece's own direction
+            if (b.axis === 'v') tc = b.c; else if (b.axis === 'h') tr = b.r;
             var occ = E.makeOcc(L, blocks), guard = 0;
             while ((b.r !== tr || b.c !== tc) && guard++ < 40) {
                 var dr = tr - b.r, dc = tc - b.c;
