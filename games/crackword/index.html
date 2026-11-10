@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Crackword — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #f6f5f1;
+            --card: #ffffff;
+            --ink: #1c1c22;
+            --ink-soft: #64636e;
+            --line: #d8d6cf;
+            --tile-line: #cfcdc5;
+            --tile-filled: #8b8a93;
+            --deep: #1f2a44;
+            --accent: #f2b33d;
+            --right: #4e9a57;
+            --near: #d1ad32;
+            --none: #7d7c86;
+            --key: #dedcd5;
+            --select: #3b6fd8;
+        }
+        body.hc { --right: #f0832d; --near: #3fa4e8; }   /* high contrast: orange and blue */
+        html, body.crack { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.crack { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; padding: 6px 10px; background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; min-width: 0; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.25rem; color: var(--accent); letter-spacing: 0.5px; }
+        .sub { font-size: 0.78rem; opacity: 0.85; }
+        .right-btns { display: flex; gap: 6px; }
+
+        .options { flex: none; display: flex; justify-content: center; gap: 8px; padding: 8px 10px 4px; flex-wrap: wrap; }
+        .seg { display: inline-flex; background: #e9e7e0; border-radius: 12px; padding: 3px; }
+        .seg button { border: 0; background: none; font: inherit; font-weight: 700; font-size: 0.85rem; color: var(--ink-soft); padding: 0 12px; min-height: 36px; border-radius: 9px; cursor: pointer; }
+        .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+        main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 10px; }
+        .board { display: grid; gap: 6px; }
+        .row { display: grid; gap: 6px; }
+        .row.shake { animation: shake 0.45s; }
+        @keyframes shake { 15%, 55% { transform: translateX(-7px); } 35%, 75% { transform: translateX(7px); } }
+        .tile { border: 2px solid var(--tile-line); background: var(--card); display: flex; align-items: center; justify-content: center; font-weight: 800; text-transform: uppercase; border-radius: 6px; color: var(--ink); user-select: none; position: relative; }
+        .tile.filled { border-color: var(--tile-filled); }
+        .tile.pop { animation: pop 0.12s ease-out; }
+        @keyframes pop { 50% { transform: scale(1.1); } }
+        .row.active .tile { cursor: pointer; }
+        .tile.sel { border-color: var(--select); box-shadow: 0 0 0 2px var(--select); }
+        .tile.right, .tile.near, .tile.none { color: #fff; border-color: transparent; }
+        .tile.right { background: var(--right); }
+        .tile.near { background: var(--near); }
+        .tile.none { background: var(--none); }
+        .tile.flip { animation: flip 0.5s ease-in-out both; }
+        @keyframes flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+        .tile.win { animation: hop 0.5s ease-out both; }
+        @keyframes hop { 40% { transform: translateY(-14px); } 70% { transform: translateY(3px); } }
+        /* optional marks so colour isn't the only clue */
+        body.hc .tile.right::after, body.hc .tile.near::after { position: absolute; top: 2px; right: 4px; font-size: 0.42em; font-weight: 800; }
+        body.hc .tile.right::after { content: '✓'; }
+        body.hc .tile.near::after { content: '•'; }
+
+        .keyboard { flex: none; width: 100%; max-width: 520px; margin: 0 auto; padding: 6px 6px calc(8px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 7px; }
+        .krow { display: flex; gap: 5px; justify-content: center; }
+        .key { flex: 1; min-width: 0; height: 54px; border: 0; border-radius: 7px; background: var(--key); color: var(--ink); font: inherit; font-weight: 700; font-size: 1rem; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .key.wide { flex: 1.55; font-size: 0.75rem; }
+        .key svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+        .key.right { background: var(--right); color: #fff; }
+        .key.near { background: var(--near); color: #fff; }
+        .key.none { background: var(--none); color: #fff; }
+        .spacer { flex: 0.5; }
+        @media (max-height: 680px) { .key { height: 46px; } .keyboard { gap: 5px; } }
+
+        .toast { position: fixed; left: 50%; top: 120px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 60; white-space: nowrap; }
+        .toast.show { opacity: 1; }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(20,20,30,0.55); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 400px; background: var(--card); border-radius: 18px; padding: 22px 20px 18px; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.35rem; margin-bottom: 10px; color: var(--deep); text-align: center; }
+        .modal h3 { font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft); margin: 14px 0 8px; text-align: center; }
+        .modal p { color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; margin-bottom: 10px; }
+        .modal ul { color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 18px; margin-bottom: 10px; }
+        .modal li { margin-bottom: 5px; }
+        .modal b { color: var(--ink); }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .ex { display: flex; gap: 4px; margin: 6px 0 4px; }
+        .ex .tile { width: 36px; height: 36px; font-size: 1.1rem; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(0,0,0,0.18); }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #faf9f6; border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; cursor: pointer; }
+        .toggle-row b { display: block; font-size: 0.95rem; }
+        .toggle-row small { display: block; color: var(--ink-soft); font-size: 0.8rem; margin-top: 2px; }
+        .switch { position: relative; flex: none; width: 50px; height: 30px; }
+        .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+        .switch .track { position: absolute; inset: 0; border-radius: 999px; background: #cbd5e1; transition: background 0.2s; pointer-events: none; }
+        .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .switch input:checked + .track { background: #15803d; }
+        .switch input:checked + .track::after { transform: translateX(20px); }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+        .stats div { font-size: 1.6rem; font-weight: 800; color: var(--ink); }
+        .stats small { display: block; font-size: 0.7rem; color: var(--ink-soft); font-weight: 500; line-height: 1.2; }
+        .dist { display: flex; flex-direction: column; gap: 4px; }
+        .dist .bar { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; }
+        .dist .bar span:last-child { background: var(--none); color: #fff; padding: 2px 8px; border-radius: 4px; text-align: right; min-width: 24px; }
+        .dist .bar.now span:last-child { background: var(--right); }
+        .answer { text-align: center; font-size: 1.05rem; margin-bottom: 6px; }
+        .answer b { letter-spacing: 3px; font-size: 1.3rem; }
+        .next { text-align: center; font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px; }
+    </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Crackword</div>
+            <div class="sub" id="sub">Daily</div>
+        </div>
+        <div class="right-btns">
+            <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
+            <button class="icon-btn" id="helpBtn" aria-label="How to play and settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+        </div>
+    </header>
+
+    <div class="options">
+        <div class="seg" role="group" aria-label="Word length">
+            <button data-len="4" aria-pressed="false">4 letters</button>
+            <button data-len="5" aria-pressed="true">5</button>
+            <button data-len="6" aria-pressed="false">6</button>
+        </div>
+        <div class="seg" role="group" aria-label="Mode">
+            <button data-mode="daily" aria-pressed="true">Daily</button>
+            <button data-mode="practice" aria-pressed="false">Practice</button>
+        </div>
+    </div>
+
+    <main><div class="board" id="board" role="grid" aria-label="Guesses"></div></main>
+
+    <div class="keyboard" id="keyboard" aria-label="Keyboard"></div>
+    <div class="toast" id="toast" role="status" aria-live="assertive"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <p>Find the hidden word in <b>6 guesses</b>. Choose 4, 5 or 6 letters at the top.</p>
+            <ul>
+                <li>Type a real word and press <b>Enter</b>. Each tile then shows how close you were:</li>
+            </ul>
+            <div class="ex" aria-hidden="true"><div class="tile right">c</div><div class="tile">r</div><div class="tile">a</div><div class="tile">n</div><div class="tile">e</div></div>
+            <p><b>C</b> is in the word, in the right place.</p>
+            <div class="ex" aria-hidden="true"><div class="tile">s</div><div class="tile near">t</div><div class="tile">o</div><div class="tile">r</div><div class="tile">m</div></div>
+            <p><b>T</b> is in the word, but somewhere else.</p>
+            <div class="ex" aria-hidden="true"><div class="tile">b</div><div class="tile">l</div><div class="tile">i</div><div class="tile none">n</div><div class="tile">d</div></div>
+            <p><b>N</b> isn't in the word anywhere.</p>
+            <ul>
+                <li><b>Type into any tile:</b> tap a tile to choose it, then type. So if you think the fourth letter is an A, put it straight there and fill in the rest later. Typing moves on to the next empty tile; backspace clears.</li>
+                <li><b>Daily</b> has one word per length each day, the same for everyone. <b>Practice</b> gives as many new words as you like.</li>
+            </ul>
+            <h3>Settings</h3>
+            <label class="toggle-row" for="hardToggle">
+                <span><b>Hard mode</b><small>Letters you've found must be used: green ones in the same place, yellow ones somewhere.</small></span>
+                <span class="switch"><input type="checkbox" id="hardToggle" role="switch"><span class="track"></span></span>
+            </label>
+            <label class="toggle-row" for="hcToggle">
+                <span><b>High-contrast colours</b><small>Orange and blue instead of green and yellow, with a tick and a dot on the tiles. Helpful for colour blindness.</small></span>
+                <span class="switch"><input type="checkbox" id="hcToggle" role="switch"><span class="track"></span></span>
+            </label>
+            <button class="btn" id="helpClose">Let's play</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+        <div class="modal">
+            <button class="modal-x" id="statsX" aria-label="Close">✕</button>
+            <h2 id="statsTitle">Statistics</h2>
+            <div id="result"></div>
+            <h3 id="statsFor">5 letters</h3>
+            <div class="stats" id="statsGrid"></div>
+            <h3>Guesses</h3>
+            <div class="dist" id="dist"></div>
+            <div id="endBtns"></div>
+            <p class="next" id="nextDaily"></p>
+        </div>
+    </div>
+
+    <script src="words.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Crackword';   // one place to rename the game
+        var S = window.HubStorage, W = window.CRACKWORD_WORDS;
+        var $ = function (id) { return document.getElementById(id); };
+        var ROWS = 6;
+        document.body.classList.add('crack');
+        document.title = GAME_NAME + ' — Game Hub';
+
+        // ---------- words ----------
+        var LISTS = {};
+        [4, 5, 6].forEach(function (n) {
+            var answers = W[n].a.split(' '), guesses = {};
+            W[n].g.split(' ').forEach(function (w) { guesses[w] = 1; });
+            answers.forEach(function (w) { guesses[w] = 1; });
+            // a fixed shuffle of the answers, so the daily words don't run in alphabetical order
+            var a = (n * 2654435761) >>> 0, order = answers.slice();
+            for (var i = order.length - 1; i > 0; i--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var j = a % (i + 1); var t = order[i]; order[i] = order[j]; order[j] = t; }
+            LISTS[n] = { answers: order, valid: guesses };
+        });
+        var EPOCH = new Date(2026, 0, 1);
+        function dayNumber(d) { d = d || new Date(); var a = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return Math.round((a - EPOCH) / 86400000) + 1; }
+
+        // ---------- settings and saved data ----------
+        var len = +S.getString('crackword_len', '5'); if ([4, 5, 6].indexOf(len) < 0) len = 5;
+        var mode = S.getString('crackword_mode', 'daily') === 'practice' ? 'practice' : 'daily';
+        var hard = S.getFlag('crackword_hard');
+        var hc = S.getFlag('hub_colourBlindShapes');   // hub-wide colour-blind setting
+        document.body.classList.toggle('hc', hc);
+        function loadJSON(k, d) { try { var v = JSON.parse(S.getString(k, 'null')); return v && typeof v === 'object' ? v : d; } catch (e) { return d; } }
+        function stats() {
+            var all = loadJSON('crackword_stats', {}), s = all[len];
+            if (!s || !Array.isArray(s.dist) || s.dist.length !== ROWS) s = { played: 0, won: 0, streak: 0, best: 0, dist: [0, 0, 0, 0, 0, 0], lastDaily: 0 };
+            return s;
+        }
+        function saveStats(s) { var all = loadJSON('crackword_stats', {}); all[len] = s; S.setString('crackword_stats', JSON.stringify(all)); }
+
+        // ---------- game state ----------
+        var game = null;   // { answer, day, guesses: [], results: [], done, won }
+        var cur = [], sel = 0, busy = false;
+        function stateKey() { return 'crackword_game_' + mode + '_' + len; }
+        function newPractice() { var A = LISTS[len].answers; return { answer: A[Math.floor(Math.random() * A.length)], day: 0, guesses: [], results: [], done: false, won: false }; }
+        function loadGame() {
+            var g = loadJSON(stateKey(), null), today = dayNumber();
+            var valid = g && typeof g.answer === 'string' && g.answer.length === len && Array.isArray(g.guesses) && Array.isArray(g.results);
+            if (mode === 'daily') {
+                var A = LISTS[len].answers, ans = A[(today - 1 + A.length * 10) % A.length];
+                if (!valid || g.day !== today || g.answer !== ans) g = { answer: ans, day: today, guesses: [], results: [], done: false, won: false };
+            } else if (!valid) g = newPractice();
+            game = g;
+            cur = []; for (var i = 0; i < len; i++) cur.push(''); sel = 0;
+        }
+        function saveGame() { S.setString(stateKey(), JSON.stringify(game)); }
+
+        // Standard scoring: greens first, then yellows only for letters still unmatched (handles repeats)
+        function score(guess, answer) {
+            var res = [], left = {}, i;
+            for (i = 0; i < guess.length; i++) { if (guess[i] === answer[i]) res[i] = 'right'; else { res[i] = 'none'; left[answer[i]] = (left[answer[i]] || 0) + 1; } }
+            for (i = 0; i < guess.length; i++) if (res[i] !== 'right' && left[guess[i]]) { res[i] = 'near'; left[guess[i]]--; }
+            return res;
+        }
+
+        // ---------- drawing ----------
+        function tileSize() {
+            var mainEl = document.querySelector('main'), h = mainEl.clientHeight - 8, w = Math.min(mainEl.clientWidth - 20, 420);
+            var byH = Math.floor((h - (ROWS - 1) * 6) / ROWS), byW = Math.floor((w - (len - 1) * 6) / len);
+            return Math.max(34, Math.min(62, byH, byW));
+        }
+        function drawBoard() {
+            var t = tileSize(), html = '';
+            for (var r = 0; r < ROWS; r++) {
+                html += '<div class="row" data-r="' + r + '" role="row" style="grid-template-columns:repeat(' + len + ',' + t + 'px)">';
+                for (var c = 0; c < len; c++) html += '<div class="tile" role="gridcell" data-c="' + c + '" style="width:' + t + 'px;height:' + t + 'px;font-size:' + Math.round(t * 0.52) + 'px"></div>';
+                html += '</div>';
+            }
+            $('board').innerHTML = html;
+            paint();
+        }
+        var NAMES = { right: 'correct', near: 'in the word, wrong place', none: 'not in the word' };
+        function paint() {
+            var rows = $('board').children, active = game.done ? -1 : game.guesses.length;
+            for (var r = 0; r < ROWS; r++) {
+                var row = rows[r], tiles = row.children;
+                row.classList.toggle('active', r === active);
+                for (var c = 0; c < len; c++) {
+                    var el = tiles[c], letter = '', cls = 'tile';
+                    if (r < game.guesses.length) { letter = game.guesses[r][c]; cls += ' ' + game.results[r][c]; }
+                    else if (r === active) { letter = cur[c]; if (letter) cls += ' filled'; if (c === sel) cls += ' sel'; }
+                    el.textContent = letter;
+                    el.className = cls;
+                    el.setAttribute('aria-label', r < game.guesses.length ? 'Row ' + (r + 1) + ', letter ' + (c + 1) + ': ' + letter.toUpperCase() + ', ' + NAMES[game.results[r][c]]
+                        : r === active ? 'Letter ' + (c + 1) + (letter ? ': ' + letter.toUpperCase() : ', empty') + (c === sel ? ', selected' : '') : 'Empty');
+                }
+            }
+            paintKeys();
+            $('sub').textContent = mode === 'daily' ? 'Daily #' + dayNumber() + ' · ' + len + ' letters' : 'Practice · ' + len + ' letters';
+            document.querySelectorAll('[data-len]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.len === len ? 'true' : 'false'); });
+            document.querySelectorAll('[data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'); });
+        }
+        var KEYS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+        var BACK = '<svg viewBox="0 0 24 24"><path d="M21 5H8l-6 7 6 7h13z"/><path d="M17 9l-6 6M11 9l6 6"/></svg>';
+        function drawKeys() {
+            var html = '';
+            KEYS.forEach(function (row, i) {
+                html += '<div class="krow">';
+                if (i === 1) html += '<span class="spacer"></span>';
+                if (i === 2) html += '<button class="key wide" data-k="enter">Enter</button>';
+                row.split('').forEach(function (k) { html += '<button class="key" data-k="' + k + '" aria-label="' + k.toUpperCase() + '">' + k + '</button>'; });
+                if (i === 2) html += '<button class="key wide" data-k="back" aria-label="Delete">' + BACK + '</button>';
+                if (i === 1) html += '<span class="spacer"></span>';
+                html += '</div>';
+            });
+            $('keyboard').innerHTML = html;
+        }
+        function paintKeys() {
+            var best = {}, rank = { none: 1, near: 2, right: 3 };
+            game.guesses.forEach(function (g, r) { for (var c = 0; c < g.length; c++) { var s = game.results[r][c]; if (!best[g[c]] || rank[s] > rank[best[g[c]]]) best[g[c]] = s; } });
+            document.querySelectorAll('.key[data-k]').forEach(function (k) {
+                var s = best[k.dataset.k]; k.classList.remove('right', 'near', 'none'); if (s) k.classList.add(s);
+                if (k.dataset.k.length === 1) k.setAttribute('aria-label', k.dataset.k.toUpperCase() + (s ? ', ' + NAMES[s] : ''));
+            });
+        }
+
+        // ---------- input ----------
+        function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 1400); }
+        function shake() { var row = $('board').children[game.guesses.length]; if (!row) return; row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake'); }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function nextEmpty(from) { for (var k = 1; k <= len; k++) { var i = (from + k) % len; if (!cur[i]) return i; } return Math.min(from + 1, len - 1); }
+        function typeLetter(ch) {
+            if (game.done || busy) return;
+            cur[sel] = ch;
+            var at = sel;
+            // move on to the next empty tile (to the right, wrapping round); stay at the end when the row is full
+            sel = cur.every(function (x) { return x; }) ? Math.min(at + 1, len - 1) : nextEmpty(at);
+            paint();
+            var t = $('board').children[game.guesses.length].children[at]; t.classList.add('pop');
+        }
+        function backspace() {
+            if (game.done || busy) return;
+            if (cur[sel]) cur[sel] = '';
+            else if (sel > 0) { sel--; cur[sel] = ''; }
+            paint();
+        }
+        function move(d) { if (game.done) return; sel = Math.max(0, Math.min(len - 1, sel + d)); paint(); }
+        function submit() {
+            if (game.done || busy) return;
+            var word = cur.join('');
+            if (word.length < len || cur.some(function (x) { return !x; })) { shake(); toast('Fill every tile first'); return; }
+            if (!LISTS[len].valid[word]) { shake(); buzz(30); toast('Not in the word list'); return; }
+            if (hard) {
+                var msg = hardCheck(word); if (msg) { shake(); toast(msg, 2000); return; }
+            }
+            var res = score(word, game.answer);
+            game.guesses.push(word); game.results.push(res);
+            var won = res.every(function (x) { return x === 'right'; });
+            if (won || game.guesses.length === ROWS) { game.done = true; game.won = won; }
+            saveGame();
+            reveal(game.guesses.length - 1, function () {
+                announce(word, res);
+                if (game.done) finish();
+                else { cur = []; for (var i = 0; i < len; i++) cur.push(''); sel = 0; paint(); }
+            });
+        }
+        function hardCheck(word) {
+            for (var r = 0; r < game.guesses.length; r++) {
+                var g = game.guesses[r], res = game.results[r], need = {};
+                for (var c = 0; c < len; c++) {
+                    if (res[c] === 'right' && word[c] !== g[c]) return 'Letter ' + (c + 1) + ' must be ' + g[c].toUpperCase();
+                    if (res[c] !== 'none') need[g[c]] = (need[g[c]] || 0) + 1;
+                }
+                for (var ch in need) { var have = word.split(ch).length - 1; if (have < need[ch]) return 'Guess must contain ' + ch.toUpperCase(); }
+            }
+            return null;
+        }
+        function reveal(r, done) {
+            busy = true;
+            var reduce = false; try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ignore */ }
+            var tiles = $('board').children[r].children, step = reduce ? 0 : 260;
+            for (var c = 0; c < len; c++) (function (c) {
+                setTimeout(function () {
+                    var el = tiles[c]; el.classList.add('flip');
+                    setTimeout(function () { el.className = 'tile flip ' + game.results[r][c]; el.textContent = game.guesses[r][c]; }, reduce ? 0 : 250);
+                }, c * step);
+            })(c);
+            setTimeout(function () { busy = false; paint(); done(); }, len * step + (reduce ? 0 : 300));
+        }
+        function announce(word, res) {
+            $('announce').textContent = word.toUpperCase() + ': ' + word.split('').map(function (ch, i) { return ch.toUpperCase() + ' ' + NAMES[res[i]]; }).join(', ') + '.';
+        }
+        function finish() {
+            var s = stats();
+            s.played++;
+            if (game.won) { s.won++; s.dist[game.guesses.length - 1]++; s.streak++; s.best = Math.max(s.best, s.streak); }
+            else s.streak = 0;
+            saveStats(s);
+            if (game.won) {
+                var tiles = $('board').children[game.guesses.length - 1].children;
+                for (var c = 0; c < len; c++) (function (el, c) { setTimeout(function () { el.classList.add('win'); }, c * 90); })(tiles[c], c);
+                var words = ['Genius!', 'Magnificent!', 'Impressive!', 'Splendid!', 'Great!', 'Phew!'];
+                toast(words[game.guesses.length - 1], 1600);
+                buzz(40);
+            } else toast(game.answer.toUpperCase(), 2400);
+            setTimeout(function () { openStats(); }, game.won ? 1700 : 2200);
+        }
+
+        // ---------- stats and sharing ----------
+        function openStats() {
+            var s = stats();
+            $('statsFor').textContent = len + ' letters';
+            $('statsGrid').innerHTML = '<div>' + s.played + '<small>Played</small></div><div>' + (s.played ? Math.round(100 * s.won / s.played) : 0) + '<small>Win %</small></div>' +
+                '<div>' + s.streak + '<small>Current streak</small></div><div>' + s.best + '<small>Best streak</small></div>';
+            var max = Math.max.apply(null, s.dist.concat([1])), html = '';
+            s.dist.forEach(function (v, i) {
+                var now = game.done && game.won && game.guesses.length === i + 1;
+                html += '<div class="bar' + (now ? ' now' : '') + '"><span>' + (i + 1) + '</span><span style="width:' + Math.max(8, Math.round(92 * v / max)) + '%">' + v + '</span></div>';
+            });
+            $('dist').innerHTML = html;
+            $('result').innerHTML = game.done ? '<p class="answer">' + (game.won ? 'Solved in ' + game.guesses.length + '. ' : 'Out of guesses. ') + 'The word was <b>' + game.answer.toUpperCase() + '</b></p>' : '';
+            var btns = '';
+            if (game.done) btns += '<button class="btn" id="shareBtn">Share result</button>';
+            if (game.done && mode === 'practice') btns += '<button class="btn secondary" id="againBtn">New word</button>';
+            if (game.done && mode === 'daily') btns += '<button class="btn secondary" id="practiceBtn">Play a practice word</button>';
+            $('endBtns').innerHTML = btns;
+            if ($('shareBtn')) $('shareBtn').addEventListener('click', share);
+            if ($('againBtn')) $('againBtn').addEventListener('click', function () { closeModal('statsModal'); game = newPractice(); saveGame(); loadInto(); });
+            if ($('practiceBtn')) $('practiceBtn').addEventListener('click', function () { closeModal('statsModal'); setMode('practice'); });
+            $('nextDaily').textContent = mode === 'daily' && game.done ? 'A new daily word arrives at midnight.' : '';
+            openModal('statsModal');
+        }
+        function share() {
+            var sq = hc ? { right: '🟧', near: '🟦', none: '⬜' } : { right: '🟩', near: '🟨', none: '⬜' };
+            var head = GAME_NAME + ' ' + len + (mode === 'daily' ? ' #' + dayNumber() : ' practice') + ' ' + (game.won ? game.guesses.length : 'X') + '/' + ROWS + (hard ? '*' : '');
+            var text = head + '\n' + game.results.map(function (r) { return r.map(function (x) { return sq[x]; }).join(''); }).join('\n');
+            if (navigator.share) { navigator.share({ text: text }).catch(function () { /* cancelled */ }); return; }
+            try { navigator.clipboard.writeText(text).then(function () { toast('Copied to clipboard'); }, function () { toast('Couldn\'t copy'); }); } catch (e) { toast('Couldn\'t copy'); }
+        }
+
+        // ---------- modals and wiring ----------
+        function openModal(id) { $(id).classList.add('active'); var m = $(id).querySelector('.modal'); if (m) m.scrollTop = 0; var b = $(id).querySelector('.modal-x'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } }
+        function closeModal(id) { $(id).classList.remove('active'); }
+        function anyModal() { return document.querySelector('.modal-overlay.active'); }
+        function loadInto() { loadGame(); drawBoard(); }
+        function setLen(n) { if (busy || n === len) return; len = n; S.setString('crackword_len', String(n)); loadInto(); }
+        function setMode(m) { if (busy || m === mode) return; mode = m; S.setString('crackword_mode', m); loadInto(); }
+
+        $('board').addEventListener('click', function (e) {
+            var t = e.target.closest('.tile'); if (!t || game.done) return;
+            var row = t.parentNode; if (+row.dataset.r !== game.guesses.length) return;
+            sel = +t.dataset.c; paint();
+        });
+        $('keyboard').addEventListener('click', function (e) {
+            var k = e.target.closest('.key'); if (!k) return;
+            var v = k.dataset.k;
+            if (v === 'enter') submit(); else if (v === 'back') backspace(); else typeLetter(v);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (anyModal()) { if (e.key === 'Escape') { closeHelp(); closeModal('statsModal'); } return; }
+            if (e.key === 'Enter') { e.preventDefault(); submit(); }
+            else if (e.key === 'Backspace') { e.preventDefault(); backspace(); }
+            else if (e.key === 'Delete') { e.preventDefault(); if (!game.done && !busy) { cur[sel] = ''; paint(); } }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
+            else if (/^[a-zA-Z]$/.test(e.key)) typeLetter(e.key.toLowerCase());
+        });
+        document.querySelectorAll('[data-len]').forEach(function (b) { b.addEventListener('click', function () { setLen(+b.dataset.len); }); });
+        document.querySelectorAll('[data-mode]').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
+        function closeHelp() { closeModal('helpModal'); S.setFlag('crackword_seen', true); }
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        $('statsBtn').addEventListener('click', openStats);
+        $('statsX').addEventListener('click', function () { closeModal('statsModal'); });
+        ['helpModal', 'statsModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+        $('hardToggle').checked = hard;
+        $('hardToggle').addEventListener('change', function () {
+            // switching on mid-game is fine; it applies from the next guess
+            hard = this.checked; S.setFlag('crackword_hard', hard);
+        });
+        $('hcToggle').checked = hc;
+        $('hcToggle').addEventListener('change', function () { hc = this.checked; S.setFlag('hub_colourBlindShapes', hc); document.body.classList.toggle('hc', hc); });
+        var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy) drawBoard(); }, 150); });
+        // a new day while the page is open: pick up the new daily word when you come back
+        document.addEventListener('visibilitychange', function () { if (!document.hidden && mode === 'daily' && game && game.day !== dayNumber() && !busy) loadInto(); });
+
+        drawKeys();
+        loadInto();
+        if (!S.getFlag('crackword_seen')) openModal('helpModal');
+        window.__crack = function () { return { game: game, cur: cur, sel: sel, len: len, mode: mode }; };   // read by the automated play-tests
+    })();
+    </script>
+</body>
+</html>
