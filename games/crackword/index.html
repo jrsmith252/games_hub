@@ -114,6 +114,12 @@
         .dist .bar.now span:last-child { background: var(--right); }
         .answer { text-align: center; font-size: 1.05rem; margin-bottom: 6px; }
         .answer b { letter-spacing: 3px; font-size: 1.3rem; }
+        .defn { background: var(--bg, #f4f1ea); border-radius: 12px; padding: 10px 14px; margin: 8px 0 4px; text-align: left; }
+        .modal .defn p { margin: 0 0 4px; color: var(--ink); font-size: 0.95rem; line-height: 1.45; }
+        .modal .defn p:last-child { margin-bottom: 0; }
+        .defn .pos { font-style: italic; color: var(--ink-soft); margin-right: 6px; }
+        .modal .defn .ex { color: var(--ink-soft); font-style: italic; }
+        .modal .defn .also { color: var(--ink-soft); font-size: 0.88rem; }
         .next { text-align: center; font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px; }
     </style>
 
@@ -202,6 +208,7 @@
     </div>
 
     <script src="words.js"></script>
+    <script src="definitions.js"></script>
     <script>
     (function () {
         'use strict';
@@ -420,6 +427,15 @@
         }
 
         // ---------- stats and sharing ----------
+        function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        function defnHTML(w) {
+            var d = (window.CRACKWORD_DEFS || {})[w]; if (!d) return '';
+            var h = '<div class="defn" aria-label="Definition">';
+            h += '<p>' + (d[0] ? '<span class="pos">' + esc(d[0]) + '</span>' : '') + esc(d[1].charAt(0).toUpperCase() + d[1].slice(1)) + '</p>';
+            if (d[2]) h += '<p class="ex">\u201C' + esc(d[2]) + '\u201D</p>';
+            if (d[3]) { var m = /^(noun|verb|adjective|adverb): (.*)$/.exec(d[3]); h += '<p class="also">' + esc(m ? 'As ' + (m[1] === 'adjective' || m[1] === 'adverb' ? 'an ' : 'a ') + m[1] + ': ' + m[2] : /^Also /.test(d[3]) ? d[3] : 'Also: ' + d[3]) + '</p>'; }
+            return h + '</div>';
+        }
         function openStats() {
             var s = stats();
             $('statsFor').textContent = len + ' letters';
@@ -431,7 +447,7 @@
                 html += '<div class="bar' + (now ? ' now' : '') + '"><span>' + (i + 1) + '</span><span style="width:' + Math.max(8, Math.round(92 * v / max)) + '%">' + v + '</span></div>';
             });
             $('dist').innerHTML = html;
-            $('result').innerHTML = game.done ? '<p class="answer">' + (game.won ? 'Solved in ' + game.guesses.length + '. ' : 'Out of guesses. ') + 'The word was <b>' + game.answer.toUpperCase() + '</b></p>' : '';
+            $('result').innerHTML = game.done ? '<p class="answer">' + (game.won ? 'Solved in ' + game.guesses.length + '. ' : 'Out of guesses. ') + 'The word was <b>' + game.answer.toUpperCase() + '</b></p>' + defnHTML(game.answer) : '';
             var btns = '';
             if (game.done) btns += '<button class="btn" id="shareBtn">Share result</button>';
             if (game.done) btns = '<button class="btn" id="againBtn">Next word</button>' + btns.replace('class="btn"', 'class="btn secondary"');
