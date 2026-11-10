@@ -76,6 +76,8 @@
         .key.near { background: var(--near); color: #fff; }
         .key.none { background: var(--none); color: #fff; }
         .spacer { flex: 0.5; }
+        .donebar { flex: none; width: 100%; max-width: 520px; margin: 0 auto; padding: 6px 16px calc(14px + env(safe-area-inset-bottom)); }
+        .donebar[hidden], .keyboard[hidden] { display: none; }
         @media (max-height: 680px) { .key { height: 46px; } .keyboard { gap: 5px; } }
 
         .toast { position: fixed; left: 50%; top: 120px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 60; white-space: nowrap; }
@@ -159,6 +161,10 @@
     <main><div class="board" id="board" role="grid" aria-label="Guesses"></div></main>
 
     <div class="keyboard" id="keyboard" aria-label="Keyboard"></div>
+    <div class="donebar" id="doneBar" hidden>
+        <button class="btn" id="doneNext">Next word</button>
+        <button class="btn secondary" id="doneInfo">See the meaning</button>
+    </div>
     <div class="toast" id="toast" role="status" aria-live="assertive"></div>
     <div class="sr" id="announce" aria-live="polite"></div>
 
@@ -299,6 +305,8 @@
         var NAMES = { right: 'correct', near: 'in the word, wrong place', none: 'not in the word' };
         function paint() {
             var rows = $('board').children, active = game.done ? -1 : game.guesses.length;
+            // once a word is over, swap the keyboard for clear ways forward (so closing the pop-up never leaves you stuck)
+            var over = game.done && !busy; $('keyboard').hidden = over; $('doneBar').hidden = !over;
             for (var r = 0; r < ROWS; r++) {
                 var row = rows[r], tiles = row.children;
                 row.classList.toggle('active', r === active);
@@ -500,6 +508,8 @@
         $('helpClose').addEventListener('click', closeHelp);
         $('helpX').addEventListener('click', closeHelp);
         $('statsBtn').addEventListener('click', openStats);
+        $('doneNext').addEventListener('click', nextWord);
+        $('doneInfo').addEventListener('click', openStats);
         $('statsX').addEventListener('click', function () { closeModal('statsModal'); });
         ['helpModal', 'statsModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
         $('hardToggle').checked = hard;
