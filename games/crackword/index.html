@@ -38,6 +38,9 @@
         .options { flex: none; display: flex; justify-content: center; gap: 8px; padding: 8px 10px 4px; flex-wrap: wrap; }
         .seg { display: inline-flex; background: #e9e7e0; border-radius: 12px; padding: 3px; }
         .seg button { border: 0; background: none; font: inherit; font-weight: 700; font-size: 0.85rem; color: var(--ink-soft); padding: 0 12px; min-height: 36px; border-radius: 9px; cursor: pointer; }
+        .tally { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; }
+        .tally span { background: #e9e7e0; border-radius: 10px; padding: 0 10px; min-height: 36px; display: inline-flex; align-items: center; gap: 5px; }
+        .tally .ok { color: var(--right); } .tally .no { color: #b4473e; }
         .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
         main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 10px; }
@@ -130,7 +133,7 @@
         <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
         <div class="title-block">
             <div class="game-title" id="gameTitle">Crackword</div>
-            <div class="sub" id="sub">Daily</div>
+            <div class="sub" id="sub">5 letters</div>
         </div>
         <div class="right-btns">
             <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
@@ -144,10 +147,7 @@
             <button data-len="5" aria-pressed="true">5</button>
             <button data-len="6" aria-pressed="false">6</button>
         </div>
-        <div class="seg" role="group" aria-label="Mode">
-            <button data-mode="daily" aria-pressed="true">Daily</button>
-            <button data-mode="practice" aria-pressed="false">Practice</button>
-        </div>
+        <div class="tally" id="tally" aria-live="polite"></div>
     </div>
 
     <main><div class="board" id="board" role="grid" aria-label="Guesses"></div></main>
@@ -160,7 +160,7 @@
         <div class="modal">
             <button class="modal-x" id="helpX" aria-label="Close">✕</button>
             <h2 id="helpTitle">How to play</h2>
-            <p>Find the hidden word in <b>6 guesses</b>. Choose 4, 5 or 6 letters at the top.</p>
+            <p>Find the hidden word in <b>6 guesses</b>. Choose 4, 5 or 6 letters at the top, and play as many words as you like.</p>
             <ul>
                 <li>Type a real word and press <b>Enter</b>. Each tile then shows how close you were:</li>
             </ul>
@@ -172,7 +172,7 @@
             <p><b>N</b> isn't in the word anywhere.</p>
             <ul>
                 <li><b>Type into any tile:</b> tap a tile to choose it, then type. So if you think the fourth letter is an A, put it straight there and fill in the rest later. Typing moves on to the next empty tile; backspace clears.</li>
-                <li><b>Daily</b> has one word per length each day, the same for everyone. <b>Practice</b> gives as many new words as you like.</li>
+                <li>Play as many words as you like. A tally of words <b>solved</b> and <b>missed</b> is kept for each length. When a word is finished, press <b>Enter</b> or <b>Next word</b> for another.</li>
             </ul>
             <h3>Settings</h3>
             <label class="toggle-row" for="hardToggle">
@@ -228,7 +228,7 @@
 
         // ---------- settings and saved data ----------
         var len = +S.getString('crackword_len', '5'); if ([4, 5, 6].indexOf(len) < 0) len = 5;
-        var mode = S.getString('crackword_mode', 'daily') === 'practice' ? 'practice' : 'daily';
+        var mode = 'practice';   // endless random words (the daily mode was removed)
         var hard = S.getFlag('crackword_hard');
         var hc = S.getFlag('hub_colourBlindShapes');   // hub-wide colour-blind setting
         document.body.classList.toggle('hc', hc);
@@ -244,14 +244,22 @@
         var game = null;   // { answer, day, guesses: [], results: [], done, won }
         var cur = [], sel = 0, busy = false;
         function stateKey() { return 'crackword_game_' + mode + '_' + len; }
-        function newPractice() { var A = LISTS[len].answers; return { answer: A[Math.floor(Math.random() * A.length)], day: 0, guesses: [], results: [], done: false, won: false }; }
+        // A random word, avoiding ones you've had recently (up to half the list) so repeats are rare
+        function newPractice() {
+            var A = LISTS[len].answers, recentKey = 'crackword_recent_' + len, recent = loadJSON(recentKey, []);
+            if (!Array.isArray(recent)) recent = [];
+            var seen = {}; recent.forEach(function (w) { seen[w] = 1; });
+            var pick, tries = 0;
+            do { pick = A[Math.floor(Math.random() * A.length)]; } while (seen[pick] && tries++ < 200);
+            recent.push(pick); if (recent.length > Math.floor(A.length / 2)) recent = recent.slice(-Math.floor(A.length / 2));
+            S.setString(recentKey, JSON.stringify(recent));
+            return { answer: pick, day: 0, guesses: [], results: [], done: false, won: false };
+        }
         function loadGame() {
             var g = loadJSON(stateKey(), null), today = dayNumber();
             var valid = g && typeof g.answer === 'string' && g.answer.length === len && Array.isArray(g.guesses) && Array.isArray(g.results);
-            if (mode === 'daily') {
-                var A = LISTS[len].answers, ans = A[(today - 1 + A.length * 10) % A.length];
-                if (!valid || g.day !== today || g.answer !== ans) g = { answer: ans, day: today, guesses: [], results: [], done: false, won: false };
-            } else if (!valid) g = newPractice();
+            if (!valid) g = newPractice();
+            void today;
             game = g;
             cur = []; for (var i = 0; i < len; i++) cur.push(''); sel = 0;
         }
@@ -298,9 +306,10 @@
                 }
             }
             paintKeys();
-            $('sub').textContent = mode === 'daily' ? 'Daily #' + dayNumber() + ' · ' + len + ' letters' : 'Practice · ' + len + ' letters';
+            $('sub').textContent = len + ' letters';
+            var st = stats();
+            $('tally').innerHTML = '<span aria-label="' + st.won + ' solved"><b class="ok">✓</b> ' + st.won + ' solved</span><span aria-label="' + (st.played - st.won) + ' missed"><b class="no">✕</b> ' + (st.played - st.won) + ' missed</span>';
             document.querySelectorAll('[data-len]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.len === len ? 'true' : 'false'); });
-            document.querySelectorAll('[data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'); });
         }
         var KEYS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
         var BACK = '<svg viewBox="0 0 24 24"><path d="M21 5H8l-6 7 6 7h13z"/><path d="M17 9l-6 6M11 9l6 6"/></svg>';
@@ -398,6 +407,7 @@
             if (game.won) { s.won++; s.dist[game.guesses.length - 1]++; s.streak++; s.best = Math.max(s.best, s.streak); }
             else s.streak = 0;
             saveStats(s);
+            paint();   // update the solved/missed tally straight away
             if (game.won) {
                 var tiles = $('board').children[game.guesses.length - 1].children;
                 for (var c = 0; c < len; c++) (function (el, c) { setTimeout(function () { el.classList.add('win'); }, c * 90); })(tiles[c], c);
@@ -405,7 +415,8 @@
                 toast(words[game.guesses.length - 1], 1600);
                 buzz(40);
             } else toast(game.answer.toUpperCase(), 2400);
-            setTimeout(function () { openStats(); }, game.won ? 1700 : 2200);
+            var forGame = game;
+            statsTimer = setTimeout(function () { if (game === forGame) openStats(); }, game.won ? 1700 : 2200);
         }
 
         // ---------- stats and sharing ----------
@@ -423,30 +434,29 @@
             $('result').innerHTML = game.done ? '<p class="answer">' + (game.won ? 'Solved in ' + game.guesses.length + '. ' : 'Out of guesses. ') + 'The word was <b>' + game.answer.toUpperCase() + '</b></p>' : '';
             var btns = '';
             if (game.done) btns += '<button class="btn" id="shareBtn">Share result</button>';
-            if (game.done && mode === 'practice') btns += '<button class="btn secondary" id="againBtn">New word</button>';
-            if (game.done && mode === 'daily') btns += '<button class="btn secondary" id="practiceBtn">Play a practice word</button>';
+            if (game.done) btns = '<button class="btn" id="againBtn">Next word</button>' + btns.replace('class="btn"', 'class="btn secondary"');
             $('endBtns').innerHTML = btns;
             if ($('shareBtn')) $('shareBtn').addEventListener('click', share);
-            if ($('againBtn')) $('againBtn').addEventListener('click', function () { closeModal('statsModal'); game = newPractice(); saveGame(); loadInto(); });
-            if ($('practiceBtn')) $('practiceBtn').addEventListener('click', function () { closeModal('statsModal'); setMode('practice'); });
-            $('nextDaily').textContent = mode === 'daily' && game.done ? 'A new daily word arrives at midnight.' : '';
+            if ($('againBtn')) $('againBtn').addEventListener('click', nextWord);
+            $('nextDaily').textContent = '';
             openModal('statsModal');
         }
         function share() {
             var sq = hc ? { right: '🟧', near: '🟦', none: '⬜' } : { right: '🟩', near: '🟨', none: '⬜' };
-            var head = GAME_NAME + ' ' + len + (mode === 'daily' ? ' #' + dayNumber() : ' practice') + ' ' + (game.won ? game.guesses.length : 'X') + '/' + ROWS + (hard ? '*' : '');
+            var head = GAME_NAME + ' (' + len + ' letters) ' + (game.won ? game.guesses.length : 'X') + '/' + ROWS + (hard ? '*' : '');
             var text = head + '\n' + game.results.map(function (r) { return r.map(function (x) { return sq[x]; }).join(''); }).join('\n');
             if (navigator.share) { navigator.share({ text: text }).catch(function () { /* cancelled */ }); return; }
             try { navigator.clipboard.writeText(text).then(function () { toast('Copied to clipboard'); }, function () { toast('Couldn\'t copy'); }); } catch (e) { toast('Couldn\'t copy'); }
         }
 
         // ---------- modals and wiring ----------
+        var statsTimer = null;
+        function nextWord() { clearTimeout(statsTimer); closeModal('statsModal'); game = newPractice(); saveGame(); loadInto(); }
         function openModal(id) { $(id).classList.add('active'); var m = $(id).querySelector('.modal'); if (m) m.scrollTop = 0; var b = $(id).querySelector('.modal-x'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } }
         function closeModal(id) { $(id).classList.remove('active'); }
         function anyModal() { return document.querySelector('.modal-overlay.active'); }
         function loadInto() { loadGame(); drawBoard(); }
         function setLen(n) { if (busy || n === len) return; len = n; S.setString('crackword_len', String(n)); loadInto(); }
-        function setMode(m) { if (busy || m === mode) return; mode = m; S.setString('crackword_mode', m); loadInto(); }
 
         $('board').addEventListener('click', function (e) {
             var t = e.target.closest('.tile'); if (!t || game.done) return;
@@ -456,12 +466,12 @@
         $('keyboard').addEventListener('click', function (e) {
             var k = e.target.closest('.key'); if (!k) return;
             var v = k.dataset.k;
-            if (v === 'enter') submit(); else if (v === 'back') backspace(); else typeLetter(v);
+            if (v === 'enter') { if (game.done && !busy) nextWord(); else submit(); } else if (v === 'back') backspace(); else typeLetter(v);
         });
         document.addEventListener('keydown', function (e) {
             if (e.ctrlKey || e.metaKey || e.altKey) return;
-            if (anyModal()) { if (e.key === 'Escape') { closeHelp(); closeModal('statsModal'); } return; }
-            if (e.key === 'Enter') { e.preventDefault(); submit(); }
+            if (anyModal()) { if (e.key === 'Escape') { closeHelp(); closeModal('statsModal'); } else if (e.key === 'Enter' && $('statsModal').classList.contains('active') && game.done) { e.preventDefault(); nextWord(); } return; }
+            if (e.key === 'Enter') { e.preventDefault(); if (game.done && !busy) nextWord(); else submit(); }
             else if (e.key === 'Backspace') { e.preventDefault(); backspace(); }
             else if (e.key === 'Delete') { e.preventDefault(); if (!game.done && !busy) { cur[sel] = ''; paint(); } }
             else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); }
@@ -469,7 +479,6 @@
             else if (/^[a-zA-Z]$/.test(e.key)) typeLetter(e.key.toLowerCase());
         });
         document.querySelectorAll('[data-len]').forEach(function (b) { b.addEventListener('click', function () { setLen(+b.dataset.len); }); });
-        document.querySelectorAll('[data-mode]').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
         function closeHelp() { closeModal('helpModal'); S.setFlag('crackword_seen', true); }
         $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
         $('helpClose').addEventListener('click', closeHelp);
@@ -485,8 +494,6 @@
         $('hcToggle').checked = hc;
         $('hcToggle').addEventListener('change', function () { hc = this.checked; S.setFlag('hub_colourBlindShapes', hc); document.body.classList.toggle('hc', hc); });
         var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy) drawBoard(); }, 150); });
-        // a new day while the page is open: pick up the new daily word when you come back
-        document.addEventListener('visibilitychange', function () { if (!document.hidden && mode === 'daily' && game && game.day !== dayNumber() && !busy) loadInto(); });
 
         drawKeys();
         loadInto();
