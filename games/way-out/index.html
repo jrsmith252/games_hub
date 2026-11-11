@@ -71,6 +71,29 @@
         @keyframes nopeV { 20% { translate: 0 -3px; } 40% { translate: 0 3px; } 60% { translate: 0 -2px; } 80% { translate: 0 2px; } }
         .axis { width: 80%; height: 80%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
         .axis svg { width: 100%; height: 100%; stroke: rgba(255,255,255,0.95); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.3)); }
+        /* covered rows: a panel that breaks after enough blocks have left */
+        .cover { position: absolute; z-index: 4; border-radius: 8px; background: #4a3f86; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 10px, transparent 10px 20px);
+            box-shadow: inset 0 0 0 3px #f2b33d, inset 0 0 0 5px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .count { min-width: 34px; height: 34px; padding: 0 8px; border-radius: 10px; background: #7a1f2b; color: #fff; font-weight: 800; font-size: 1.05rem;
+            display: inline-flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 0 0 2px #f2b33d, 0 2px 4px rgba(0,0,0,0.3); }
+        .count svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+        .cover.breaking { animation: shatter 0.6s ease-in forwards; }
+        @keyframes shatter { 30% { transform: scale(1.03); filter: brightness(1.4); } 100% { transform: scale(1.15); opacity: 0; } }
+        .block.arrive .bc { animation: arrive 0.5s ease-out both; }
+        @keyframes arrive { 0% { opacity: 0; transform: scale(0.6); } 100% { opacity: 1; transform: none; } }
+        /* frozen door: icy until enough blocks have left */
+        .door.locked { background: repeating-linear-gradient(135deg, #e0f2fe 0 5px, #bae6fd 5px 10px) !important; z-index: 5; pointer-events: none; }
+        .door .dcount { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-weight: 800; font-size: 0.95rem; color: #0c4a6e; background: #f0f9ff; border: 3px solid; border-radius: 9px; min-width: 30px; height: 30px; padding: 0 5px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .door.thaw { animation: thaw 0.7s ease-out; }
+        @keyframes thaw { 0% { filter: brightness(2) saturate(0); } 100% { filter: none; } }
+        /* chained block */
+        .chain { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+        .chain svg { width: 100%; height: 100%; overflow: visible; }
+        .chain .count { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 28px; height: 28px; font-size: 0.95rem; }
+        .block.unchain .bc { animation: arrive 0.4s ease-out; }
+        /* two-colour block: outer colour as a thick frame, inner colour inside */
+        .bc .core { position: absolute; border-radius: 4px; box-shadow: inset 0 0 0 2px rgba(20,15,40,0.35); display: flex; align-items: center; justify-content: center; }
+        .block.peeled .bc { animation: arrive 0.45s ease-out; }
         .ghost { position: absolute; border: 3px dashed var(--hint); border-radius: 9px; background: rgba(14,165,233,0.12); pointer-events: none; z-index: 2; }
 
         .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(236,233,246,0.97); border-top: 1px solid var(--line); position: relative; z-index: 20; }
@@ -167,11 +190,14 @@
                 <li>Each coloured block leaves through the <b>door of its colour</b> in the wall, as long as the <b>whole block fits</b> through the opening. Slide it up to the door, or just let go (or tap it) when it has a clear straight run, and out it goes.</li>
                 <li>Blocks with <b>arrows</b> only slide the way the arrows point.</li>
                 <li>Some levels have grey <b>crates</b>: they never leave, so push them out of the way.</li>
-                <li>Get every coloured block out before the <b>clock runs out</b>. Finish with half the time left for <b>3 stars</b>, a quarter for <b>2</b>. Out of time? Try again: it's free. The clock pauses while this help, the level list or another app is open.</li>
+                <li><b>Numbers count blocks out.</b> Every block that leaves takes one off every number on the board:
+                    a <b>covered panel</b> breaks open at 0 to show more blocks; an <b>icy door</b> opens at 0; a <b>chained block</b> is freed at 0.</li>
+                <li>A block with a <b>coloured frame</b> goes to the frame's door first. It drops the frame there and stays, now the inside colour, for its own door.</li>
+                <li>Beat the clock for <b>3 stars</b>. Go over and you can still finish: up to double the time gets <b>2 stars</b>, and any time at all gets <b>1</b>. The clock pauses while this help, the level list or another app is open.</li>
             </ol>
             <p>Undo is free but the clock keeps running. Restart starts the level, and the clock, again.</p>
             <label class="toggle-row" for="clockToggle">
-                <span><b>No time limit</b><small>The clock counts up instead and you can't run out. Stars still go by how quickly you finish.</small></span>
+                <span><b>Hide the clock</b><small>No countdown on screen. You'll still see your stars when you finish.</small></span>
                 <span class="switch"><input type="checkbox" id="clockToggle" role="switch"><span class="track"></span></span>
             </label>
             <label class="toggle-row" for="symToggle">
@@ -192,12 +218,11 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="timeModal" role="dialog" aria-modal="true" aria-labelledby="timeTitle">
+    <div class="modal-overlay" id="newModal" role="dialog" aria-modal="true" aria-labelledby="newTitle">
         <div class="modal">
-            <h2 id="timeTitle">Out of time</h2>
-            <p id="timeText"></p>
-            <button class="btn" id="retryBtn">Try again</button>
-            <button class="btn secondary" id="relaxBtn">Play without a time limit</button>
+            <h2 id="newTitle">New!</h2>
+            <p id="newText"></p>
+            <button class="btn" id="newOk">Got it</button>
         </div>
     </div>
 
@@ -251,38 +276,36 @@
 
         var MAX_HINTS = 2;
         var levelNo = progress.level, L = null, blocks = [], moves = 0, history = [], hintsUsed = 0, solved = false, hintMove = null;
-        var elapsed = 0, lastTick = 0, noLimit = S.getString('wayout_noLimit', 'false') === 'true', timedOut = false;
-        // Target time: a little thinking time, plus time per move needed, plus extra for each block that must be moved aside
-        // Time allowed: thinking time plus a few seconds for each move in the shortest solution
-        // Sorting levels are mostly about speed and order; jam levels need thinking time
-        function limitMs() {
-            return Math.round(20 + L.par * 3) * 1000;   // thinking time plus three seconds a move
-        }
-        function liveStars() { var f = elapsed / limitMs(); return f <= 0.5 ? 3 : f <= 0.75 ? 2 : 1; }
-        function outOfTime() {
-            timedOut = true; buzz(60);
-            var left = blocks.filter(function (b) { return !b.out && b.col >= 0; }).length, total = L.blocks.filter(function (b) { return b.col >= 0; }).length;
-            $('timeText').textContent = 'You got ' + (total - left) + ' of ' + total + ' blocks out. It can be done in ' + L.par + ' moves. Trying again is free.';
-            openModal('timeModal');
-        }
+        var elapsed = 0, lastTick = 0, hideClock = S.getString('wayout_hideClock', 'false') === 'true';
+        // Time for 3 stars: thinking time plus four seconds a move in our solution. Twice that is still 2 stars,
+        // and there's no limit for 1 star: you can always finish.
+        function limitMs() { return Math.round(30 + L.par * 4) * 1000; }
+        function liveStars() { var f = elapsed / limitMs(); return f <= 1 ? 3 : f <= 2 ? 2 : 1; }
         function fmt(ms) { var t = Math.floor(ms / 1000), m = Math.floor(t / 60); t %= 60; return m + ':' + (t < 10 ? '0' : '') + t; }
         function ready() { return L && L.number === levelNo; }
-        function paused() { return !ready() || solved || timedOut || $('timeModal').classList.contains('active') || document.hidden || $('helpModal').classList.contains('active') || $('levelModal').classList.contains('active'); }
+        function paused() { return !ready() || solved || document.hidden || $('helpModal').classList.contains('active') || $('levelModal').classList.contains('active') || $('newModal').classList.contains('active'); }
+        var lastStars = 3;
         function tick() {
             var now = Date.now();
             if (lastTick && !paused()) elapsed += Math.min(now - lastTick, 2000);
             lastTick = now;
             showClock();
-            if (ready() && !solved && !noLimit && !timedOut && elapsed >= limitMs()) outOfTime();
         }
         function showClock() {
             if (!L) return;
-            var left = Math.max(0, limitMs() - elapsed);
-            $('clock').textContent = noLimit ? fmt(elapsed) : fmt(Math.ceil(left / 1000) * 1000);
-            $('clockPill').classList.toggle('low', !noLimit && left < 10000);
-            $('clockPill').setAttribute('aria-label', noLimit ? 'Time taken' : 'Time left');
-            var st = liveStars(), str = ''; for (var i = 0; i < 3; i++) str += i < st ? '★' : '☆';
+            var st = liveStars(), lim = limitMs();
+            // count down to the next star boundary, then up once only 1 star is left
+            var shown = st === 3 ? lim - elapsed : st === 2 ? 2 * lim - elapsed : elapsed;
+            $('clock').textContent = fmt(st === 1 ? shown : Math.ceil(shown / 1000) * 1000);
+            $('clockPill').style.display = hideClock ? 'none' : '';
+            $('clockPill').classList.toggle('low', st > 1 && shown < 10000);
+            $('clockPill').classList.toggle('over', st < 3);
+            $('clockPill').setAttribute('aria-label', st === 3 ? 'Time left for 3 stars' : st === 2 ? 'Time left for 2 stars' : 'Time taken');
+            $('starsPill').style.display = hideClock ? 'none' : '';
+            var str = ''; for (var i = 0; i < 3; i++) str += i < st ? '★' : '☆';
             $('liveStars').textContent = str;
+            if (st < lastStars && ready() && !solved && !hideClock) toast(st === 2 ? 'Still 2 stars if you finish within ' + fmt(lim) + ' more' : 'Take your time: you can still finish for 1 star');
+            lastStars = st;
         }
         var geo = null, drag = null;
 
@@ -293,14 +316,14 @@
 
         // ---------- state ----------
         function saveState() {
-            S.setString(KEY_STATE, JSON.stringify({ v: 3, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0]; }), m: moves, t: Math.round(elapsed), h: hintsUsed, s: solved }));
+            S.setString(KEY_STATE, JSON.stringify({ v: 4, level: levelNo, b: blocks.map(function (b) { return [b.r, b.c, b.out ? 1 : 0, b.peel ? 1 : 0]; }), m: moves, t: Math.round(elapsed), h: hintsUsed, s: solved }));
         }
         function loadState(n) {
             try {
                 var o = JSON.parse(S.getString(KEY_STATE, 'null'));
-                if (!o || o.v !== 3 || o.level !== n || !Array.isArray(o.b) || o.b.length !== L.blocks.length) return false;
+                if (!o || o.v !== 4 || o.level !== n || !Array.isArray(o.b) || o.b.length !== L.blocks.length) return false;
                 var bs = E.cloneBlocks(L.blocks);
-                for (var i = 0; i < bs.length; i++) { var x = o.b[i]; if (!Array.isArray(x)) return false; bs[i].r = x[0] | 0; bs[i].c = x[1] | 0; bs[i].out = !!x[2]; }
+                for (var i = 0; i < bs.length; i++) { var x = o.b[i]; if (!Array.isArray(x)) return false; bs[i].r = x[0] | 0; bs[i].c = x[1] | 0; bs[i].out = !!x[2]; if (bs[i].col2 !== undefined) bs[i].peel = !!x[3]; }
                 // reject anything that doesn't fit (old or damaged saves)
                 var occ = []; for (i = 0; i < L.R * L.C; i++) occ.push(-1);
                 L.stones.forEach(function (s) { occ[s] = -2; });
@@ -361,18 +384,39 @@
             ['winModal', 'levelModal'].forEach(closeModal);
             hideHint();
             $('levelBtn').innerHTML = 'Level ' + n + (L.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
-            timedOut = false;
+            lastStars = liveStars();
             build(); renderAll(); saveState();
+            introduce();
         }
-        var cmap = {};
-        function build() {
+        // The first level with each new thing explains it
+        var INTRO = {
+            lock: ['Icy doors', 'A door with a number is frozen shut. Every block that leaves takes one off. At 0 the door opens.'],
+            chain: ['Chained blocks', 'A chained block can\'t move. Every block that leaves takes one off its number. At 0 the chain falls away.'],
+            covers: ['Covered rows', 'Panels hide more blocks. Every block that leaves takes one off each panel. At 0 it breaks open and the blocks underneath join in.'],
+            two: ['Framed blocks', 'A block with a coloured frame goes to the frame\'s door first. It leaves the frame behind and stays on the board in its inside colour, ready for its own door.']
+        };
+        function introduce() {
+            var x = E.extras(levelNo);
+            for (var k in INTRO) if (x[k] && !S.getFlag('wayout_new_' + k)) {
+                S.setFlag('wayout_new_' + k, true);
+                $('newTitle').textContent = 'New: ' + INTRO[k][0]; $('newText').textContent = INTRO[k][1];
+                if (!$('helpModal').classList.contains('active')) openModal('newModal');
+                return;
+            }
+        }
+        var cmap = {}, lastEx = 0, needBuild = false;
+        var CHAIN_ICON = '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+        // animate: show what changed since the last exit (panels breaking, doors thawing, chains falling, frames dropping)
+        function build(animate) {
+            var ex = E.exitsDone(blocks), was = animate ? lastEx : ex;
+            lastEx = ex; needBuild = false;
             // Colours vary by level (seeded, so a level always looks the same)
             var a = (levelNo * 2654435761) >>> 0, pal = [0, 1, 2, 3, 4, 5, 6];
             for (var ci = 6; ci > 0; ci--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var cj = a % (ci + 1); var tmp = pal[ci]; pal[ci] = pal[cj]; pal[cj] = tmp; }
             // each colour used on this level gets its own palette colour (levels use at most 7)
             cmap = {}; var used = 0;
             L.doors.forEach(function (d) { if (cmap[d.col] === undefined) cmap[d.col] = pal[used++ % 7]; });
-            blocks.forEach(function (b) { if (b.col >= 0 && cmap[b.col] === undefined) cmap[b.col] = pal[used++ % 7]; });
+            blocks.forEach(function (b) { if (b.col >= 0 && cmap[b.col] === undefined) cmap[b.col] = pal[used++ % 7]; if (b.col2 !== undefined && cmap[b.col2] === undefined) cmap[b.col2] = pal[used++ % 7]; });
             var area = $('boardArea'), board = $('board');
             var wall = 12;
             var cell = Math.floor(Math.min((area.clientWidth - wall * 2) / L.C, (area.clientHeight - wall * 2) / L.R, 64));
@@ -387,10 +431,24 @@
                 var x, y, w, h, t = wall - 3;
                 if (d.side === 'top' || d.side === 'bottom') { x = wall + d.start * cell + 3; w = d.len * cell - 6; h = t; y = d.side === 'top' ? 1 : wall + L.R * cell + 2; }
                 else { y = wall + d.start * cell + 3; h = d.len * cell - 6; w = t; x = d.side === 'left' ? 1 : wall + L.C * cell + 2; }
-                html += '<div class="door" data-d="' + i + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + COLOURS[cmap[d.col]] + '" aria-label="' + CNAMES[cmap[d.col]] + ' door">' + (showSyms ? SYMS[cmap[d.col]] : '') + '</div>';
+                var locked = d.lock > 0 && ex < d.lock, thaw = d.lock > 0 && !locked && was < d.lock;
+                html += '<div class="door' + (locked ? ' locked' : '') + (thaw ? ' thaw' : '') + '" data-d="' + i + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + COLOURS[cmap[d.col]] + (locked ? ';border:3px solid ' + COLOURS[cmap[d.col]] : '') + '" aria-label="' + CNAMES[cmap[d.col]] + ' door' + (locked ? ', frozen until ' + (d.lock - ex) + ' more blocks leave' : '') + '">' +
+                    (showSyms && !locked ? SYMS[cmap[d.col]] : '') + (locked ? '<span class="dcount" style="border-color:' + COLOURS[cmap[d.col]] + '">' + (d.lock - ex) + '</span>' : '') + '</div>';
+            });
+            // covered rows: a panel with how many more blocks must leave before it breaks
+            (L.covers || []).forEach(function (cv, k) {
+                var shut = ex < cv.at, breaking = !shut && was < cv.at;
+                if (!shut && !breaking) return;
+                html += '<div class="cover' + (breaking ? ' breaking' : '') + '" style="left:' + (wall + 2) + 'px;top:' + (wall + cv.r0 * cell + 2) + 'px;width:' + (L.C * cell - 4) + 'px;height:' + ((cv.r1 - cv.r0 + 1) * cell - 4) + 'px" role="img" aria-label="Covered rows: they open after ' + Math.max(0, cv.at - ex) + ' more blocks leave">' +
+                    '<span class="count">' + Math.max(0, cv.at - ex) + '</span></div>';
             });
             blocks.forEach(function (b) {
+                if (b.out || E.hidden(L, b, ex)) return;   // still under a panel
                 var s = E.SHAPES[b.shape], inner = '', own = {};
+                var framed = b.col2 !== undefined && !b.peel, colNow = E.colourOf(b), cls = '';
+                if (animate && E.hidden(L, b, was)) cls += ' arrive';
+                if (animate && b.chain && was < b.chain && ex >= b.chain) cls += ' unchain';
+                if (b.justPeeled) { cls += ' peeled'; b.justPeeled = false; }
                 s.forEach(function (p) { own[p[0] + ',' + p[1]] = 1; });
                 // the arrow sits on the square nearest the middle of the block
                 var cy = 0, cx = 0; s.forEach(function (p) { cy += p[0]; cx += p[1]; }); cy /= s.length; cx /= s.length;
@@ -405,9 +463,16 @@
                     var bord = 'border-width:' + (T ? bw : 0) + 'px ' + (Rt ? bw : 0) + 'px ' + (B ? bw + 2 : 0) + 'px ' + (Lf ? bw : 0) + 'px';
                     var isMid = false;   // every piece slides along its length, so no arrows needed
                     var crate = b.col < 0;
+                    var stud = '<span class="stud">' + (showSyms && !crate ? SYMS[cmap[colNow]] : '') + '</span>';
+                    if (framed) {
+                        // inside colour fills the square except a frame of the outer colour around the block's edge
+                        var fw = Math.max(5, Math.round(cell * 0.2));
+                        var ct = T ? fw : -1, cb2 = B ? fw : -1, cl = Lf ? fw : -1, cr = Rt ? fw : -1;
+                        stud = '<span class="core" style="left:' + cl + 'px;top:' + ct + 'px;right:' + cr + 'px;bottom:' + cb2 + 'px;background:' + COLOURS[cmap[b.col2]] + ';border-radius:' + Math.round(rad * 0.6) + 'px">' + stud + '</span>';
+                    }
                     inner += '<div class="bc' + (crate ? ' crate' : '') + (b.axis ? ' oneway' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + radius + ';' + bord +
-                        ';background:' + (crate ? '#9c97ad' : COLOURS[cmap[b.col]]) + '">' +
-                        (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : '<span class="stud">' + (showSyms && !crate ? SYMS[cmap[b.col]] : '') + '</span>') + '</div>';
+                        ';background:' + (crate ? '#9c97ad' : COLOURS[cmap[colNow]]) + '">' +
+                        (isMid ? '<span class="axis">' + (b.axis === 'h' ? ARROW_H : ARROW_V) + '</span>' : stud) + '</div>';
                 });
                 // tidy the inside corners of L, T and S shapes: cut the little square that would poke into the gap
                 s.forEach(function (p) {
@@ -433,15 +498,28 @@
                         d2 = 'M' + x3 + ' ' + y1 + 'V' + y3 + 'M' + (x3 - a2) + ' ' + (y1 + a2) + 'L' + x3 + ' ' + y1 + 'L' + (x3 + a2) + ' ' + (y1 + a2) + 'M' + (x3 - a2) + ' ' + (y3 - a2) + 'L' + x3 + ' ' + y3 + 'L' + (x3 + a2) + ' ' + (y3 - a2); }
                     inner += '<div class="track" style="left:0;top:0;width:' + W + 'px;height:' + H + 'px"><svg viewBox="0 0 ' + W + ' ' + H + '"><path d="' + d2 + '" stroke="' + col2 + '" stroke-width="' + sw2 + '"/></svg></div>';
                 }
-                html += '<div class="block" data-id="' + b.id + '" role="button" aria-label="' + (b.col < 0 ? 'crate' : CNAMES[cmap[b.col]] + ' block') + (b.axis ? (b.axis === 'h' ? ', slides left and right' : ', slides up and down') : '') + '" style="width:' + (e.w * cell) + 'px;height:' + (e.h * cell) + 'px">' + inner + '</div>';
+                var chained = b.chain > 0 && ex < b.chain;
+                if (chained) {
+                    // chains wrapped across the block, with how many more blocks must leave
+                    var CW = e.w * cell, CH = e.h * cell, m2 = cell * 0.18;
+                    inner += '<div class="chain"><svg viewBox="0 0 ' + CW + ' ' + CH + '"><path d="M' + m2 + ' ' + m2 + 'L' + (CW - m2) + ' ' + (CH - m2) + 'M' + (CW - m2) + ' ' + m2 + 'L' + m2 + ' ' + (CH - m2) + '" stroke="#3b3550" stroke-width="' + Math.max(5, cell * 0.13) + '" stroke-dasharray="' + (cell * 0.22) + ' ' + (cell * 0.08) + '" stroke-linecap="round"/>' +
+                        '<path d="M' + m2 + ' ' + m2 + 'L' + (CW - m2) + ' ' + (CH - m2) + 'M' + (CW - m2) + ' ' + m2 + 'L' + m2 + ' ' + (CH - m2) + '" stroke="#c9c4d8" stroke-width="' + Math.max(2, cell * 0.05) + '" stroke-dasharray="' + (cell * 0.22) + ' ' + (cell * 0.08) + '" stroke-linecap="round"/></svg>' +
+                        '<span class="count" style="left:' + ((mid[1] + 0.5) * cell) + 'px;top:' + ((mid[0] + 0.5) * cell) + 'px">' + CHAIN_ICON + (b.chain - ex) + '</span></div>';
+                }
+                var label = b.col < 0 ? 'crate' : framed ? CNAMES[cmap[b.col]] + ' framed block with ' + CNAMES[cmap[b.col2]] + ' inside' : CNAMES[cmap[colNow]] + ' block';
+                if (chained) label += ', chained until ' + (b.chain - ex) + ' more blocks leave';
+                html += '<div class="block' + cls + '" data-id="' + b.id + '" role="button" aria-label="' + label + (b.axis ? (b.axis === 'h' ? ', slides left and right' : ', slides up and down') : '') + '" style="width:' + (e.w * cell) + 'px;height:' + (e.h * cell) + 'px">' + inner + '</div>';
             });
             board.innerHTML = html;
+            // broken panels fade out, then go
+            if (board.querySelector('.cover.breaking')) { buzz(30); setTimeout(function () { board.querySelectorAll('.cover.breaking').forEach(function (c) { c.remove(); }); }, 650); }
         }
+        function vertSide(sd) { return sd === 'top' || sd === 'bottom'; }
         function place(b, el) {
             el = el || $('board').querySelector('.block[data-id="' + b.id + '"]');
             if (!el) return;
             el.style.transform = 'translate(' + (geo.wall + b.c * geo.cell) + 'px,' + (geo.wall + b.r * geo.cell) + 'px)';
-            el.style.display = b.out ? 'none' : '';
+            el.style.display = b.out || E.hidden(L, b, E.exitsDone(blocks)) ? 'none' : '';
         }
         function renderAll() {
             blocks.forEach(function (b) { place(b); });
@@ -471,10 +549,10 @@
         }
 
         // ---------- dragging ----------
-        function snapshot() { return { b: blocks.map(function (b) { return [b.r, b.c, b.out]; }), m: moves }; }
-        function restore(s) { s.b.forEach(function (x, i) { blocks[i].r = x[0]; blocks[i].c = x[1]; blocks[i].out = x[2]; }); moves = s.m; }
+        function snapshot() { return { b: blocks.map(function (b) { return [b.r, b.c, b.out, b.peel]; }), m: moves }; }
+        function restore(s) { s.b.forEach(function (x, i) { blocks[i].r = x[0]; blocks[i].c = x[1]; blocks[i].out = x[2]; if (blocks[i].col2 !== undefined) blocks[i].peel = !!x[3]; }); moves = s.m; }
         $('board').addEventListener('pointerdown', function (e) {
-            if (!ready() || solved || timedOut || drag) return;
+            if (!ready() || solved || drag) return;
             var el = e.target.closest('.block'); if (!el || el.classList.contains('leaving')) return;
             var b = blocks[+el.dataset.id]; if (b.out) return;
             e.preventDefault();
@@ -537,22 +615,35 @@
         }
         function leave(b, d) {
             var el = drag.el, v = E.DIRS[E.SIDE_DIR[d.side]], far = (L.R + L.C) * geo.cell * 0.5;
-            b.out = true; moves++;
+            moves++;
             history.push(drag.snap); if (history.length > 300) history.shift();
-            el.classList.remove('dragging'); el.classList.add('leaving');
-            el.style.transform = 'translate(' + (geo.wall + b.c * geo.cell + v[1] * far) + 'px,' + (geo.wall + b.r * geo.cell + v[0] * far) + 'px)';
-            setTimeout(function () { el.classList.remove('leaving'); el.style.display = 'none'; }, 280);
-            buzz(15);
+            el.classList.remove('dragging');
             drag = null; hintMove = null; hideHint();
+            if (b.col2 !== undefined && !b.peel) {
+                // framed block: slides up to the door, drops its frame there and stays as its inside colour
+                var f = E.flushAt(L, E.makeOcc(L, blocks), b, b.r, b.c, d);
+                b.r = f[0]; b.c = f[1]; b.peel = true; b.justPeeled = true;
+                place(b, el); buzz(15);
+                setTimeout(refresh, 200);
+            } else {
+                b.out = true;
+                el.classList.add('leaving');
+                el.style.transform = 'translate(' + (geo.wall + b.c * geo.cell + v[1] * far) + 'px,' + (geo.wall + b.r * geo.cell + v[0] * far) + 'px)';
+                setTimeout(function () { el.classList.remove('leaving'); el.style.display = 'none'; refresh(); }, 280);
+                buzz(15);
+            }
             renderAll(); saveState();
             if (E.cleared(blocks)) setTimeout(onWin, 300);
         }
+        // redraw after an exit so counters, panels, doors and chains update (waits if a block is being dragged)
+        function refresh() { if (drag) { needBuild = true; return; } build(true); renderAll(); }
         function endDrag(e) {
             if (!drag || (e && e.pointerId !== drag.id)) return;
             // Let go (or just tap) with a clear straight run to its door: it slides out by itself
             if (e && e.type === 'pointerup') { var gate = gateFor(drag.b, false); if (gate) { leave(drag.b, gate); return; } }
             var d = drag; drag = null;
             d.el.classList.remove('dragging');
+            if (needBuild) { build(true); }
             if (d.b.r !== d.r0 || d.b.c !== d.c0) {
                 moves++; history.push(d.snap); if (history.length > 300) history.shift();
                 if (hintMove) { hintMove = null; hideHint(); }
@@ -569,11 +660,10 @@
             restore(history.pop()); hintMove = null; hideHint();
             build(); renderAll(); saveState();
         }
-        function restartFresh() { timedOut = false; solved = false; history = []; blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; lastTick = Date.now(); build(); renderAll(); saveState(); }
         function restart() {
             if (!ready() || solved) return;
             history.push(snapshot());
-            blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; timedOut = false; hintMove = null; hideHint();
+            blocks = E.cloneBlocks(L.blocks); moves = 0; elapsed = 0; lastStars = 3; hintMove = null; hideHint();
             build(); renderAll(); saveState();
         }
         function showHint() {
@@ -615,8 +705,8 @@
             saveState(); renderAll(); buzz(40); confetti();
             var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
             $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
-            var used = 'Cleared in ' + fmt(elapsed) + (noLimit ? '' : ' with ' + fmt(Math.max(0, limitMs() - elapsed)) + ' to spare') + ' and ' + moves + ' moves (our solution: ' + L.par + ').';
-            var tip = s === 3 ? '' : ' 3 stars needs it done within ' + fmt(limitMs() / 2) + '.';
+            var used = 'Cleared in ' + fmt(elapsed) + ' and ' + moves + ' moves (our solution: ' + L.par + ').';
+            var tip = s === 3 ? '' : ' 3 stars needs it done within ' + fmt(limitMs()) + '.';
             $('winText').textContent = used + tip;
             $('replayBtn').style.display = s === 3 ? 'none' : '';
             setTimeout(function () { openModal('winModal'); }, 400);
@@ -641,11 +731,9 @@
         $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
         $('helpClose').addEventListener('click', closeHelp);
         $('helpX').addEventListener('click', closeHelp);
-        $('clockToggle').checked = noLimit;
-        function setNoLimit(v) { noLimit = v; $('clockToggle').checked = v; S.setString('wayout_noLimit', v ? 'true' : 'false'); showClock(); }
-        $('clockToggle').addEventListener('change', function () { setNoLimit(this.checked); });
-        $('retryBtn').addEventListener('click', function () { closeModal('timeModal'); restartFresh(); });
-        $('relaxBtn').addEventListener('click', function () { closeModal('timeModal'); setNoLimit(true); timedOut = false; lastTick = Date.now(); });
+        $('clockToggle').checked = hideClock;
+        $('clockToggle').addEventListener('change', function () { hideClock = this.checked; S.setString('wayout_hideClock', hideClock ? 'true' : 'false'); showClock(); });
+        $('newOk').addEventListener('click', function () { closeModal('newModal'); });
         setInterval(tick, 250);
         document.addEventListener('visibilitychange', function () { tick(); if (document.hidden && L) saveState(); });
         $('symToggle').checked = showSyms;
@@ -668,6 +756,14 @@
 
         startLevel(levelNo);
         if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        // play-test hook: make one move of a solution as if it had been dragged
+        window.__applyMove = function (m) {
+            var b = blocks[m.id], el = $('board').querySelector('.block[data-id="' + m.id + '"]'), snap = snapshot();
+            b.r = m.r; b.c = m.c;
+            if (m.exit) { var di = E.exitDoor(L, E.makeOcc(L, blocks), b, b.r, b.c); drag = { b: b, el: el, snap: snap, id: -1 }; leave(b, L.doors[di]); }
+            else { moves++; history.push(snap); renderAll(); }
+        };
+        window.__setElapsed = function (ms) { elapsed = ms; showClock(); };   // play-test hook
         window.__wayout = function () { return { L: L, blocks: blocks, moves: moves, elapsed: elapsed, limit: L && limitMs() }; };   // read by the automated play-tests
     })();
     </script>
