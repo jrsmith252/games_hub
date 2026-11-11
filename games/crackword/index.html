@@ -323,7 +323,9 @@
             paintKeys();
             $('sub').textContent = len + ' letters';
             var st = stats();
-            $('tally').innerHTML = '<span aria-label="' + st.won + ' solved"><b class="ok">✓</b> ' + st.won + ' solved</span><span aria-label="' + (st.played - st.won) + ' missed"><b class="no">✕</b> ' + (st.played - st.won) + ' missed</span>';
+            var rate = st.played ? Math.round(100 * st.won / st.played) + '%' : '–';
+            $('tally').innerHTML = '<span aria-label="' + st.won + ' solved"><b class="ok">✓</b> ' + st.won + '</span><span aria-label="' + (st.played - st.won) + ' missed"><b class="no">✕</b> ' + (st.played - st.won) + '</span>' +
+                '<span aria-label="' + (st.played ? 'Success rate ' + rate : 'No success rate yet') + '">' + rate + '</span>';
             document.querySelectorAll('[data-len]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.len === len ? 'true' : 'false'); });
         }
         var KEYS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];

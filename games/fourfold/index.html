@@ -338,7 +338,9 @@
             var found = game.solvedAt.filter(function (x) { return x >= 0; }).length;
             $('sub').textContent = game.done ? (game.won ? 'All four solved' : found + ' of 4 found') : found + ' of 4 found · ' + (ROWS - game.guesses.length) + ' guess' + (ROWS - game.guesses.length === 1 ? '' : 'es') + ' left';
             var st = stats();
-            $('tally').innerHTML = '<span aria-label="' + st.won + ' solved"><b class="ok">✓</b> ' + st.won + ' solved</span><span aria-label="' + (st.played - st.won) + ' missed"><b class="no">✕</b> ' + (st.played - st.won) + ' missed</span>';
+            var rate = st.played ? Math.round(100 * st.won / st.played) + '%' : '–';
+            $('tally').innerHTML = '<span aria-label="' + st.won + ' solved"><b class="ok">✓</b> ' + st.won + '</span><span aria-label="' + (st.played - st.won) + ' missed"><b class="no">✕</b> ' + (st.played - st.won) + '</span>' +
+                '<span aria-label="' + (st.played ? 'Success rate ' + rate : 'No success rate yet') + '">' + rate + '</span>';
         }
         var KEYS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
         var BACK = '<svg viewBox="0 0 24 24"><path d="M21 5H8l-6 7 6 7h13z"/><path d="M17 9l-6 6M11 9l6 6"/></svg>';
