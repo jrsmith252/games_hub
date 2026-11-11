@@ -255,16 +255,19 @@
         var game = null;   // { answers: [4], guesses: [], solvedAt: [row index or -1], done, won }
         var cur = [], sel = 0, busy = false;
         function newGame() {
-            var recent = loadJSON('fourfold_recent', []); if (!Array.isArray(recent)) recent = [];
-            var seen = {}; recent.forEach(function (w) { seen[w] = 1; });
-            var picks = [];
-            while (picks.length < N) {
-                var p, tries = 0;
-                do { p = ANSWERS[Math.floor(Math.random() * ANSWERS.length)]; } while ((seen[p] || picks.indexOf(p) >= 0) && tries++ < 300);
-                if (picks.indexOf(p) < 0) picks.push(p);
+            // four words you haven't had before; only once every word has been played does it start again
+            var played = loadJSON('fourfold_recent', []); if (!Array.isArray(played)) played = [];
+            var seen = {}; played.forEach(function (w) { seen[w] = 1; });
+            var fresh = ANSWERS.filter(function (w) { return !seen[w]; });
+            if (fresh.length < N) {
+                played = played.slice(-20); seen = {}; played.forEach(function (w) { seen[w] = 1; });
+                fresh = ANSWERS.filter(function (w) { return !seen[w]; });
+                setTimeout(function () { toast('You\'ve played every word! Starting again', 2500); }, 300);
             }
-            recent = recent.concat(picks); var cap = Math.floor(ANSWERS.length / 2); if (recent.length > cap) recent = recent.slice(-cap);
-            S.setString('fourfold_recent', JSON.stringify(recent));
+            var picks = [];
+            while (picks.length < N) { var i = Math.floor(Math.random() * fresh.length); picks.push(fresh.splice(i, 1)[0]); }
+            played = played.concat(picks);
+            S.setString('fourfold_recent', JSON.stringify(played));
             return { answers: picks, guesses: [], solvedAt: [-1, -1, -1, -1], done: false, won: false };
         }
         function loadGame() {

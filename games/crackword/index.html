@@ -261,15 +261,20 @@
         var game = null;   // { answer, day, guesses: [], results: [], done, won }
         var cur = [], sel = 0, busy = false;
         function stateKey() { return 'crackword_game_' + mode + '_' + len; }
-        // A random word, avoiding ones you've had recently (up to half the list) so repeats are rare
+        // A random word you haven't had before. Only once every word of this length has been played does it start again.
         function newPractice() {
-            var A = LISTS[len].answers, recentKey = 'crackword_recent_' + len, recent = loadJSON(recentKey, []);
-            if (!Array.isArray(recent)) recent = [];
-            var seen = {}; recent.forEach(function (w) { seen[w] = 1; });
-            var pick, tries = 0;
-            do { pick = A[Math.floor(Math.random() * A.length)]; } while (seen[pick] && tries++ < 200);
-            recent.push(pick); if (recent.length > Math.floor(A.length / 2)) recent = recent.slice(-Math.floor(A.length / 2));
-            S.setString(recentKey, JSON.stringify(recent));
+            var A = LISTS[len].answers, recentKey = 'crackword_recent_' + len, played = loadJSON(recentKey, []);
+            if (!Array.isArray(played)) played = [];
+            var seen = {}; played.forEach(function (w) { seen[w] = 1; });
+            var fresh = A.filter(function (w) { return !seen[w]; });
+            if (!fresh.length) {   // the whole list is used up: start a new round, but not with the last few words
+                played = played.slice(-20); seen = {}; played.forEach(function (w) { seen[w] = 1; });
+                fresh = A.filter(function (w) { return !seen[w]; });
+                toast('You\'ve played every ' + len + '-letter word! Starting again', 2500);
+            }
+            var pick = fresh[Math.floor(Math.random() * fresh.length)];
+            played.push(pick);
+            S.setString(recentKey, JSON.stringify(played));
             return { answer: pick, day: 0, guesses: [], results: [], done: false, won: false };
         }
         function loadGame() {
