@@ -34,40 +34,48 @@
         .status { flex: none; display: flex; justify-content: center; gap: 8px; padding: 8px 10px 2px; flex-wrap: wrap; }
         .pill { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; font-weight: 700; min-height: 32px; display: inline-flex; align-items: center; gap: 6px; }
         .pill.low { color: var(--wrong); border-color: #f2b8b8; }
-        .found { flex: none; display: flex; flex-direction: column; gap: 5px; padding: 6px 12px 0; max-width: 560px; width: 100%; margin: 0 auto; }
-        .group { border-radius: 12px; padding: 6px 12px; color: #13222b; text-align: center; animation: drop 0.35s ease-out; }
+        .pill.btn-pill { cursor: pointer; font: inherit; font-weight: 700; font-size: 0.85rem; color: var(--ink); }
+        .group { border-radius: 12px; padding: 6px 12px; color: #13222b; text-align: center; }
         .group b { display: block; font-size: 0.82rem; letter-spacing: 0.6px; text-transform: uppercase; }
         .group span { font-size: 0.82rem; }
-        @keyframes drop { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: none; opacity: 1; } }
+        .banner { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 12; min-width: 60%; max-width: 92%; box-shadow: 0 6px 16px rgba(22,58,79,0.25); pointer-events: none; animation: banner 2.4s ease-out forwards; }
+        @keyframes banner { 0% { opacity: 0; transform: translate(-50%, -12px) scale(0.9); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -8px); } }
 
-        main { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px 10px; }
-        .board { display: grid; gap: 10px; touch-action: none; }
-        .bubble { position: relative; border: 0; border-radius: 50%; font: inherit; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-            background: radial-gradient(circle at 32% 28%, #ffffff 0, #ffffff 18%, #e8f5f8 55%, #cfe8ee 100%);
-            box-shadow: inset -4px -6px 12px rgba(22,58,79,0.12), inset 3px 4px 8px rgba(255,255,255,0.9), 0 4px 10px rgba(22,58,79,0.16); padding: 6%; line-height: 1.12; font-weight: 700;
-            transition: transform 0.15s; animation: bob 4s ease-in-out infinite; user-select: none; -webkit-user-select: none; }
-        .bubble::after { content: ''; position: absolute; left: 20%; top: 12%; width: 24%; height: 14%; border-radius: 50%; background: rgba(255,255,255,0.9); transform: rotate(-30deg); pointer-events: none; }
-        @keyframes bob { 50% { transform: translateY(-3px); } }
-        .bubble.empty { visibility: hidden; animation: none; }
-        .bubble .w { display: block; overflow-wrap: anywhere; hyphens: auto; }
-        .bubble .w + .w { margin-top: 2px; }
-        .bubble.multi { background: radial-gradient(circle at 32% 28%, #ffffff 0, #fdfbe8 25%, #f6efc4 65%, #e9dc9a 100%); }
-        .bubble .n { position: absolute; right: -6%; top: -6%; box-shadow: 0 0 0 2px #fff; min-width: 26px; height: 26px; border-radius: 999px; background: var(--deep); color: #fff; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
-        .bubble.sel { box-shadow: 0 0 0 4px var(--hint), 0 4px 12px rgba(22,58,79,0.25); animation: none; transform: scale(1.04); }
-        .bubble.target { box-shadow: 0 0 0 4px var(--accent), 0 4px 12px rgba(22,58,79,0.25); transform: scale(1.08); }
-        .bubble.ghosting { opacity: 0.35; }
-        .bubble.wrong { animation: shake 0.45s; box-shadow: 0 0 0 4px var(--wrong); }
+        /* the jar: bubbles fall to the bottom and pile up */
+        main { flex: 1; min-height: 0; position: relative; margin: 6px 8px 0; }
+        .arena { position: absolute; inset: 0; overflow: hidden; touch-action: none; border-radius: 18px 18px 0 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.0) 0%, rgba(207,232,238,0.35) 100%); }
+        .bubble { position: absolute; left: 0; top: 0; border: 0; padding: 0; background: none; font: inherit; color: var(--ink); cursor: grab; will-change: transform; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+        .bubble .face { position: absolute; inset: 0; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.1; font-weight: 700; padding: 8%;
+            background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.98) 0, rgba(255,255,255,0.9) 18%, rgba(226,243,247,0.92) 55%, rgba(196,226,234,0.95) 100%);
+            box-shadow: inset -4px -6px 12px rgba(22,58,79,0.13), inset 3px 4px 8px rgba(255,255,255,0.9), 0 3px 8px rgba(22,58,79,0.18); transition: box-shadow 0.15s; }
+        .bubble .face::after { content: ''; position: absolute; left: 20%; top: 12%; width: 24%; height: 13%; border-radius: 50%; background: rgba(255,255,255,0.9); transform: rotate(-30deg); pointer-events: none; }
+        .bubble .w { display: block; overflow-wrap: anywhere; }
+        .bubble .w + .w { margin-top: 1px; }
+        .bubble.multi .face { background: radial-gradient(circle at 32% 28%, #ffffff 0, #fdfbe8 25%, #f6efc4 65%, #e9dc9a 100%); }
+        .bubble .n { position: absolute; right: 2%; top: 2%; min-width: 24px; height: 24px; border-radius: 999px; background: var(--deep); color: #fff; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; padding: 0 5px; box-shadow: 0 0 0 2px #fff; z-index: 1; }
+        /* half words: purple stars */
+        .bubble.half .face { border-radius: 0; padding: 0; background: none; box-shadow: none; }
+        .bubble.half .face::after { display: none; }
+        .bubble.half .star { position: absolute; inset: 0; background: linear-gradient(160deg, #a06cf0, #6a35c9); clip-path: polygon(50% 2%, 63% 33%, 97% 36%, 71% 58%, 80% 94%, 50% 75%, 20% 94%, 29% 58%, 3% 36%, 37% 33%); filter: drop-shadow(0 2px 3px rgba(40,10,90,0.35)); }
+        .bubble.half .w { position: relative; color: #fff; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 8%; }
+        .bubble.done .face { background: radial-gradient(circle at 32% 28%, #ffffff 0, var(--gc) 45%, var(--gc) 100%); }
+        .bubble.sel .face { box-shadow: 0 0 0 4px var(--hint), 0 4px 12px rgba(22,58,79,0.25); }
+        .bubble.half.sel .star, .bubble.half.target .star, .bubble.half.hint .star { filter: drop-shadow(0 0 4px #2563eb) drop-shadow(0 0 3px #2563eb); }
+        .bubble.target .face { box-shadow: 0 0 0 4px var(--accent), 0 4px 12px rgba(22,58,79,0.25); }
+        .bubble.dragging { z-index: 10; cursor: grabbing; }
+        .bubble.dragging .face { transform: scale(1.06); }
+        .bubble.wrong .face { animation: shake 0.45s; box-shadow: 0 0 0 4px var(--wrong); }
+        .bubble.half.wrong .star { filter: drop-shadow(0 0 4px #d64545) drop-shadow(0 0 3px #d64545); }
         @keyframes shake { 15%, 55% { transform: translateX(-7px); } 35%, 75% { transform: translateX(7px); } }
-        .bubble.hint { animation: hintp 1s ease-in-out infinite; box-shadow: 0 0 0 4px var(--hint); }
+        .bubble.hint .face { animation: hintp 1s ease-in-out infinite; box-shadow: 0 0 0 4px var(--hint); }
         @keyframes hintp { 50% { box-shadow: 0 0 0 8px rgba(37,99,235,0.25); } }
-        .bubble.merge { animation: merge 0.35s ease-out; }
+        .bubble.merge .face { animation: merge 0.35s ease-out; }
         @keyframes merge { 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
-        .bubble.pop { animation: popout 0.45s ease-in forwards; }
-        @keyframes popout { 40% { transform: scale(1.18); } 100% { transform: scale(0.2); opacity: 0; } }
-        .bubble.arrive { animation: arrive 0.45s ease-out; }
-        @keyframes arrive { 0% { transform: translateY(-30px) scale(0.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
-        .floater { position: fixed; z-index: 30; pointer-events: none; transform: translate(-50%, -50%) scale(1.06); opacity: 0.92; animation: none !important; }
-        @media (prefers-reduced-motion: reduce) { .bubble { animation: none !important; transition: none; } .group { animation: none; } }
+        .bubble.pop .face { animation: popout 0.5s ease-in forwards; }
+        @keyframes popout { 30% { transform: scale(1.12); } 100% { transform: scale(1.6); opacity: 0; } }
+        .fizz { position: absolute; width: 8px; height: 8px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.95); pointer-events: none; z-index: 11; }
+        @media (prefers-reduced-motion: reduce) { .bubble .face, .banner { animation: none !important; } }
 
         .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(238,244,247,0.97); border-top: 1px solid var(--line); position: relative; z-index: 20; }
         .controls .row { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; }
@@ -97,9 +105,13 @@
         .level-cell.current { border: 2px solid var(--deep); }
         .level-cell.tough { background: #e6f5f2; }
         .exrow { display: flex; justify-content: center; gap: 8px; margin: 4px 0 10px; }
-        .exrow .bubble { width: 74px; height: 74px; font-size: 0.78rem; cursor: default; animation: none; }
-        .exrow .bubble .w { overflow-wrap: normal; }
-        .exrow .bubble.multi { font-size: 0.66rem; }
+        .exb { position: relative; width: 66px; height: 66px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.74rem; font-weight: 700; line-height: 1.1;
+            background: radial-gradient(circle at 32% 28%, #fff 0, #fff 18%, #e2f3f7 55%, #c4e2ea 100%); box-shadow: inset -4px -6px 12px rgba(22,58,79,0.13), 0 3px 8px rgba(22,58,79,0.18); }
+        .exb.multi { background: radial-gradient(circle at 32% 28%, #fff 0, #fdfbe8 25%, #f6efc4 65%, #e9dc9a 100%); font-size: 0.66rem; }
+        .exb .n { position: absolute; right: -2px; top: -2px; min-width: 22px; height: 22px; border-radius: 999px; background: var(--deep); color: #fff; font-size: 0.62rem; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-shadow: 0 0 0 2px #fff; }
+        .exb.half { background: none; box-shadow: none; border-radius: 0; }
+        .exb.half .star { position: absolute; inset: 0; background: linear-gradient(160deg, #a06cf0, #6a35c9); clip-path: polygon(50% 2%, 63% 33%, 97% 36%, 71% 58%, 80% 94%, 50% 75%, 20% 94%, 29% 58%, 3% 36%, 37% 33%); }
+        .exb.half .w { position: relative; color: #fff; margin-top: 8%; }
         .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
         .toast.show { opacity: 1; }
         .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
@@ -129,11 +141,10 @@
 
     <div class="status">
         <span class="pill" id="movesPill" aria-live="polite"></span>
-        <span class="pill" id="groupsPill"></span>
+        <button class="pill btn-pill" id="groupsPill" aria-label="Groups found: show them"></button>
         <span class="pill" id="starsPill" aria-label="Stars if you finish now"></span>
     </div>
-    <div class="found" id="found" aria-label="Groups found"></div>
-    <main><div class="board" id="board" aria-label="Word bubbles"></div></main>
+    <main><div class="arena" id="board" aria-label="Word bubbles"></div></main>
 
     <div class="controls">
         <div class="row">
@@ -150,15 +161,17 @@
             <button class="modal-x" id="helpX" aria-label="Close">✕</button>
             <h2 id="helpTitle">How to play</h2>
             <div class="exrow" aria-hidden="true">
-                <span class="bubble"><span class="w">Robin</span></span>
-                <span class="bubble"><span class="w">Owl</span></span>
-                <span class="bubble multi"><span class="w">Swan</span><span class="w">Wren</span><span class="n">2/4</span></span>
+                <span class="exb"><span class="w">Robin</span></span>
+                <span class="exb"><span class="w">Owl</span></span>
+                <span class="exb multi"><span class="w">Swan</span><span class="w">Wren</span><span class="n">2/4</span></span>
+                <span class="exb half"><span class="star"></span><span class="w">CONT</span></span>
             </div>
             <ol>
                 <li>Every bubble holds a word. The words make <b>groups of four</b> that belong together, like four birds.</li>
                 <li><b>Drag</b> a bubble onto another to merge them (or tap one, then the other). If they belong together they join up. Four in a bubble and the group is found!</li>
                 <li>Each merge you try uses <b>a move</b>, right or wrong. Find every group before your moves run out.</li>
-                <li>As groups are found, new bubbles float in until the board is clear.</li>
+                <li>Bubbles sink to the bottom. Each time you find a group, <b>more fall in</b> from the top until there are none left.</li>
+                <li>From level 15, some words come in two halves, in <b>purple stars</b> (CONT + RAST). Join the two halves to make the word, then put it with its group.</li>
                 <li>Every word fits only one group on the board, though some may look as if they fit two. Think it through!</li>
             </ol>
             <p><b>Stars</b> go by how many spare moves you use: one or none for 3 stars, up to three for 2 stars. A <b>hint</b> shows two bubbles that belong together, and uses a move. Run out of moves? Try again: it's free.</p>
@@ -186,6 +199,15 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="foundModal" role="dialog" aria-modal="true" aria-labelledby="foundTitle">
+        <div class="modal">
+            <button class="modal-x" id="foundX" aria-label="Close">✕</button>
+            <h2 id="foundTitle">Groups found</h2>
+            <div class="recap" id="foundList"></div>
+            <button class="btn secondary" id="foundClose">Close</button>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
         <div class="modal">
             <button class="modal-x" id="levelX" aria-label="Close">✕</button>
@@ -205,15 +227,15 @@
         var KEY_PROGRESS = 'kindred_progress', KEY_STARS = 'kindred_stars', KEY_STATE = 'kindred_state', KEY_SEEN = 'kindred_instructionsSeen';
         var $ = function (id) { return document.getElementById(id); };
         var GROUP_COLOURS = ['#f7d774', '#a8dba8', '#9cc9f0', '#d3b4f0', '#f5a9a0', '#f8c291', '#8fd9cf', '#e6b8d6'];
-        var CAP = 16;   // bubbles on the board at once
+        var CAP = 18;   // bubbles in the jar at once (more fall in as groups are found)
         document.body.classList.add('kin');
         document.title = GAME_NAME + ' — Game Hub';
 
         var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
         var stars = (function () { var out = {}; try { var o = JSON.parse(S.getString(KEY_STARS, '{}')); if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; }); } catch (e) { /* ignore */ } return out; })();
 
-        // slots: what's on the board, each { words: [...], g } or null; queue: bubbles still to float in
-        var levelNo = progress.level, L = null, slots = [], queue = [], found = [], used = 0, solved = false, sel = -1, hintPair = null, busy = false;
+        // bubbles: what's in the jar, each { id, words: [...], g, half?, part? }; queue: bubbles still to fall in
+        var levelNo = progress.level, L = null, bubbles = [], queue = [], found = [], used = 0, solved = false, sel = -1, hintPair = null, busy = false, nextId = 1;
 
         function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 1600); }
         function announce(msg) { $('announce').textContent = msg; }
@@ -221,78 +243,167 @@
         function closeModal(id) { $(id).classList.remove('active'); }
         function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
         function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-        function title(w) { return w.replace(/(^|[ -])([a-z])/g, function (_, a, b) { return a + b.toUpperCase(); }).replace(/^T Rex$/, 'T. rex'); }
+        function title(w) { return w.replace(/(^|[ -])([a-z])/g, function (_, a, b) { return a + b.toUpperCase(); }).replace(/ (And|Of|In|A|The) /g, function (m) { return m.toLowerCase(); }).replace(/^T Rex$/, 'T. rex'); }
         function groupName(g) { return L.groups[g].name; }
+        function byId(id) { for (var i = 0; i < bubbles.length; i++) if (bubbles[i].id === id) return bubbles[i]; return null; }
+        var reduce = false; try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ignore */ }
 
         // ---------- state ----------
-        function saveState() { S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, slots: slots, queue: queue, found: found, used: used, solved: solved })); }
+        function plain(b) { var o = { id: b.id, words: b.words, g: b.g }; if (b.half) { o.half = b.half; o.part = b.part; } return o; }
+        function saveState() { S.setString(KEY_STATE, JSON.stringify({ v: 2, level: levelNo, bubbles: bubbles.map(plain), queue: queue, found: found, used: used, solved: solved, nextId: nextId })); }
         function loadState(n) {
             try {
                 var o = JSON.parse(S.getString(KEY_STATE, 'null'));
-                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.slots) || !Array.isArray(o.queue) || !Array.isArray(o.found)) return false;
-                // sanity: every word of the level accounted for exactly once
-                var count = 0; o.slots.forEach(function (s) { if (s) count += s.words.length; });
-                if (count + o.queue.length + o.found.length * 4 !== L.order.length) return false;
-                slots = o.slots; queue = o.queue; found = o.found; used = Math.max(0, o.used | 0); solved = !!o.solved;
+                if (!o || o.v !== 2 || o.level !== n || !Array.isArray(o.bubbles) || !Array.isArray(o.queue) || !Array.isArray(o.found)) return false;
+                // sanity: every piece of the level accounted for once
+                var count = 0; o.bubbles.concat(o.queue).forEach(function (b) { count += b.half ? 0.5 : b.words.length; });
+                if (Math.round(count) + o.found.length * 4 !== L.groups.length * 4) return false;
+                bubbles = o.bubbles; queue = o.queue; found = o.found; used = Math.max(0, o.used | 0); solved = !!o.solved; nextId = o.nextId || 1000;
                 return true;
             } catch (e) { return false; }
         }
+        function piece(b) { var o = { id: nextId++, words: [b.word], g: b.g }; if (b.half) { o.half = b.half; o.part = b.part; } return o; }
         function fresh() {
-            slots = []; queue = L.order.map(function (b) { return { words: [b.word], g: b.g }; });
-            var first = Math.min(CAP, queue.length);
-            for (var i = 0; i < first; i++) slots.push(queue.shift());
+            nextId = 1; queue = L.order.map(piece); bubbles = [];
             found = []; used = 0; solved = false;
+            refill();
+        }
+        // two bubbles that can join: same group (whole words), or the two halves of one word
+        function canJoin(a, b) {
+            if (a.half || b.half) return !!(a.half && b.half && a.g === b.g && a.words[0] === b.words[0] && a.part !== b.part);
+            return a.g === b.g;
+        }
+        function anyPair() { for (var i = 0; i < bubbles.length; i++) for (var j = i + 1; j < bubbles.length; j++) if (canJoin(bubbles[i], bubbles[j])) return [bubbles[i], bubbles[j]]; return null; }
+        // top the jar up from the sky, and never leave it with nothing that can join
+        function refill() {
+            var added = [];
+            while (queue.length && bubbles.length < CAP) { var b = queue.shift(); bubbles.push(b); added.push(b); }
+            while (queue.length && !anyPair()) { var c = queue.shift(); bubbles.push(c); added.push(c); }
+            return added;
         }
 
         function startLevel(n) {
             levelNo = n; L = E.build(n);
             sel = -1; hintPair = null; busy = false;
             if (!loadState(n)) fresh();
-            ['winModal', 'outModal', 'levelModal'].forEach(closeModal);
+            ['winModal', 'outModal', 'levelModal', 'foundModal'].forEach(closeModal);
             $('levelBtn').innerHTML = 'Level ' + n + (L.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
             build(); saveState();
             if (!solved && used >= L.moves) setTimeout(outOfMoves, 300);
         }
 
-        // ---------- drawing ----------
-        function cols() { return slots.length <= 12 ? (slots.length <= 9 ? 3 : 4) : 4; }
-        function size() {
-            var m = document.querySelector('main'), c = cols(), rws = Math.ceil(slots.length / c);
-            var w = Math.min(m.clientWidth - 20, 560), h = m.clientHeight - 16;
-            return Math.max(62, Math.floor(Math.min((w - (c - 1) * 10) / c, (h - (rws - 1) * 10) / rws, 132)));
+        // ---------- the jar: simple physics ----------
+        var W = 300, H = 400, R0 = 40, bodies = {}, raf = 0, lastT = 0;
+        function radius(b) { return b.half ? R0 * 0.8 : R0 * (1 + 0.14 * (b.words.length - 1)); }
+        function measure() {
+            var a = $('board'); W = a.clientWidth; H = a.clientHeight;
+            // size bubbles so a full jar is a bit over half full
+            R0 = Math.max(30, Math.min(58, Math.sqrt(0.5 * W * H / (CAP * Math.PI))));
         }
-        function bubbleHTML(s, i, extra) {
-            if (!s) return '<button class="bubble empty" data-i="' + i + '" tabindex="-1" aria-hidden="true"></button>';
-            var n = s.words.length, words = s.words.map(title), fs = bubbleFont(words, n);
-            var label = n === 1 ? words[0] : words.join(', ') + ', ' + n + ' of 4 together';
-            return '<button class="bubble' + (n > 1 ? ' multi' : '') + (extra || '') + '" data-i="' + i + '" aria-label="' + esc(label) + '" style="font-size:' + fs + 'px">' +
-                words.map(function (w) { return '<span class="w">' + esc(w) + '</span>'; }).join('') + (n > 1 ? '<span class="n">' + n + '/4</span>' : '') + '</button>';
-        }
-        var bsize = 80;
-        function bubbleFont(words, n) {
+        function fontFor(b, r) {
+            if (b.half) return Math.max(9, Math.min(r * 0.34, 2 * r * 0.44 / Math.max(3, b.half.length) * 1.6));
+            var words = b.words.map(title), n = words.length;
             var longest = Math.max.apply(null, words.map(function (w) { return Math.max.apply(null, w.split(' ').map(function (p) { return p.length; })); }));
-            var byWidth = bsize * 0.72 / Math.max(4, longest) * 1.7, byLines = bsize * 0.56 / (n + (n > 1 ? 0.5 : 0)) / 1.12;
-            return Math.max(10, Math.min(byWidth, byLines, bsize * 0.2));
+            var lines = words.reduce(function (t, w) { return t + (w.length > 9 && w.indexOf(' ') > 0 ? w.split(' ').length : 1); }, 0);
+            return Math.max(9, Math.min(r * 0.4, 2 * r * 0.74 / Math.max(4, longest) * 1.75, 2 * r * 0.6 / (lines + (n > 1 ? 0.4 : 0)) / 1.1));
+        }
+        function bubbleEl(b) {
+            var r = radius(b), el = document.createElement('button');
+            el.className = 'bubble' + (b.half ? ' half' : '') + (b.words.length > 1 ? ' multi' : '');
+            el.dataset.id = b.id;
+            el.style.width = el.style.height = (2 * r) + 'px';
+            var label, inner;
+            if (b.half) { label = 'Half word: ' + b.half.toUpperCase(); inner = '<span class="star"></span><span class="w">' + esc(b.half) + '</span>'; }
+            else {
+                var words = b.words.map(title);
+                label = b.words.length === 1 ? words[0] : words.join(', ') + ', ' + b.words.length + ' of 4 together';
+                inner = words.map(function (w) { return '<span class="w">' + esc(w) + '</span>'; }).join('') + (b.words.length > 1 ? '<span class="n">' + b.words.length + '/4</span>' : '');
+            }
+            el.setAttribute('aria-label', label);
+            el.innerHTML = '<span class="face" style="font-size:' + fontFor(b, r) + 'px">' + inner + '</span>';
+            return el;
+        }
+        function addBody(b, x, y) {
+            var r = radius(b), el = bubbleEl(b);
+            $('board').appendChild(el);
+            bodies[b.id] = { x: x, y: y, vx: (Math.random() - 0.5) * 40, vy: 0, r: r, el: el };
+            place(bodies[b.id]);
+        }
+        function resizeBody(b) {
+            var o = bodies[b.id]; if (!o) return;
+            var el = bubbleEl(b); o.el.replaceWith(el); o.el = el; o.r = radius(b); place(o);
+        }
+        function removeBody(id) { var o = bodies[id]; if (o) { o.el.remove(); delete bodies[id]; } }
+        function place(o) { o.el.style.transform = 'translate(' + (o.x - o.r) + 'px,' + (o.y - o.r) + 'px)'; }
+        // new bubbles fall in from above the jar, spread across it
+        function dropIn(list, fromTop) {
+            list.forEach(function (b, i) {
+                var r = radius(b);
+                var x = r + Math.random() * Math.max(1, W - 2 * r);
+                var y = fromTop ? -r - i * r * 0.9 - Math.random() * 30 : H - r - Math.floor(i / Math.max(1, Math.floor(W / (2 * r)))) * 2 * r;
+                addBody(b, x, y);
+            });
         }
         function build() {
-            bsize = size();
-            var b = $('board'); b.style.gridTemplateColumns = 'repeat(' + cols() + ', ' + bsize + 'px)'; b.style.gridAutoRows = bsize + 'px';
-            b.innerHTML = slots.map(function (s, i) { return bubbleHTML(s, i); }).join('');
-            // stagger the bobbing so it looks like floating, not marching
-            Array.prototype.forEach.call(b.children, function (el, i) { el.style.animationDelay = (-(i * 0.73) % 4) + 's'; });
+            measure();
+            $('board').innerHTML = ''; bodies = {};
+            // on (re)load the bubbles start already settled-ish near the bottom, then shuffle into place
+            var copy = bubbles.slice(); for (var i = copy.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = copy[i]; copy[i] = copy[j]; copy[j] = t; }
+            dropIn(copy, false);
             paintStatus();
+            if (!raf) { lastT = 0; raf = requestAnimationFrame(frame); }
         }
-        function redraw(i, extra) {
-            var el = $('board').children[i]; if (!el) return;
-            var tmp = document.createElement('div'); tmp.innerHTML = bubbleHTML(slots[i], i, extra);
-            var nw = tmp.firstChild; nw.style.animationDelay = el.style.animationDelay; el.replaceWith(nw);
+        var G = 1600;
+        function step(dt) {
+            var ids = Object.keys(bodies), list = ids.map(function (k) { return bodies[k]; });
+            list.forEach(function (o) {
+                if (o.held) return;
+                o.vy += G * dt; o.vx *= 0.985; o.vy *= 0.99;
+                o.x += o.vx * dt; o.y += o.vy * dt;
+            });
+            for (var it = 0; it < 4; it++) {
+                for (var i = 0; i < list.length; i++) {
+                    var a = list[i]; if (a.held) continue;   // the bubble you're dragging passes over the others
+                    for (var j = i + 1; j < list.length; j++) {
+                        if (list[j].held) continue;
+                        var b = list[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, ov = a.r + b.r - d;
+                        if (ov <= 0) continue;
+                        var nx = dx / d, ny = dy / d, ma = a.held ? 0 : 1 / (a.r * a.r), mb = b.held ? 0 : 1 / (b.r * b.r), tot = ma + mb; if (!tot) continue;
+                        a.x -= nx * ov * ma / tot; a.y -= ny * ov * ma / tot; b.x += nx * ov * mb / tot; b.y += ny * ov * mb / tot;
+                        // soak up the bump so the pile settles
+                        var rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+                        if (rv < 0) { var imp = -rv * 0.6 / tot; a.vx -= imp * ma * nx; a.vy -= imp * ma * ny; b.vx += imp * mb * nx; b.vy += imp * mb * ny; }
+                    }
+                }
+                list.forEach(function (o) {
+                    if (o.held) return;
+                    if (o.x < o.r) { o.x = o.r; o.vx = Math.abs(o.vx) * 0.3; }
+                    if (o.x > W - o.r) { o.x = W - o.r; o.vx = -Math.abs(o.vx) * 0.3; }
+                    if (o.y > H - o.r) { o.y = H - o.r; o.vy = -Math.abs(o.vy) * 0.15; o.vx *= 0.9; }
+                });
+            }
         }
-        // spare moves used so far = moves used minus the useful merges made
-        var good = 0;
+        function frame(t) {
+            raf = requestAnimationFrame(frame);
+            if (document.hidden) { lastT = t; return; }
+            var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 1 / 60; lastT = t;
+            var n = Math.max(1, Math.ceil(dt / (1 / 120)));
+            for (var k = 0; k < n; k++) step(dt / n);
+            for (var id in bodies) place(bodies[id]);
+        }
+
+        // ---------- status ----------
+        var good = 0;   // useful joins made so far
         function spareUsed() { return used - good; }
         function starsFor() { var x = spareUsed(); return x <= 1 ? 3 : x <= 3 ? 2 : 1; }
+        function countGood() {
+            // every bubble of n words took n-1 joins; a whole word made from halves took one; found groups took 3 (+1 if they had halves)
+            var halvesLeft = bubbles.concat(queue).filter(function (b) { return b.half; }).length / 2;
+            good = L.need - (L.groups.length - found.length) * 3 - halvesLeft;
+            bubbles.forEach(function (b) { if (!b.half) good += b.words.length - 1; });
+        }
         function paintStatus() {
-            good = 0; slots.forEach(function (s) { if (s) good += s.words.length - 1; }); good += found.length * 3;
+            countGood();
             var left = Math.max(0, L.moves - used);
             $('movesPill').textContent = left + ' move' + (left === 1 ? '' : 's') + ' left';
             $('movesPill').classList.toggle('low', left <= 3 && !solved);
@@ -300,130 +411,156 @@
             var st = starsFor(), str = ''; for (var i = 0; i < 3; i++) str += i < st ? '★' : '☆';
             $('starsPill').textContent = str; $('starsPill').style.color = '#d97706';
             $('starsPill').setAttribute('aria-label', st + ' stars if you finish without more slips');
-            $('found').innerHTML = found.map(function (g) { return groupHTML(g); }).join('');
             $('hintBtn').disabled = solved || busy;
             $('restartBtn').disabled = busy;
         }
         function groupHTML(g) { return '<div class="group" style="background:' + GROUP_COLOURS[g % GROUP_COLOURS.length] + '"><b>' + esc(groupName(g)) + '</b><span>' + L.groups[g].words.map(title).map(esc).join(' · ') + '</span></div>'; }
 
-        // ---------- merging ----------
-        function fillSlot(i) {
-            slots[i] = queue.length ? queue.shift() : null;
-            redraw(i, slots[i] ? ' arrive' : '');
+        // ---------- joining ----------
+        function fizz(o) {
+            if (reduce) return;
+            for (var i = 0; i < 12; i++) {
+                var f = document.createElement('span'); f.className = 'fizz'; f.style.left = o.x + 'px'; f.style.top = o.y + 'px';
+                $('board').appendChild(f); if (!f.animate) { f.remove(); continue; }
+                var ang = Math.random() * Math.PI * 2, dist = o.r * (0.8 + Math.random() * 0.9);
+                var an = f.animate([{ transform: 'translate(-50%,-50%) scale(0.6)', opacity: 1 }, { transform: 'translate(' + (Math.cos(ang) * dist - 4) + 'px,' + (Math.sin(ang) * dist - 4) + 'px) scale(1.2)', opacity: 0 }], { duration: 600 + Math.random() * 300, easing: 'ease-out', fill: 'forwards' });
+                an.onfinish = (function (el) { return function () { el.remove(); }; })(f);
+            }
         }
-        function attempt(a, b) {
-            if (busy || solved || a === b || !slots[a] || !slots[b]) return;
-            clearHint(); sel = -1;
+        function flash(el, cls, ms) { if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(function () { el.classList.remove(cls); }, ms); }
+        function attempt(aId, bId) {
+            var A = byId(aId), B = byId(bId);
+            if (busy || solved || !A || !B || A === B) return;
+            clearHint(); clearSel();
             used++;
-            var A = slots[a], B = slots[b];
-            if (A.g === B.g) {
-                B.words = B.words.concat(A.words);
-                buzz(12);
-                if (B.words.length === 4) {
-                    // a whole group: pop it, show it in the found list, and bring in new bubbles
-                    busy = true;
-                    slots[a] = null; redraw(a);
-                    redraw(b, ' pop');
-                    found.push(B.g);
-                    announce('Found ' + groupName(B.g) + ': ' + B.words.join(', '));
+            if (!canJoin(A, B)) {
+                buzz([20, 40, 20]);
+                flash(bodies[A.id] && bodies[A.id].el, 'wrong', 500); flash(bodies[B.id] && bodies[B.id].el, 'wrong', 500);
+                // nudge them apart
+                var oa = bodies[A.id], ob = bodies[B.id];
+                if (oa && ob) { var dx = oa.x - ob.x || 1; oa.vx += (dx > 0 ? 1 : -1) * 260; oa.vy -= 200; }
+                toast(A.half || B.half ? 'Those halves don\'t make a word' : 'Those don\'t belong together');
+                announce((A.half ? A.half : A.words.join(', ')) + ' and ' + (B.half ? B.half : B.words.join(', ')) + ' don\'t go together.');
+                afterMove(); return;
+            }
+            buzz(12);
+            var ob2 = bodies[B.id], oa2 = bodies[A.id];
+            if (A.half) {
+                // two halves make a whole word bubble
+                B.words = [B.words[0]]; delete B.half; delete B.part;
+                bubbles.splice(bubbles.indexOf(A), 1); removeBody(A.id);
+                resizeBody(B); flash(bodies[B.id].el, 'merge', 400);
+                announce('The halves make ' + title(B.words[0]) + '.');
+                afterMove(); return;
+            }
+            B.words = B.words.concat(A.words);
+            bubbles.splice(bubbles.indexOf(A), 1); removeBody(A.id);
+            if (B.words.length === 4) {
+                // a whole group: show its name, burst, and more bubbles fall from the sky
+                busy = true;
+                resizeBody(B);
+                var o = bodies[B.id];
+                o.el.classList.add('done'); o.el.style.setProperty('--gc', GROUP_COLOURS[B.g % GROUP_COLOURS.length]);
+                o.el.querySelector('.face').innerHTML = '<span class="w" style="font-size:1.15em">' + esc(groupName(B.g)) + '</span>';
+                o.el.setAttribute('aria-label', 'Group found: ' + groupName(B.g));
+                found.push(B.g);
+                announce('Found ' + groupName(B.g) + ': ' + B.words.join(', '));
+                paintStatus(); saveState();
+                setTimeout(function () {
+                    o.el.classList.add('pop'); fizz(o);
+                    var bn = document.createElement('div'); bn.className = 'group banner'; bn.style.background = GROUP_COLOURS[B.g % GROUP_COLOURS.length];
+                    bn.innerHTML = groupHTML(B.g).replace(/^<div[^>]*>|<\/div>$/g, ''); $('board').appendChild(bn); setTimeout(function () { bn.remove(); }, 2500);
                     setTimeout(function () {
+                        bubbles.splice(bubbles.indexOf(B), 1); removeBody(B.id);
                         busy = false;
-                        slots[b] = null; fillSlot(b); fillSlot(a);
-                        // nothing left to float in: close up the gaps so the last bubbles sit together
-                        if (!queue.length && slots.some(function (x) { return !x; })) { slots = slots.filter(function (x) { return x; }); build(); }
+                        dropIn(refill(), true);
                         afterMove();
                     }, 450);
-                    paintStatus(); saveState();
-                    return;
-                }
-                slots[a] = null; fillSlot(a);
-                redraw(b, ' merge');
-                announce(B.words.join(' and ') + ' belong together. ' + B.words.length + ' of 4.');
-            } else {
-                buzz([20, 40, 20]);
-                var ea = $('board').children[a], eb = $('board').children[b];
-                [ea, eb].forEach(function (el) { el.classList.remove('wrong'); void el.offsetWidth; el.classList.add('wrong'); setTimeout(function () { el.classList.remove('wrong'); }, 500); });
-                toast('Those don\'t belong together');
-                announce(A.words.join(', ') + ' and ' + B.words.join(', ') + ' are not in the same group.');
+                }, reduce ? 300 : 700);
+                return;
             }
+            resizeBody(B); flash(bodies[B.id].el, 'merge', 400);
+            announce(B.words.join(' and ') + ' belong together. ' + B.words.length + ' of 4.');
             afterMove();
         }
         function afterMove() {
+            // a join can leave nothing that goes together: let more fall in
+            if (!anyPair() && queue.length) dropIn(refill(), true);
             paintStatus(); saveState();
             if (found.length === L.groups.length) { onWin(); return; }
-            if (used >= L.moves) setTimeout(outOfMoves, 500);
+            if (used >= L.moves) setTimeout(outOfMoves, 600);
         }
 
         // ---------- hints ----------
         function hint() {
-            if (solved || busy) return;
-            if (used >= L.moves) return;
-            // two bubbles of the same group, preferring the biggest merged bubble
+            if (solved || busy || used >= L.moves) return;
             var best = null;
-            for (var i = 0; i < slots.length; i++) for (var j = 0; j < slots.length; j++) {
-                if (i === j || !slots[i] || !slots[j] || slots[i].g !== slots[j].g) continue;
-                var score = slots[i].words.length + slots[j].words.length;
-                if (!best || score > best.s) best = { a: j, b: i, s: score };
+            for (var i = 0; i < bubbles.length; i++) for (var j = 0; j < bubbles.length; j++) {
+                if (i === j || !canJoin(bubbles[i], bubbles[j])) continue;
+                var score = bubbles[i].words.length + bubbles[j].words.length + (bubbles[i].half ? 3 : 0);
+                if (!best || score > best.s) best = { a: bubbles[j].id, b: bubbles[i].id, s: score };
             }
             if (!best) return;
-            used++;
+            clearHint(); used++;
             hintPair = [best.a, best.b];
-            [best.a, best.b].forEach(function (k) { $('board').children[k].classList.add('hint'); });
-            announce('Hint: ' + slots[best.a].words.join(', ') + ' and ' + slots[best.b].words.join(', ') + ' belong together.');
+            hintPair.forEach(function (id) { if (bodies[id]) bodies[id].el.classList.add('hint'); });
+            var A = byId(best.a), B = byId(best.b);
+            announce('Hint: ' + (A.half || A.words.join(', ')) + ' and ' + (B.half || B.words.join(', ')) + ' go together.');
             paintStatus(); saveState();
-            if (used >= L.moves) setTimeout(outOfMoves, 500);
+            if (used >= L.moves) setTimeout(outOfMoves, 600);
         }
-        function clearHint() { if (!hintPair) return; hintPair.forEach(function (k) { var el = $('board').children[k]; if (el) el.classList.remove('hint'); }); hintPair = null; }
+        function clearHint() { if (!hintPair) return; hintPair.forEach(function (id) { if (bodies[id]) bodies[id].el.classList.remove('hint'); }); hintPair = null; }
+        function clearSel() { if (sel >= 0 && bodies[sel]) bodies[sel].el.classList.remove('sel'); sel = -1; }
 
         // ---------- drag or tap ----------
         var drag = null;
-        function bubbleAt(x, y) { var el = document.elementFromPoint(x, y); el = el && el.closest ? el.closest('.bubble') : null; return el && el.parentNode === $('board') && !el.classList.contains('empty') ? +el.dataset.i : -1; }
+        function idFrom(el) { el = el && el.closest ? el.closest('.bubble') : null; return el && el.parentNode === $('board') ? +el.dataset.id : -1; }
+        function local(e) { var r = $('board').getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+        function targetAt(p, skip) {
+            var best = -1, bd = 1e9;
+            for (var id in bodies) { if (+id === skip) continue; var o = bodies[id], d = Math.hypot(o.x - p.x, o.y - p.y); if (d < o.r * 0.95 && d < bd) { bd = d; best = +id; } }
+            return best;
+        }
         $('board').addEventListener('pointerdown', function (e) {
             if (solved || busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
-            var i = bubbleAt(e.clientX, e.clientY); if (i < 0) return;
-            drag = { i: i, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false, over: -1, floater: null };
+            var id = idFrom(e.target); if (id < 0 || !bodies[id]) return;
+            var p = local(e), o = bodies[id];
+            drag = { id: id, sx: e.clientX, sy: e.clientY, dx: o.x - p.x, dy: o.y - p.y, pid: e.pointerId, moving: false, over: -1 };
             e.preventDefault();
         });
         window.addEventListener('pointermove', function (e) {
-            if (!drag || e.pointerId !== drag.id) return;
-            if (!drag.moving && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) {
-                drag.moving = true;
-                var src = $('board').children[drag.i], r = src.getBoundingClientRect(), f = src.cloneNode(true);
-                f.classList.add('floater'); f.classList.remove('sel', 'hint'); f.style.width = r.width + 'px'; f.style.height = r.height + 'px';
-                document.body.appendChild(f); drag.floater = f; src.classList.add('ghosting');
-                if (sel >= 0) { var old = $('board').children[sel]; if (old) old.classList.remove('sel'); sel = -1; }
-            }
+            if (!drag || e.pointerId !== drag.pid) return;
+            var o = bodies[drag.id]; if (!o) { drag = null; return; }
+            if (!drag.moving && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 8) { drag.moving = true; o.held = true; o.el.classList.add('dragging'); clearSel(); }
             if (!drag.moving) return;
-            drag.floater.style.left = e.clientX + 'px'; drag.floater.style.top = e.clientY + 'px';
-            drag.floater.style.display = 'none';
-            var over = bubbleAt(e.clientX, e.clientY);
-            drag.floater.style.display = '';
-            if (over === drag.i) over = -1;
+            var p = local(e);
+            o.x = Math.max(o.r, Math.min(W - o.r, p.x + drag.dx)); o.y = Math.max(o.r, Math.min(H - o.r, p.y + drag.dy)); o.vx = o.vy = 0;
+            var over = targetAt(p, drag.id);
             if (over !== drag.over) {
-                if (drag.over >= 0 && $('board').children[drag.over]) $('board').children[drag.over].classList.remove('target');
-                if (over >= 0) $('board').children[over].classList.add('target');
+                if (drag.over >= 0 && bodies[drag.over]) bodies[drag.over].el.classList.remove('target');
+                if (over >= 0) bodies[over].el.classList.add('target');
                 drag.over = over;
             }
         });
         function endDrag(e) {
-            if (!drag || (e && e.pointerId !== drag.id)) return;
+            if (!drag || (e && e.pointerId !== drag.pid)) return;
             var d = drag; drag = null;
-            if (d.floater) d.floater.remove();
-            var src = $('board').children[d.i]; if (src) src.classList.remove('ghosting');
-            if (d.over >= 0 && $('board').children[d.over]) $('board').children[d.over].classList.remove('target');
-            if (d.moving) { if (d.over >= 0 && e && e.type === 'pointerup') attempt(d.i, d.over); return; }
-            if (e && e.type === 'pointerup') tap(d.i);
+            var o = bodies[d.id];
+            if (o) { o.held = false; o.el.classList.remove('dragging'); }
+            if (d.over >= 0 && bodies[d.over]) bodies[d.over].el.classList.remove('target');
+            if (d.moving) { if (d.over >= 0 && e && e.type === 'pointerup') attempt(d.id, d.over); return; }
+            if (e && e.type === 'pointerup') tap(d.id);
         }
         window.addEventListener('pointerup', endDrag);
         window.addEventListener('pointercancel', endDrag);
-        function tap(i) {
-            if (sel < 0) { sel = i; $('board').children[i].classList.add('sel'); announce(slots[i].words.join(', ') + ' chosen. Now choose a bubble to merge with.'); return; }
-            if (sel === i) { $('board').children[i].classList.remove('sel'); sel = -1; return; }
-            var a = sel; $('board').children[a].classList.remove('sel'); sel = -1;
-            attempt(a, i);
+        function tap(id) {
+            if (!bodies[id]) return;
+            if (sel < 0) { sel = id; bodies[id].el.classList.add('sel'); var b = byId(id); announce((b.half || b.words.join(', ')) + ' chosen. Now choose a bubble to join it with.'); return; }
+            if (sel === id) { clearSel(); return; }
+            var a = sel; clearSel(); attempt(a, id);
         }
         // keyboard: Enter / Space on a bubble works like a tap
-        $('board').addEventListener('click', function (e) { if (e.detail !== 0) return; var b = e.target.closest('.bubble'); if (b && !b.classList.contains('empty')) tap(+b.dataset.i); });
+        $('board').addEventListener('click', function (e) { if (e.detail !== 0) return; var id = idFrom(e.target); if (id >= 0) tap(id); });
 
         // ---------- end of level ----------
         function recap() { return L.groups.map(function (g, i) { return groupHTML(i); }).join(''); }
@@ -472,6 +609,9 @@
 
         // ---------- wiring ----------
         $('hintBtn').addEventListener('click', hint);
+        $('groupsPill').addEventListener('click', function () { $('foundList').innerHTML = found.length ? found.map(groupHTML).join('') : '<p>None yet. Join four words that belong together.</p>'; openModal('foundModal'); });
+        $('foundClose').addEventListener('click', function () { closeModal('foundModal'); });
+        $('foundX').addEventListener('click', function () { closeModal('foundModal'); });
         $('restartBtn').addEventListener('click', function () { if (busy) return; S.setString(KEY_STATE, 'null'); startLevel(levelNo); toast('Level restarted'); });
         $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo + 1); });
         $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo); });
@@ -488,13 +628,13 @@
             var n = +b.dataset.level; if (n === levelNo) { closeModal('levelModal'); return; }
             S.setString(KEY_STATE, 'null'); startLevel(n);
         });
-        ['helpModal', 'levelModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
-        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if ($('helpModal').classList.contains('active')) closeHelp(); closeModal('levelModal'); } });
-        var rt = null; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy) build(); }, 150); });
+        ['helpModal', 'levelModal', 'foundModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if ($('helpModal').classList.contains('active')) closeHelp(); closeModal('levelModal'); closeModal('foundModal'); } });
+        var rt = null; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy && !drag) build(); }, 150); });
 
         startLevel(levelNo);
         if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
-        window.__kindred = function () { return { L: L, slots: slots, queue: queue, found: found, used: used, solved: solved }; };   // read by the automated play-tests
+        window.__kindred = function () { return { L: L, bubbles: bubbles, queue: queue, found: found, used: used, solved: solved, bodies: bodies }; };   // read by the automated play-tests
         window.__attempt = attempt;
     })();
     </script>

@@ -35,7 +35,10 @@
         var t3 = n < 12 ? 0 : n < 30 ? (n % 3 === 0 ? 1 : 0) : n < 60 ? (n % 2 === 0 ? 1 : 0) + (n % 5 === 0 ? 1 : 0) : 1 + (n % 3 === 0 ? 1 : 0);
         var t2 = n <= 4 ? 0 : n <= 10 ? 1 : n <= 25 ? 2 : Math.min(k - t3, 3 + (n % 2));
         t2 = Math.min(t2, k - t3);
-        return { k: k, t1: k - t2 - t3, t2: t2, t3: t3, tough: n >= 10 && n % 10 === 0 };
+        // half words (two pieces that join into one of the words) arrive from level 15
+        var halves = n < 15 ? 0 : n < 30 ? (n % 2 ? 1 : 0) : n < 60 ? 1 + (n % 3 === 0 ? 1 : 0) : 2 + (n % 2);
+        if (n === 15) halves = 1;
+        return { k: k, t1: k - t2 - t3, t2: t2, t3: t3, halves: halves, tough: n >= 10 && n % 10 === 0 };
     }
 
     // does word w (from group a) clash with group b?
@@ -72,11 +75,28 @@
             if (!ok) continue;
             // rule groups: their words mustn't match any other rule on the board either (checked above via clash);
             // and words from other groups mustn't match a rule group's rule (also clash). Board order:
+            // split some longer words into two halves (CONT + RAST = contrast). No other pairing of the halves may
+            // spell a word on the board or in any group, so there's only one way to join them.
+            var all = {}; groups.forEach(function (gr) { gr.words.forEach(function (x) { all[x] = 1; }); });
+            CATS.forEach(function (c) { c.all.forEach(function (x) { all[x] = 1; }); });
+            var splits = [], longW = shuffle(groups.reduce(function (a, gr, gi) { return a.concat(gr.words.filter(function (x) { return /^[a-z]{6,10}$/.test(x); }).map(function (x) { return { w: x, g: gi }; })); }, []), r);
+            var perGroup = {};
+            for (var li = 0; li < longW.length && splits.length < P.halves; li++) {
+                var cand2 = longW[li]; if (perGroup[cand2.g]) continue;   // at most one split word per group
+                var cut = Math.floor(cand2.w.length / 2), a = cand2.w.slice(0, cut), b = cand2.w.slice(cut);
+                var okSplit = !all[a] && !all[b] && splits.every(function (sp) { return !all[a + sp.b] && !all[sp.a + b] && sp.a !== a && sp.b !== b; });
+                if (okSplit) { splits.push({ w: cand2.w, g: cand2.g, a: a, b: b }); perGroup[cand2.g] = 1; }
+            }
+            if (splits.length < P.halves) continue;
+            var splitOf = {}; splits.forEach(function (sp) { splitOf[sp.w] = sp; });
             var bubbles = [];
-            groups.forEach(function (gr, gi) { gr.words.forEach(function (word) { bubbles.push({ word: word, g: gi }); }); });
+            groups.forEach(function (gr, gi) { gr.words.forEach(function (word) { bubbles.push(splitOf[word] ? { word: word, g: gi, split: splitOf[word] } : { word: word, g: gi }); }); });
             shuffle(bubbles, r);
+            // a split word becomes two half bubbles, next to each other so they arrive together
+            var order = [];
+            bubbles.forEach(function (bb) { if (bb.split) { order.push({ word: bb.word, g: bb.g, half: bb.split.a, part: 0 }); order.push({ word: bb.word, g: bb.g, half: bb.split.b, part: 1 }); } else order.push({ word: bb.word, g: bb.g }); });
             var spare = Math.max(4, P.k + (n <= 10 ? 2 : 1));
-            return { number: n, tough: P.tough, groups: groups, order: bubbles, moves: 3 * P.k + spare, need: 3 * P.k };
+            return { number: n, tough: P.tough, groups: groups, order: order, moves: 3 * P.k + splits.length + spare, need: 3 * P.k + splits.length, splits: splits.length };
         }
         return null;
     }
