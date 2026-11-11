@@ -476,6 +476,9 @@
             var sq = hc ? { right: '🟧', near: '🟦', none: '⬜' } : { right: '🟩', near: '🟨', none: '⬜' };
             var head = GAME_NAME + ' (' + len + ' letters) ' + (game.won ? game.guesses.length : 'X') + '/' + ROWS + (hard ? '*' : '');
             var text = head + '\n' + game.results.map(function (r) { return r.map(function (x) { return sq[x]; }).join(''); }).join('\n');
+            // a link to this game (its folder, so it works wherever the hub is hosted)
+            var link = location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '');
+            text += '\n' + link;
             if (navigator.share) { navigator.share({ text: text }).catch(function () { /* cancelled */ }); return; }
             try { navigator.clipboard.writeText(text).then(function () { toast('Copied to clipboard'); }, function () { toast('Couldn\'t copy'); }); } catch (e) { toast('Couldn\'t copy'); }
         }
