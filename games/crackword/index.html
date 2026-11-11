@@ -191,6 +191,10 @@
                 <span><b>Hard mode</b><small>Letters you've found must be used: green ones in the same place, yellow ones somewhere.</small></span>
                 <span class="switch"><input type="checkbox" id="hardToggle" role="switch"><span class="track"></span></span>
             </label>
+            <label class="toggle-row" for="usToggle">
+                <span><b>American spelling</b><small>Off: British spellings such as colour, centre and grey. On: American, such as color, center and gray. Words spelt the same everywhere work either way.</small></span>
+                <span class="switch"><input type="checkbox" id="usToggle" role="switch"><span class="track"></span></span>
+            </label>
             <label class="toggle-row" for="hcToggle">
                 <span><b>High-contrast colours</b><small>Orange and blue instead of green and yellow, with a tick and a dot on the tiles. Helpful for colour blindness.</small></span>
                 <span class="switch"><input type="checkbox" id="hcToggle" role="switch"><span class="track"></span></span>
@@ -215,6 +219,7 @@
 
     <script src="words.js"></script>
     <script src="definitions.js"></script>
+    <script src="spelling.js"></script>
     <script>
     (function () {
         'use strict';
@@ -226,16 +231,15 @@
         document.title = GAME_NAME + ' — Game Hub';
 
         // ---------- words ----------
-        var LISTS = {};
-        [4, 5, 6].forEach(function (n) {
-            var answers = W[n].a.split(' '), guesses = {};
-            W[n].g.split(' ').forEach(function (w) { guesses[w] = 1; });
-            answers.forEach(function (w) { guesses[w] = 1; });
+        var LISTS = {}, SP = window.CrackSpelling;
+        function buildLists() { [4, 5, 6].forEach(function (n) {
+            var l = SP.lists(n), answers = l.answers, guesses = l.valid;
             // a fixed shuffle of the answers, so the daily words don't run in alphabetical order
             var a = (n * 2654435761) >>> 0, order = answers.slice();
             for (var i = order.length - 1; i > 0; i--) { a = (Math.imul(a ^ (a >>> 15), 2246822519) + 1) >>> 0; var j = a % (i + 1); var t = order[i]; order[i] = order[j]; order[j] = t; }
             LISTS[n] = { answers: order, valid: guesses };
-        });
+        }); }
+        buildLists();
         var EPOCH = new Date(2026, 0, 1);
         function dayNumber(d) { d = d || new Date(); var a = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return Math.round((a - EPOCH) / 86400000) + 1; }
 
@@ -377,7 +381,7 @@
             if (game.done || busy) return;
             var word = cur.join('');
             if (word.length < len || cur.some(function (x) { return !x; })) { shake(); toast('Fill every tile first'); return; }
-            if (!LISTS[len].valid[word]) { shake(); buzz(30); toast('Not in the word list'); return; }
+            if (!LISTS[len].valid[word] && word !== game.answer) { shake(); buzz(30); toast('Not in the word list'); return; }
             if (hard) {
                 var msg = hardCheck(word); if (msg) { shake(); toast(msg, 2000); return; }
             }
@@ -440,6 +444,7 @@
         function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
         function defnHTML(w) {
             var d = (window.CRACKWORD_DEFS || {})[w]; if (!d) return '';
+            d = d.map(function (x) { return SP.text(x); });   // British or American spelling
             var h = '<div class="defn" aria-label="Definition">';
             h += '<p>' + (d[0] ? '<span class="pos">' + esc(d[0]) + '</span>' : '') + esc(d[1].charAt(0).toUpperCase() + d[1].slice(1)) + '</p>';
             if (d[2]) h += '<p class="ex">\u201C' + esc(d[2]) + '\u201D</p>';
@@ -519,6 +524,8 @@
             // switching on mid-game is fine; it applies from the next guess
             hard = this.checked; S.setFlag('crackword_hard', hard);
         });
+        $('usToggle').checked = SP.get() === 'us';
+        $('usToggle').addEventListener('change', function () { SP.set(this.checked ? 'us' : 'uk'); buildLists(); toast(this.checked ? 'American spelling from the next word' : 'British spelling from the next word'); });
         $('hcToggle').checked = hc;
         $('hcToggle').addEventListener('change', function () { hc = this.checked; S.setFlag('hub_colourBlindShapes', hc); document.body.classList.toggle('hc', hc); });
         var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy) drawBoard(); }, 150); });
