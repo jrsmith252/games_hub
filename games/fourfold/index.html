@@ -198,6 +198,10 @@
                 <li>Solve all four within 9 guesses to win. You'll see what each word means at the end.</li>
             </ul>
             <h3>Settings</h3>
+            <label class="toggle-row" for="usToggle">
+                <span><b>American spelling</b><small>Off: British spellings such as colour, centre and grey. On: American, such as color, center and gray. Words spelt the same everywhere work either way.</small></span>
+                <span class="switch"><input type="checkbox" id="usToggle" role="switch"><span class="track"></span></span>
+            </label>
             <label class="toggle-row" for="hcToggle">
                 <span><b>High-contrast colours</b><small>Orange and blue instead of green and yellow, with ticks, dots and stripes so colour isn't the only clue. Helpful for colour blindness.</small></span>
                 <span class="switch"><input type="checkbox" id="hcToggle" role="switch"><span class="track"></span></span>
@@ -220,6 +224,7 @@
 
     <script src="../crackword/words.js"></script>
     <script src="../crackword/definitions.js"></script>
+    <script src="../crackword/spelling.js"></script>
     <script>
     (function () {
         'use strict';
@@ -231,9 +236,9 @@
         document.title = GAME_NAME + ' — Game Hub';
 
         // ---------- words (shared with Crackword) ----------
-        var ANSWERS = W[LEN].a.split(' '), VALID = {};
-        W[LEN].g.split(' ').forEach(function (w) { VALID[w] = 1; });
-        ANSWERS.forEach(function (w) { VALID[w] = 1; });
+        var SP = window.CrackSpelling, ANSWERS, VALID;
+        function buildLists() { var l = SP.lists(LEN); ANSWERS = l.answers; VALID = l.valid; }
+        buildLists();
 
         // ---------- settings and saved data ----------
         var hc = S.getFlag('hub_colourBlindShapes');   // hub-wide colour-blind setting
@@ -403,7 +408,7 @@
             if (game.done || busy) return;
             var word = cur.join('');
             if (cur.some(function (x) { return !x; })) { shake(); toast('Fill every tile first'); return; }
-            if (!VALID[word]) { shake(); buzz(30); toast('Not in the word list'); return; }
+            if (!VALID[word] && game.answers.indexOf(word) < 0) { shake(); buzz(30); toast('Not in the word list'); return; }
             var r = game.guesses.length, newly = [];
             game.guesses.push(word);
             for (var b = 0; b < N; b++) if (!solved(b) && word === game.answers[b]) { game.solvedAt[b] = r; newly.push(b); }
@@ -463,6 +468,7 @@
         function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
         function wordCard(b) {
             var w = game.answers[b], d = (window.CRACKWORD_DEFS || {})[w], ok = solved(b);
+            if (d) d = d.map(function (x) { return SP.text(x); });   // British or American spelling
             var h = '<div class="wordcard"><div class="wh"><span class="w">' + esc(w) + '</span><span class="st ' + (ok ? 'ok">✓ Guess ' + (game.solvedAt[b] + 1) : 'no">✕ Not found') + '</span></div>';
             if (d) {
                 h += '<p>' + (d[0] ? '<span class="pos">' + esc(d[0]) + '</span>' : '') + esc(d[1].charAt(0).toUpperCase() + d[1].slice(1)) + '</p>';
@@ -535,6 +541,8 @@
         $('doneInfo').addEventListener('click', openStats);
         $('statsX').addEventListener('click', function () { closeModal('statsModal'); });
         ['helpModal', 'statsModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+        $('usToggle').checked = SP.get() === 'us';
+        $('usToggle').addEventListener('change', function () { SP.set(this.checked ? 'us' : 'uk'); buildLists(); toast(this.checked ? 'American spelling from the next four' : 'British spelling from the next four'); });
         $('hcToggle').checked = hc;
         $('hcToggle').addEventListener('change', function () { hc = this.checked; S.setFlag('hub_colourBlindShapes', hc); document.body.classList.toggle('hc', hc); });
         var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy) drawBoards(); }, 150); });
