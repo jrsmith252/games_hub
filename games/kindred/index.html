@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Kindred — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #eef4f7;
+            --card: #ffffff;
+            --deep: #163a4f;
+            --accent: #7fd1c7;
+            --ink: #15232c;
+            --ink-soft: #587080;
+            --line: #cfdde4;
+            --wrong: #d64545;
+            --hint: #2563eb;
+            --ok: #15803d;
+        }
+        html, body.kin { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.kin { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important;
+            background: radial-gradient(circle at 20% 10%, #f8fcfd 0, transparent 45%), radial-gradient(circle at 90% 80%, #dff0f2 0, transparent 50%), var(--bg); }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); position: relative; z-index: 20; }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); letter-spacing: 0.5px; }
+        .level-btn { background: none; border: 0; font: inherit; color: #fff; font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; opacity: 0.92; }
+        .level-btn .tough { color: var(--accent); font-weight: 700; }
+
+        .status { flex: none; display: flex; justify-content: center; gap: 8px; padding: 8px 10px 2px; flex-wrap: wrap; }
+        .pill { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; font-weight: 700; min-height: 32px; display: inline-flex; align-items: center; gap: 6px; }
+        .pill.low { color: var(--wrong); border-color: #f2b8b8; }
+        .found { flex: none; display: flex; flex-direction: column; gap: 5px; padding: 6px 12px 0; max-width: 560px; width: 100%; margin: 0 auto; }
+        .group { border-radius: 12px; padding: 6px 12px; color: #13222b; text-align: center; animation: drop 0.35s ease-out; }
+        .group b { display: block; font-size: 0.82rem; letter-spacing: 0.6px; text-transform: uppercase; }
+        .group span { font-size: 0.82rem; }
+        @keyframes drop { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+        main { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px 10px; }
+        .board { display: grid; gap: 10px; touch-action: none; }
+        .bubble { position: relative; border: 0; border-radius: 50%; font: inherit; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+            background: radial-gradient(circle at 32% 28%, #ffffff 0, #ffffff 18%, #e8f5f8 55%, #cfe8ee 100%);
+            box-shadow: inset -4px -6px 12px rgba(22,58,79,0.12), inset 3px 4px 8px rgba(255,255,255,0.9), 0 4px 10px rgba(22,58,79,0.16); padding: 6%; line-height: 1.12; font-weight: 700;
+            transition: transform 0.15s; animation: bob 4s ease-in-out infinite; user-select: none; -webkit-user-select: none; }
+        .bubble::after { content: ''; position: absolute; left: 20%; top: 12%; width: 24%; height: 14%; border-radius: 50%; background: rgba(255,255,255,0.9); transform: rotate(-30deg); pointer-events: none; }
+        @keyframes bob { 50% { transform: translateY(-3px); } }
+        .bubble.empty { visibility: hidden; animation: none; }
+        .bubble .w { display: block; overflow-wrap: anywhere; hyphens: auto; }
+        .bubble .w + .w { margin-top: 2px; }
+        .bubble.multi { background: radial-gradient(circle at 32% 28%, #ffffff 0, #fdfbe8 25%, #f6efc4 65%, #e9dc9a 100%); }
+        .bubble .n { position: absolute; right: -6%; top: -6%; box-shadow: 0 0 0 2px #fff; min-width: 26px; height: 26px; border-radius: 999px; background: var(--deep); color: #fff; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+        .bubble.sel { box-shadow: 0 0 0 4px var(--hint), 0 4px 12px rgba(22,58,79,0.25); animation: none; transform: scale(1.04); }
+        .bubble.target { box-shadow: 0 0 0 4px var(--accent), 0 4px 12px rgba(22,58,79,0.25); transform: scale(1.08); }
+        .bubble.ghosting { opacity: 0.35; }
+        .bubble.wrong { animation: shake 0.45s; box-shadow: 0 0 0 4px var(--wrong); }
+        @keyframes shake { 15%, 55% { transform: translateX(-7px); } 35%, 75% { transform: translateX(7px); } }
+        .bubble.hint { animation: hintp 1s ease-in-out infinite; box-shadow: 0 0 0 4px var(--hint); }
+        @keyframes hintp { 50% { box-shadow: 0 0 0 8px rgba(37,99,235,0.25); } }
+        .bubble.merge { animation: merge 0.35s ease-out; }
+        @keyframes merge { 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        .bubble.pop { animation: popout 0.45s ease-in forwards; }
+        @keyframes popout { 40% { transform: scale(1.18); } 100% { transform: scale(0.2); opacity: 0; } }
+        .bubble.arrive { animation: arrive 0.45s ease-out; }
+        @keyframes arrive { 0% { transform: translateY(-30px) scale(0.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
+        .floater { position: fixed; z-index: 30; pointer-events: none; transform: translate(-50%, -50%) scale(1.06); opacity: 0.92; animation: none !important; }
+        @media (prefers-reduced-motion: reduce) { .bubble { animation: none !important; transition: none; } .group { animation: none; } }
+
+        .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(238,244,247,0.97); border-top: 1px solid var(--line); position: relative; z-index: 20; }
+        .controls .row { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; }
+        .ctrl { flex: 1; min-height: 48px; border-radius: 12px; border: 2px solid rgba(21,35,44,0.18); background: var(--card); color: var(--ink); font: inherit; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .ctrl.primary { background: var(--deep); color: #fff; border-color: var(--deep); }
+        .ctrl small { font-weight: 500; opacity: 0.8; font-size: 0.72rem; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(21,35,44,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 400px; background: var(--card); border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--deep); }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 12px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal ol b, .modal p b { color: var(--ink); }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .stars { font-size: 2.2rem; letter-spacing: 6px; margin: 2px 0 10px; color: #d5dde2; }
+        .stars .lit { color: #d97706; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(21,35,44,0.22); }
+        .recap { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 4px; }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .level-cell small { font-size: 0.6rem; color: #d97706; letter-spacing: 1px; min-height: 0.8em; }
+        .level-cell.current { border: 2px solid var(--deep); }
+        .level-cell.tough { background: #e6f5f2; }
+        .exrow { display: flex; justify-content: center; gap: 8px; margin: 4px 0 10px; }
+        .exrow .bubble { width: 74px; height: 74px; font-size: 0.78rem; cursor: default; animation: none; }
+        .exrow .bubble .w { overflow-wrap: normal; }
+        .exrow .bubble.multi { font-size: 0.66rem; }
+        .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
+        .toast.show { opacity: 1; }
+        .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    </style>
+
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Kindred</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+    </header>
+
+    <div class="status">
+        <span class="pill" id="movesPill" aria-live="polite"></span>
+        <span class="pill" id="groupsPill"></span>
+        <span class="pill" id="starsPill" aria-label="Stars if you finish now"></span>
+    </div>
+    <div class="found" id="found" aria-label="Groups found"></div>
+    <main><div class="board" id="board" aria-label="Word bubbles"></div></main>
+
+    <div class="controls">
+        <div class="row">
+            <button class="ctrl primary" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint <small>uses a move</small></button>
+            <button class="ctrl" id="restartBtn"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Restart</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <div class="exrow" aria-hidden="true">
+                <span class="bubble"><span class="w">Robin</span></span>
+                <span class="bubble"><span class="w">Owl</span></span>
+                <span class="bubble multi"><span class="w">Swan</span><span class="w">Wren</span><span class="n">2/4</span></span>
+            </div>
+            <ol>
+                <li>Every bubble holds a word. The words make <b>groups of four</b> that belong together, like four birds.</li>
+                <li><b>Drag</b> a bubble onto another to merge them (or tap one, then the other). If they belong together they join up. Four in a bubble and the group is found!</li>
+                <li>Each merge you try uses <b>a move</b>, right or wrong. Find every group before your moves run out.</li>
+                <li>As groups are found, new bubbles float in until the board is clear.</li>
+                <li>Every word fits only one group on the board, though some may look as if they fit two. Think it through!</li>
+            </ol>
+            <p><b>Stars</b> go by how many spare moves you use: one or none for 3 stars, up to three for 2 stars. A <b>hint</b> shows two bubbles that belong together, and uses a move. Run out of moves? Try again: it's free.</p>
+            <button class="btn" id="helpClose">Let's play</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <h2 id="winTitle">All groups found!</h2>
+            <div class="stars" id="winStars"></div>
+            <p id="winText"></p>
+            <div class="recap" id="winRecap"></div>
+            <button class="btn" id="nextBtn">Next level</button>
+            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="outModal" role="dialog" aria-modal="true" aria-labelledby="outTitle">
+        <div class="modal">
+            <h2 id="outTitle">Out of moves</h2>
+            <p id="outText"></p>
+            <div class="recap" id="outRecap"></div>
+            <button class="btn" id="retryBtn">Try again</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <button class="modal-x" id="levelX" aria-label="Close">✕</button>
+            <h2 id="levelTitle">Levels</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="categories.js"></script>
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Kindred';   // one place to rename the game
+        var E = window.KindredEngine, S = window.HubStorage;
+        var KEY_PROGRESS = 'kindred_progress', KEY_STARS = 'kindred_stars', KEY_STATE = 'kindred_state', KEY_SEEN = 'kindred_instructionsSeen';
+        var $ = function (id) { return document.getElementById(id); };
+        var GROUP_COLOURS = ['#f7d774', '#a8dba8', '#9cc9f0', '#d3b4f0', '#f5a9a0', '#f8c291', '#8fd9cf', '#e6b8d6'];
+        var CAP = 16;   // bubbles on the board at once
+        document.body.classList.add('kin');
+        document.title = GAME_NAME + ' — Game Hub';
+
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var stars = (function () { var out = {}; try { var o = JSON.parse(S.getString(KEY_STARS, '{}')); if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; }); } catch (e) { /* ignore */ } return out; })();
+
+        // slots: what's on the board, each { words: [...], g } or null; queue: bubbles still to float in
+        var levelNo = progress.level, L = null, slots = [], queue = [], found = [], used = 0, solved = false, sel = -1, hintPair = null, busy = false;
+
+        function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 1600); }
+        function announce(msg) { $('announce').textContent = msg; }
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } var m = $(id).querySelector('.modal'); if (m) m.scrollTop = 0; }
+        function closeModal(id) { $(id).classList.remove('active'); }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        function title(w) { return w.replace(/(^|[ -])([a-z])/g, function (_, a, b) { return a + b.toUpperCase(); }).replace(/^T Rex$/, 'T. rex'); }
+        function groupName(g) { return L.groups[g].name; }
+
+        // ---------- state ----------
+        function saveState() { S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, slots: slots, queue: queue, found: found, used: used, solved: solved })); }
+        function loadState(n) {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.slots) || !Array.isArray(o.queue) || !Array.isArray(o.found)) return false;
+                // sanity: every word of the level accounted for exactly once
+                var count = 0; o.slots.forEach(function (s) { if (s) count += s.words.length; });
+                if (count + o.queue.length + o.found.length * 4 !== L.order.length) return false;
+                slots = o.slots; queue = o.queue; found = o.found; used = Math.max(0, o.used | 0); solved = !!o.solved;
+                return true;
+            } catch (e) { return false; }
+        }
+        function fresh() {
+            slots = []; queue = L.order.map(function (b) { return { words: [b.word], g: b.g }; });
+            var first = Math.min(CAP, queue.length);
+            for (var i = 0; i < first; i++) slots.push(queue.shift());
+            found = []; used = 0; solved = false;
+        }
+
+        function startLevel(n) {
+            levelNo = n; L = E.build(n);
+            sel = -1; hintPair = null; busy = false;
+            if (!loadState(n)) fresh();
+            ['winModal', 'outModal', 'levelModal'].forEach(closeModal);
+            $('levelBtn').innerHTML = 'Level ' + n + (L.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
+            build(); saveState();
+            if (!solved && used >= L.moves) setTimeout(outOfMoves, 300);
+        }
+
+        // ---------- drawing ----------
+        function cols() { return slots.length <= 12 ? (slots.length <= 9 ? 3 : 4) : 4; }
+        function size() {
+            var m = document.querySelector('main'), c = cols(), rws = Math.ceil(slots.length / c);
+            var w = Math.min(m.clientWidth - 20, 560), h = m.clientHeight - 16;
+            return Math.max(62, Math.floor(Math.min((w - (c - 1) * 10) / c, (h - (rws - 1) * 10) / rws, 132)));
+        }
+        function bubbleHTML(s, i, extra) {
+            if (!s) return '<button class="bubble empty" data-i="' + i + '" tabindex="-1" aria-hidden="true"></button>';
+            var n = s.words.length, words = s.words.map(title), fs = bubbleFont(words, n);
+            var label = n === 1 ? words[0] : words.join(', ') + ', ' + n + ' of 4 together';
+            return '<button class="bubble' + (n > 1 ? ' multi' : '') + (extra || '') + '" data-i="' + i + '" aria-label="' + esc(label) + '" style="font-size:' + fs + 'px">' +
+                words.map(function (w) { return '<span class="w">' + esc(w) + '</span>'; }).join('') + (n > 1 ? '<span class="n">' + n + '/4</span>' : '') + '</button>';
+        }
+        var bsize = 80;
+        function bubbleFont(words, n) {
+            var longest = Math.max.apply(null, words.map(function (w) { return Math.max.apply(null, w.split(' ').map(function (p) { return p.length; })); }));
+            var byWidth = bsize * 0.72 / Math.max(4, longest) * 1.7, byLines = bsize * 0.56 / (n + (n > 1 ? 0.5 : 0)) / 1.12;
+            return Math.max(10, Math.min(byWidth, byLines, bsize * 0.2));
+        }
+        function build() {
+            bsize = size();
+            var b = $('board'); b.style.gridTemplateColumns = 'repeat(' + cols() + ', ' + bsize + 'px)'; b.style.gridAutoRows = bsize + 'px';
+            b.innerHTML = slots.map(function (s, i) { return bubbleHTML(s, i); }).join('');
+            // stagger the bobbing so it looks like floating, not marching
+            Array.prototype.forEach.call(b.children, function (el, i) { el.style.animationDelay = (-(i * 0.73) % 4) + 's'; });
+            paintStatus();
+        }
+        function redraw(i, extra) {
+            var el = $('board').children[i]; if (!el) return;
+            var tmp = document.createElement('div'); tmp.innerHTML = bubbleHTML(slots[i], i, extra);
+            var nw = tmp.firstChild; nw.style.animationDelay = el.style.animationDelay; el.replaceWith(nw);
+        }
+        // spare moves used so far = moves used minus the useful merges made
+        var good = 0;
+        function spareUsed() { return used - good; }
+        function starsFor() { var x = spareUsed(); return x <= 1 ? 3 : x <= 3 ? 2 : 1; }
+        function paintStatus() {
+            good = 0; slots.forEach(function (s) { if (s) good += s.words.length - 1; }); good += found.length * 3;
+            var left = Math.max(0, L.moves - used);
+            $('movesPill').textContent = left + ' move' + (left === 1 ? '' : 's') + ' left';
+            $('movesPill').classList.toggle('low', left <= 3 && !solved);
+            $('groupsPill').textContent = found.length + ' of ' + L.groups.length + ' groups';
+            var st = starsFor(), str = ''; for (var i = 0; i < 3; i++) str += i < st ? '★' : '☆';
+            $('starsPill').textContent = str; $('starsPill').style.color = '#d97706';
+            $('starsPill').setAttribute('aria-label', st + ' stars if you finish without more slips');
+            $('found').innerHTML = found.map(function (g) { return groupHTML(g); }).join('');
+            $('hintBtn').disabled = solved || busy;
+            $('restartBtn').disabled = busy;
+        }
+        function groupHTML(g) { return '<div class="group" style="background:' + GROUP_COLOURS[g % GROUP_COLOURS.length] + '"><b>' + esc(groupName(g)) + '</b><span>' + L.groups[g].words.map(title).map(esc).join(' · ') + '</span></div>'; }
+
+        // ---------- merging ----------
+        function fillSlot(i) {
+            slots[i] = queue.length ? queue.shift() : null;
+            redraw(i, slots[i] ? ' arrive' : '');
+        }
+        function attempt(a, b) {
+            if (busy || solved || a === b || !slots[a] || !slots[b]) return;
+            clearHint(); sel = -1;
+            used++;
+            var A = slots[a], B = slots[b];
+            if (A.g === B.g) {
+                B.words = B.words.concat(A.words);
+                buzz(12);
+                if (B.words.length === 4) {
+                    // a whole group: pop it, show it in the found list, and bring in new bubbles
+                    busy = true;
+                    slots[a] = null; redraw(a);
+                    redraw(b, ' pop');
+                    found.push(B.g);
+                    announce('Found ' + groupName(B.g) + ': ' + B.words.join(', '));
+                    setTimeout(function () {
+                        busy = false;
+                        slots[b] = null; fillSlot(b); fillSlot(a);
+                        // nothing left to float in: close up the gaps so the last bubbles sit together
+                        if (!queue.length && slots.some(function (x) { return !x; })) { slots = slots.filter(function (x) { return x; }); build(); }
+                        afterMove();
+                    }, 450);
+                    paintStatus(); saveState();
+                    return;
+                }
+                slots[a] = null; fillSlot(a);
+                redraw(b, ' merge');
+                announce(B.words.join(' and ') + ' belong together. ' + B.words.length + ' of 4.');
+            } else {
+                buzz([20, 40, 20]);
+                var ea = $('board').children[a], eb = $('board').children[b];
+                [ea, eb].forEach(function (el) { el.classList.remove('wrong'); void el.offsetWidth; el.classList.add('wrong'); setTimeout(function () { el.classList.remove('wrong'); }, 500); });
+                toast('Those don\'t belong together');
+                announce(A.words.join(', ') + ' and ' + B.words.join(', ') + ' are not in the same group.');
+            }
+            afterMove();
+        }
+        function afterMove() {
+            paintStatus(); saveState();
+            if (found.length === L.groups.length) { onWin(); return; }
+            if (used >= L.moves) setTimeout(outOfMoves, 500);
+        }
+
+        // ---------- hints ----------
+        function hint() {
+            if (solved || busy) return;
+            if (used >= L.moves) return;
+            // two bubbles of the same group, preferring the biggest merged bubble
+            var best = null;
+            for (var i = 0; i < slots.length; i++) for (var j = 0; j < slots.length; j++) {
+                if (i === j || !slots[i] || !slots[j] || slots[i].g !== slots[j].g) continue;
+                var score = slots[i].words.length + slots[j].words.length;
+                if (!best || score > best.s) best = { a: j, b: i, s: score };
+            }
+            if (!best) return;
+            used++;
+            hintPair = [best.a, best.b];
+            [best.a, best.b].forEach(function (k) { $('board').children[k].classList.add('hint'); });
+            announce('Hint: ' + slots[best.a].words.join(', ') + ' and ' + slots[best.b].words.join(', ') + ' belong together.');
+            paintStatus(); saveState();
+            if (used >= L.moves) setTimeout(outOfMoves, 500);
+        }
+        function clearHint() { if (!hintPair) return; hintPair.forEach(function (k) { var el = $('board').children[k]; if (el) el.classList.remove('hint'); }); hintPair = null; }
+
+        // ---------- drag or tap ----------
+        var drag = null;
+        function bubbleAt(x, y) { var el = document.elementFromPoint(x, y); el = el && el.closest ? el.closest('.bubble') : null; return el && el.parentNode === $('board') && !el.classList.contains('empty') ? +el.dataset.i : -1; }
+        $('board').addEventListener('pointerdown', function (e) {
+            if (solved || busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            var i = bubbleAt(e.clientX, e.clientY); if (i < 0) return;
+            drag = { i: i, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false, over: -1, floater: null };
+            e.preventDefault();
+        });
+        window.addEventListener('pointermove', function (e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            if (!drag.moving && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) {
+                drag.moving = true;
+                var src = $('board').children[drag.i], r = src.getBoundingClientRect(), f = src.cloneNode(true);
+                f.classList.add('floater'); f.classList.remove('sel', 'hint'); f.style.width = r.width + 'px'; f.style.height = r.height + 'px';
+                document.body.appendChild(f); drag.floater = f; src.classList.add('ghosting');
+                if (sel >= 0) { var old = $('board').children[sel]; if (old) old.classList.remove('sel'); sel = -1; }
+            }
+            if (!drag.moving) return;
+            drag.floater.style.left = e.clientX + 'px'; drag.floater.style.top = e.clientY + 'px';
+            drag.floater.style.display = 'none';
+            var over = bubbleAt(e.clientX, e.clientY);
+            drag.floater.style.display = '';
+            if (over === drag.i) over = -1;
+            if (over !== drag.over) {
+                if (drag.over >= 0 && $('board').children[drag.over]) $('board').children[drag.over].classList.remove('target');
+                if (over >= 0) $('board').children[over].classList.add('target');
+                drag.over = over;
+            }
+        });
+        function endDrag(e) {
+            if (!drag || (e && e.pointerId !== drag.id)) return;
+            var d = drag; drag = null;
+            if (d.floater) d.floater.remove();
+            var src = $('board').children[d.i]; if (src) src.classList.remove('ghosting');
+            if (d.over >= 0 && $('board').children[d.over]) $('board').children[d.over].classList.remove('target');
+            if (d.moving) { if (d.over >= 0 && e && e.type === 'pointerup') attempt(d.i, d.over); return; }
+            if (e && e.type === 'pointerup') tap(d.i);
+        }
+        window.addEventListener('pointerup', endDrag);
+        window.addEventListener('pointercancel', endDrag);
+        function tap(i) {
+            if (sel < 0) { sel = i; $('board').children[i].classList.add('sel'); announce(slots[i].words.join(', ') + ' chosen. Now choose a bubble to merge with.'); return; }
+            if (sel === i) { $('board').children[i].classList.remove('sel'); sel = -1; return; }
+            var a = sel; $('board').children[a].classList.remove('sel'); sel = -1;
+            attempt(a, i);
+        }
+        // keyboard: Enter / Space on a bubble works like a tap
+        $('board').addEventListener('click', function (e) { if (e.detail !== 0) return; var b = e.target.closest('.bubble'); if (b && !b.classList.contains('empty')) tap(+b.dataset.i); });
+
+        // ---------- end of level ----------
+        function recap() { return L.groups.map(function (g, i) { return groupHTML(i); }).join(''); }
+        function onWin() {
+            solved = true;
+            var s = starsFor();
+            if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
+            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
+            S.setObject(KEY_PROGRESS, progress); S.setString(KEY_STARS, JSON.stringify(stars));
+            saveState(); paintStatus(); buzz(40); confetti();
+            var html = ''; for (var i = 1; i <= 3; i++) html += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
+            $('winStars').innerHTML = html; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
+            var x = spareUsed();
+            $('winText').textContent = 'Found in ' + used + ' moves, with ' + (x === 0 ? 'no slips' : x + ' spare move' + (x === 1 ? '' : 's') + ' used') + '.' + (s === 3 ? '' : ' Use one spare move or fewer for 3 stars.');
+            $('winRecap').innerHTML = '';
+            $('replayBtn').style.display = s === 3 ? 'none' : '';
+            setTimeout(function () { openModal('winModal'); }, 600);
+        }
+        function outOfMoves() {
+            if (solved || found.length === L.groups.length) return;
+            $('outText').textContent = 'You found ' + found.length + ' of ' + L.groups.length + ' groups. Here they all are, ready for another go (it\'s free).';
+            $('outRecap').innerHTML = recap();
+            openModal('outModal');
+        }
+        function confetti() {
+            try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            for (var i = 0; i < 46; i++) {
+                var c = document.createElement('span'); c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = GROUP_COLOURS[i % GROUP_COLOURS.length];
+                document.body.appendChild(c); if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }],
+                    { duration: 1400 + Math.random() * 900, delay: Math.random() * 250, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
+                a.onfinish = (function (el) { return function () { el.remove(); }; })(c);
+            }
+        }
+
+        // ---------- levels ----------
+        function openLevels() {
+            var html = '', max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) {
+                var s = stars[n] || 0, str = ''; for (var i = 0; i < s; i++) str += '★';
+                html += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (E.plan(n).tough ? ' tough' : '') + '" data-level="' + n + '" aria-label="Level ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>';
+            }
+            $('levelGrid').innerHTML = html; openModal('levelModal');
+            var cur = $('levelGrid').querySelector('.current'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+        }
+
+        // ---------- wiring ----------
+        $('hintBtn').addEventListener('click', hint);
+        $('restartBtn').addEventListener('click', function () { if (busy) return; S.setString(KEY_STATE, 'null'); startLevel(levelNo); toast('Level restarted'); });
+        $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo + 1); });
+        $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo); });
+        $('retryBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); startLevel(levelNo); });
+        function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelX').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) {
+            var b = e.target.closest('.level-cell'); if (!b) return;
+            var n = +b.dataset.level; if (n === levelNo) { closeModal('levelModal'); return; }
+            S.setString(KEY_STATE, 'null'); startLevel(n);
+        });
+        ['helpModal', 'levelModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if ($('helpModal').classList.contains('active')) closeHelp(); closeModal('levelModal'); } });
+        var rt = null; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy) build(); }, 150); });
+
+        startLevel(levelNo);
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        window.__kindred = function () { return { L: L, slots: slots, queue: queue, found: found, used: used, solved: solved }; };   // read by the automated play-tests
+        window.__attempt = attempt;
+    })();
+    </script>
+</body>
+</html>
