@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Go-Between — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #f5f1ea; --card: #fff; --deep: #2c3e2d; --accent: #e9b949; --ink: #1d2a1e; --ink-soft: #5d6b5e; --line: #d9d2c4;
+            --ok: #3f8f4f; --gold: #e9b949; --select: #2f6fd6; --key: #e3ddd1; }
+        html, body.gb { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.gb { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); }
+        .level-btn { background: none; border: 0; font: inherit; color: #fff; font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; opacity: 0.92; }
+        .level-btn .tough { color: var(--accent); font-weight: 700; }
+
+        main { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px 6px; }
+        .wrap { max-width: 520px; margin: 0 auto; }
+        .mystery { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px 10px; margin-bottom: 8px; text-align: center; cursor: pointer; }
+        .mystery.sel { box-shadow: 0 0 0 3px var(--select); }
+        .mystery small { display: block; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; }
+        .tiles { display: flex; justify-content: center; gap: 4px; }
+        .tile { width: 34px; height: 38px; border: 2px solid var(--line); border-radius: 7px; background: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.15rem; text-transform: uppercase; color: var(--ink); }
+        .tile.first { background: #fbf2d6; border-color: #e7d39a; }
+        .tile.cur { border-color: var(--select); box-shadow: 0 0 0 1.5px var(--select); }
+        .tile.hinted { color: #b06a00; }
+        .tile.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+        .tile.ok.first { background: var(--gold); border-color: var(--gold); color: #2b2100; }
+        .mystery .tile { width: 40px; height: 44px; font-size: 1.3rem; }
+        .mystery .tile.got { background: var(--gold); border-color: var(--gold); color: #2b2100; }
+        .clue { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 8px; margin-bottom: 6px; cursor: pointer; }
+        .clue.sel { box-shadow: 0 0 0 3px var(--select); }
+        .clue .l, .clue .r { font-weight: 700; font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.5px; overflow-wrap: anywhere; }
+        .clue .l { text-align: right; }
+        .clue .tiles { gap: 3px; }
+        .clue .tile { width: 26px; height: 32px; font-size: 0.98rem; }
+        .clue.solved { background: #f0f7f0; }
+        .shake { animation: shake 0.45s; }
+        @keyframes shake { 15%, 55% { transform: translateX(-6px); } 35%, 75% { transform: translateX(6px); } }
+        .pop .tile { animation: pop 0.35s ease-out; }
+        @keyframes pop { 50% { transform: scale(1.12); } }
+
+        .bar { flex: none; display: flex; gap: 8px; max-width: 520px; width: 100%; margin: 0 auto; padding: 0 10px 6px; }
+        .ctrl { flex: 1; min-height: 42px; border-radius: 12px; border: 2px solid rgba(29,42,30,0.18); background: var(--card); color: var(--ink); font: inherit; font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .ctrl small { font-weight: 500; opacity: 0.8; font-size: 0.72rem; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .keyboard { flex: none; width: 100%; max-width: 520px; margin: 0 auto; padding: 2px 6px calc(8px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 6px; }
+        .krow { display: flex; gap: 5px; justify-content: center; }
+        .key { flex: 1; min-width: 0; height: 50px; border: 0; border-radius: 7px; background: var(--key); color: var(--ink); font: inherit; font-weight: 800; font-size: 1rem; text-transform: uppercase; cursor: pointer; }
+        .key.wide { flex: 1.55; font-size: 0.75rem; }
+        .key svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+        .spacer { flex: 0.5; }
+        @media (max-height: 700px) { .key { height: 42px; } .clue { padding: 5px 8px; } .clue .tile { height: 28px; } }
+
+        .toast { position: fixed; left: 50%; top: 46%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 60; white-space: nowrap; }
+        .toast.show { opacity: 1; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(29,42,30,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 400px; background: #fff; border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--deep); }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 12px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal b { color: var(--ink); }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(29,42,30,0.22); }
+        .stars { font-size: 2.2rem; letter-spacing: 6px; margin: 2px 0 6px; color: #d5d0c4; }
+        .stars .lit { color: #d97706; }
+        .exclue { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; background: #faf8f3; border: 1px solid var(--line); border-radius: 12px; padding: 8px; margin: 4px 0 12px; font-weight: 700; font-size: 0.85rem; }
+        .exclue .tile { width: 24px; height: 30px; font-size: 0.9rem; }
+        .defn { background: var(--bg); border-radius: 12px; padding: 10px 14px; margin: 8px 0 4px; text-align: left; }
+        .modal .defn p { margin: 0 0 3px; color: var(--ink); font-size: 0.93rem; line-height: 1.4; }
+        .defn .pos { font-style: italic; color: var(--ink-soft); margin-right: 6px; }
+        .modal .defn .ex { color: var(--ink-soft); font-style: italic; margin: 0; }
+        .bigword { font-weight: 800; letter-spacing: 4px; font-size: 1.6rem; color: var(--deep); text-transform: uppercase; }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .level-cell small { font-size: 0.6rem; color: #d97706; letter-spacing: 1px; min-height: 0.8em; }
+        .level-cell.current { border: 2px solid var(--deep); }
+        .level-cell.tough { background: #f6efdc; }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Go-Between</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+    </header>
+    <main><div class="wrap">
+        <div class="mystery" id="mystery" role="button" tabindex="0" aria-label="Mystery word"><small>Mystery word</small><div class="tiles" id="mysteryTiles"></div></div>
+        <div id="clues"></div>
+    </div></main>
+    <div class="bar">
+        <button class="ctrl" id="hintBtn">💡 Hint <small id="hintNote">reveals a letter</small></button>
+    </div>
+    <div class="keyboard" id="keyboard" aria-label="Keyboard"></div>
+    <div class="toast" id="toast" role="status" aria-live="assertive"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <div class="exclue" aria-hidden="true"><span style="text-align:right">SUNDAY</span><span class="tiles"><span class="tile ok first">r</span><span class="tile ok">o</span><span class="tile ok">a</span><span class="tile ok">s</span><span class="tile ok">t</span></span><span>POTATOES</span></div>
+            <ol>
+                <li>Each answer <b>goes between</b> two words: it follows the first and comes before the second. Sunday <b>roast</b>, <b>roast</b> potatoes.</li>
+                <li>The <b>first letters</b> of the answers, top to bottom, spell the <b>mystery word</b>.</li>
+                <li>Tap a clue and type. Solve the mystery word at any time and the first letter of every answer is filled in for you.</li>
+                <li>A <b>hint</b> reveals the next letter of the clue you're on. Finish with no hints for 3 stars, one or two for 2 stars.</li>
+            </ol>
+            <button class="btn" id="helpClose">Let's play</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <h2 id="winTitle">Solved!</h2>
+            <div class="stars" id="winStars"></div>
+            <div class="bigword" id="winWord"></div>
+            <div id="winDef"></div>
+            <p id="winText"></p>
+            <button class="btn" id="nextBtn">Next level</button>
+            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <button class="modal-x" id="levelX" aria-label="Close">✕</button>
+            <h2 id="levelTitle">Levels</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="links.js"></script>
+    <script src="../crackword/words.js"></script>
+    <script src="../crackword/definitions.js"></script>
+    <script src="../crackword/spelling.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Go-Between';
+        var S = window.HubStorage, $ = function (id) { return document.getElementById(id); };
+        var KEY_PROGRESS = 'gobetween_progress', KEY_STARS = 'gobetween_stars', KEY_STATE = 'gobetween_state', KEY_SEEN = 'gobetween_seen';
+        document.body.classList.add('gb'); document.title = GAME_NAME + ' — Game Hub';
+
+        // ---------- puzzles ----------
+        var LINKS = window.GOBETWEEN_LINKS.map(function (s) { var p = s.split('|'); var ans = p[1].split('/'); return { left: p[0], answer: ans[0], alts: ans, right: p[2] }; });
+        var BY = {}; LINKS.forEach(function (k, i) { var c = k.answer[0]; (BY[c] = BY[c] || []).push(i); });
+        function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+        function shuffle(a, r) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+        function lengthFor(n) { return n <= 5 ? 4 : n <= 20 ? 5 : n % 10 === 0 ? 6 : n <= 50 ? (n % 2 ? 5 : 6) : 6; }
+        function isTough(n) { return n >= 10 && n % 10 === 0; }
+        // a mystery word works if every letter has enough different clues (no two clues with the same answer)
+        function feasible(w) {
+            var need = {}; for (var i = 0; i < w.length; i++) need[w[i]] = (need[w[i]] || 0) + 1;
+            for (var c in need) { var answers = {}; (BY[c] || []).forEach(function (k) { answers[LINKS[k].answer] = 1; }); if (Object.keys(answers).length < need[c]) return false; }
+            return true;
+        }
+        var POOLS = {};
+        function pool(len) {
+            if (POOLS[len]) return POOLS[len];
+            var W = window.CRACKWORD_WORDS[len === 4 || len === 5 || len === 6 ? len : 6];
+            // shared British/American words only, so the mystery word is spelt the same for everyone
+            return (POOLS[len] = shuffle(W.a.split(' ').filter(feasible), rng(9000 + len)));
+        }
+        function build(n) {
+            var len = lengthFor(n), idx = 0;
+            for (var m = 1; m < n; m++) if (lengthFor(m) === len) idx++;
+            var P = pool(len), word = P[idx % P.length], r = rng(n * 7919 + 13), used = {}, clues = [];
+            for (var i = 0; i < word.length; i++) {
+                var opts = shuffle((BY[word[i]] || []).slice(), r).filter(function (k) { return !used[LINKS[k].answer]; });
+                var k = opts[0]; used[LINKS[k].answer] = 1; clues.push(LINKS[k]);
+            }
+            return { number: n, word: word, clues: clues, tough: isTough(n) };
+        }
+
+        // ---------- state ----------
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var stars = (function () { var out = {}; try { var o = JSON.parse(S.getString(KEY_STARS, '{}')); if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; }); } catch (e) { /* ignore */ } return out; })();
+        var levelNo = progress.level, P = null, entry = [], solved = [], hinted = [], mystery = '', mysterySolved = false, hints = 0, done = false, sel = 0, pos = 0;
+        // sel: -1 = the mystery word, otherwise a clue number; pos: the letter being typed
+        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, entry: entry, solved: solved, hinted: hinted, mystery: mystery, mysterySolved: mysterySolved, hints: hints, done: done })); }
+        function load(n) {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.entry) || o.entry.length !== P.clues.length) return false;
+                entry = o.entry; solved = o.solved; hinted = o.hinted || P.clues.map(function () { return []; }); mystery = o.mystery || ''; mysterySolved = !!o.mysterySolved; hints = o.hints | 0; done = !!o.done;
+                return true;
+            } catch (e) { return false; }
+        }
+        function start(n) {
+            levelNo = n; P = build(n);
+            if (!load(n)) {
+                entry = P.clues.map(function (c) { return Array(c.answer.length + 1).join(' '); });
+                solved = P.clues.map(function () { return false; }); hinted = P.clues.map(function () { return []; });
+                mystery = Array(P.word.length + 1).join(' '); mysterySolved = false; hints = 0; done = false;
+            }
+            ['winModal', 'levelModal'].forEach(closeModal);
+            $('levelBtn').innerHTML = 'Level ' + n + (P.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
+            sel = firstOpen(); pos = nextEmpty(sel, -1);
+            render(); save();
+        }
+        function firstOpen() { for (var i = 0; i < P.clues.length; i++) if (!solved[i]) return i; return -1; }
+        function target(i) { return i < 0 ? P.word : P.clues[i].answer; }
+        function cur(i) { return i < 0 ? mystery : entry[i]; }
+        function setCur(i, s) { if (i < 0) mystery = s; else entry[i] = s; }
+        function locked(i, p) { if (i < 0) return mysterySolved || solved[p] ; return solved[i] || (p === 0 && mysterySolved) || hinted[i].indexOf(p) >= 0; }
+        function nextEmpty(i, from) { var s = cur(i); for (var p = from + 1; p < s.length; p++) if (s[p] === ' ' && !locked(i, p)) return p; for (p = 0; p < s.length; p++) if (s[p] === ' ' && !locked(i, p)) return p; return Math.min(s.length - 1, Math.max(0, from + 1)); }
+
+        // ---------- drawing ----------
+        function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        function tileRow(i) {
+            var s = cur(i), t = target(i), h = '';
+            for (var p = 0; p < t.length; p++) {
+                var cls = 'tile' + (i >= 0 && p === 0 ? ' first' : '');
+                if (i >= 0 && solved[i]) cls += ' ok';
+                else if (i < 0 && solved[p]) cls += ' got';
+                if (i >= 0 && hinted[i].indexOf(p) >= 0) cls += ' hinted';
+                if (i === sel && p === pos && !done && !(i >= 0 ? solved[i] : mysterySolved)) cls += ' cur';
+                h += '<span class="' + cls + '" data-p="' + p + '">' + esc(s[p] === ' ' ? '' : s[p]) + '</span>';
+            }
+            return h;
+        }
+        function render() {
+            // the mystery word picks up the first letter of every solved answer
+            var m = mystery.split('');
+            P.clues.forEach(function (c, i) { if (solved[i]) m[i] = c.answer[0]; });
+            mystery = m.join('');
+            $('mysteryTiles').innerHTML = tileRow(-1);
+            $('mystery').classList.toggle('sel', sel === -1 && !mysterySolved);
+            $('mystery').setAttribute('aria-label', 'Mystery word, ' + P.word.length + ' letters' + (mysterySolved ? ': ' + P.word.toUpperCase() : ''));
+            $('clues').innerHTML = P.clues.map(function (c, i) {
+                return '<div class="clue' + (solved[i] ? ' solved' : '') + (i === sel ? ' sel' : '') + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + esc(c.left + ', blank, ' + c.right + '. ' + c.answer.length + ' letters' + (solved[i] ? ': ' + c.answer : '')) + '">' +
+                    '<span class="l">' + esc(c.left) + '</span><span class="tiles">' + tileRow(i) + '</span><span class="r">' + esc(c.right) + '</span></div>';
+            }).join('');
+            $('hintBtn').disabled = done;
+            $('hintNote').textContent = hints ? hints + ' used' : 'reveals a letter';
+        }
+
+        // ---------- typing ----------
+        function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 1400); }
+        function editable() { return !done && (sel < 0 ? !mysterySolved : !solved[sel]); }
+        function type(ch) {
+            if (!editable()) return;
+            if (locked(sel, pos)) { pos = nextEmpty(sel, pos); if (locked(sel, pos)) return; }
+            var s = cur(sel).split(''); s[pos] = ch; setCur(sel, s.join(''));
+            if (cur(sel).indexOf(' ') < 0) { render(); check(); return; }   // full: check it straight away
+            pos = nextEmpty(sel, pos); render(); save();
+        }
+        function back() {
+            if (!editable()) return;
+            var s = cur(sel).split('');
+            if (s[pos] !== ' ' && !locked(sel, pos)) s[pos] = ' ';
+            else { var p = pos - 1; while (p >= 0 && locked(sel, p)) p--; if (p >= 0) { pos = p; s[p] = ' '; } }
+            setCur(sel, s.join('')); render(); save();
+        }
+        function rowEl(i) { return i < 0 ? $('mystery') : $('clues').children[i]; }
+        function check() {
+            var s = cur(sel);
+            if (s.indexOf(' ') >= 0) { toast('Fill every letter first'); return; }
+            if (sel < 0) {
+                if (s === P.word) {
+                    mysterySolved = true;
+                    // the mystery word gives the first letter of every answer
+                    P.clues.forEach(function (c, i) { if (!solved[i]) { var e = entry[i].split(''); e[0] = c.answer[0]; entry[i] = e.join(''); if (entry[i] === c.answer) solved[i] = true; } });
+                    $('announce').textContent = 'Mystery word solved: ' + P.word + '. First letters filled in.';
+                    toast('Mystery word solved! First letters filled in', 1800);
+                    afterSolve(); return;
+                }
+            } else {
+                var c = P.clues[sel];
+                if (c.alts.indexOf(s) >= 0) {
+                    entry[sel] = c.answer; solved[sel] = true;
+                    $('announce').textContent = c.left + ' ' + c.answer + ', ' + c.answer + ' ' + c.right + '. Correct.';
+                    var el = rowEl(sel); afterSolve(); el = rowEl(P.clues.indexOf(c)); if (el) { el.classList.add('pop'); }
+                    return;
+                }
+            }
+            var row = rowEl(sel); row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake');
+            toast('Not quite'); buzz(30);
+        }
+        function afterSolve() {
+            if (solved.every(Boolean)) { mysterySolved = true; mystery = P.word; finish(); return; }
+            sel = firstOpenFrom(sel); pos = sel === -2 ? 0 : nextEmpty(sel, -1);
+            render(); save();
+        }
+        function firstOpenFrom(i) {
+            for (var k = 1; k <= P.clues.length; k++) { var j = ((i < 0 ? -1 : i) + k) % P.clues.length; if (!solved[j]) return j; }
+            return -1;
+        }
+        function select(i, p) { if (done) return; sel = i; pos = p == null ? nextEmpty(i, -1) : p; render(); }
+
+        // ---------- hints ----------
+        function hint() {
+            if (done) return;
+            if (sel < 0 || solved[sel]) { if (mysterySolved || sel < 0) { var o = firstOpen(); if (o < 0) return; sel = o; } }
+            var c = P.clues[sel], e = entry[sel].split(''), p = -1;
+            for (var k = 0; k < c.answer.length; k++) if (e[k] !== c.answer[k]) { p = k; break; }
+            if (p < 0) return;
+            e[p] = c.answer[p]; entry[sel] = e.join(''); if (hinted[sel].indexOf(p) < 0) hinted[sel].push(p);
+            hints++;
+            $('announce').textContent = 'Hint: letter ' + (p + 1) + ' is ' + c.answer[p].toUpperCase();
+            if (entry[sel] === c.answer) { solved[sel] = true; afterSolve(); return; }
+            pos = nextEmpty(sel, p); render(); save();
+        }
+
+        // ---------- finishing ----------
+        function starsFor() { return hints === 0 ? 3 : hints <= 2 ? 2 : 1; }
+        function finish() {
+            done = true; render(); save();
+            var s = starsFor();
+            if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
+            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
+            S.setObject(KEY_PROGRESS, progress); S.setString(KEY_STARS, JSON.stringify(stars));
+            var h = ''; for (var i = 1; i <= 3; i++) h += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
+            $('winStars').innerHTML = h; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
+            $('winWord').textContent = P.word;
+            var d = (window.CRACKWORD_DEFS || {})[P.word], SP = window.CrackSpelling;
+            $('winDef').innerHTML = d ? '<div class="defn"><p>' + (d[0] ? '<span class="pos">' + esc(d[0]) + '</span>' : '') + esc(SP ? SP.text(d[1]) : d[1]) + '</p>' + (d[2] ? '<p class="ex">“' + esc(SP ? SP.text(d[2]) : d[2]) + '”</p>' : '') + '</div>' : '';
+            $('winText').textContent = hints ? 'Solved with ' + hints + ' hint' + (hints === 1 ? '' : 's') + '.' + (s < 3 ? ' Solve it with no hints for 3 stars.' : '') : 'Solved with no hints!';
+            $('replayBtn').style.display = s === 3 ? 'none' : '';
+            buzz(40);
+            setTimeout(function () { openModal('winModal'); }, 500);
+        }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+
+        // ---------- modals and levels ----------
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } }
+        function closeModal(id) { $(id).classList.remove('active'); }
+        function anyModal() { return document.querySelector('.modal-overlay.active'); }
+        function openLevels() {
+            var h = '', max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) { var s = stars[n] || 0, str = ''; for (var i = 0; i < s; i++) str += '★';
+                h += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (isTough(n) ? ' tough' : '') + '" data-level="' + n + '" aria-label="Level ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>'; }
+            $('levelGrid').innerHTML = h; openModal('levelModal');
+            var c = $('levelGrid').querySelector('.current'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'center' });
+        }
+
+        // ---------- keyboard ----------
+        var KEYS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+        var BACK = '<svg viewBox="0 0 24 24"><path d="M21 5H8l-6 7 6 7h13z"/><path d="M17 9l-6 6M11 9l6 6"/></svg>';
+        $('keyboard').innerHTML = KEYS.map(function (row, i) {
+            return '<div class="krow">' + (i === 1 ? '<span class="spacer"></span>' : '') + (i === 2 ? '<button class="key wide" data-k="enter">Enter</button>' : '') +
+                row.split('').map(function (k) { return '<button class="key" data-k="' + k + '">' + k + '</button>'; }).join('') +
+                (i === 2 ? '<button class="key wide" data-k="back" aria-label="Delete">' + BACK + '</button>' : '') + (i === 1 ? '<span class="spacer"></span>' : '') + '</div>';
+        }).join('');
+        $('keyboard').addEventListener('click', function (e) { var k = e.target.closest('.key'); if (!k) return; var v = k.dataset.k; if (v === 'enter') check(); else if (v === 'back') back(); else type(v); });
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (anyModal()) { if (e.key === 'Escape') { closeModal('levelModal'); closeHelp(); } return; }
+            if (e.key === 'Enter') { e.preventDefault(); check(); }
+            else if (e.key === 'Backspace') { e.preventDefault(); back(); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); select(Math.min(P.clues.length - 1, sel + 1)); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(-1, sel - 1)); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); pos = Math.max(0, pos - 1); render(); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); pos = Math.min(target(sel).length - 1, pos + 1); render(); }
+            else if (/^[a-zA-Z]$/.test(e.key)) type(e.key.toLowerCase());
+        });
+        $('clues').addEventListener('click', function (e) { var c = e.target.closest('.clue'); if (!c) return; var t = e.target.closest('.tile'); select(+c.dataset.i, t ? +t.dataset.p : null); });
+        $('mystery').addEventListener('click', function (e) { if (mysterySolved) return; var t = e.target.closest('.tile'); select(-1, t ? +t.dataset.p : null); });
+        $('hintBtn').addEventListener('click', hint);
+        function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', closeHelp); $('helpX').addEventListener('click', closeHelp);
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); }); $('levelX').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) { var b = e.target.closest('.level-cell'); if (!b) return; var n = +b.dataset.level; if (n !== levelNo) { S.setString(KEY_STATE, 'null'); start(n); } else closeModal('levelModal'); });
+        $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo + 1); });
+        $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo); });
+        ['helpModal', 'levelModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+
+        start(levelNo);
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        window.__gb = function () { return { P: P, entry: entry, solved: solved, sel: sel, pos: pos, hints: hints, done: done, mysterySolved: mysterySolved }; };
+        window.__gbBuild = build;
+    })();
+    </script>
+</body>
+</html>
