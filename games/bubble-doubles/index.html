@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Bubble Doubles — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #10162b; --panel: #1b2443; --deep: #0b1022; --accent: #ffb547; --ink: #f3f5ff; --ink-soft: #a9b1d6; --line: #2d3863; }
+        html, body.bd { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.bd { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important;
+            background: radial-gradient(circle at 50% 0%, #26315c 0, var(--bg) 60%); }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; background: var(--deep); border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.22); background: rgba(255,255,255,0.06); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.25rem; color: var(--accent); }
+        .scores { flex: none; display: flex; justify-content: center; gap: 8px; padding: 8px 10px 4px; }
+        .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px; min-width: 96px; text-align: center; }
+        .pill small { display: block; font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft); }
+        .pill b { font-size: 1.15rem; }
+        main { flex: 1; min-height: 0; position: relative; display: flex; justify-content: center; padding: 0 8px calc(8px + env(safe-area-inset-bottom)); }
+        canvas { display: block; touch-action: none; border-radius: 16px 16px 12px 12px; background: linear-gradient(180deg, #1a2347 0%, #121a36 100%); box-shadow: inset 0 0 0 2px var(--line); }
+        .swap { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom)); min-height: 44px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .swap svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(5,8,20,0.7); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 400px; background: #fff; color: #1a1f33; border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: #1b2443; }
+        .modal p { color: #4d5577; font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px; }
+        .modal ol { text-align: left; color: #4d5577; font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 12px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal b { color: #1a1f33; }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: #4d5577; cursor: pointer; border-radius: 10px; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: #1b2443; color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: #1a1f33; border: 2px solid rgba(26,31,51,0.22); }
+        .big { font-size: 2.4rem; font-weight: 800; color: #1b2443; margin: 4px 0; }
+        .exrow { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 6px 0 12px; font-weight: 800; color: #1a1f33; }
+        .exb { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 0.85rem; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title" id="gameTitle">Bubble Doubles</div></div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play and new game"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+    </header>
+    <div class="scores">
+        <div class="pill"><small>Score</small><b id="score">0</b></div>
+        <div class="pill"><small>Best</small><b id="best">0</b></div>
+    </div>
+    <main>
+        <canvas id="cv" aria-label="Bubble board. Drag to aim, let go to shoot." role="img"></canvas>
+        <button class="swap" id="swapBtn" aria-label="Swap the bubble you're shooting with the next one"><svg viewBox="0 0 24 24"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>Swap</button>
+    </main>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <div class="exrow" aria-hidden="true"><span class="exb" style="background:#e0567a">4</span>+<span class="exb" style="background:#e0567a">4</span>→<span class="exb" style="background:#f08a3c">8</span></div>
+            <ol>
+                <li><b>Drag</b> to aim and <b>let go</b> to shoot. Bubbles bounce off the side walls.</li>
+                <li>When your bubble touches the <b>same number</b>, they merge and double. Three 4s make a 16: each extra bubble doubles it again.</li>
+                <li>The new number can merge again with its neighbours, so set up <b>chains</b>.</li>
+                <li>Bubbles cut off from the top drop away for extra points. Make <b>2048</b> and it bursts, clearing everything around it.</li>
+                <li>Every few shots a new row pushes down. If the bubbles reach the dashed line, the game ends.</li>
+                <li><b>Swap</b> trades the bubble you're about to shoot for the next one.</li>
+            </ol>
+            <button class="btn" id="helpClose">Play</button>
+            <button class="btn secondary" id="newBtn">Start a new game</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="overModal" role="dialog" aria-modal="true" aria-labelledby="overTitle">
+        <div class="modal">
+            <h2 id="overTitle">Game over</h2>
+            <div class="big" id="overScore">0</div>
+            <p id="overText"></p>
+            <button class="btn" id="againBtn">Play again</button>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Bubble Doubles';
+        var S = window.HubStorage, $ = function (id) { return document.getElementById(id); };
+        var KEY_BEST = 'bubbledoubles_best', KEY_STATE = 'bubbledoubles_state', KEY_SEEN = 'bubbledoubles_seen';
+        document.body.classList.add('bd'); document.title = GAME_NAME + ' — Game Hub';
+        var COLS = 8, START_ROWS = 5, SHOTS_PER_ROW = 7;
+        // colour for each power of two (2, 4, 8 ... 2048), bright and distinct, numbers always shown
+        var PAL = ['#3fa7f5', '#e0567a', '#f08a3c', '#f2c53d', '#5cc96b', '#2fc4b2', '#8a6cf0', '#d65cd1', '#ef5350', '#26a69a', '#ffd54f', '#ffffff'];
+        function colourOf(v) { return PAL[Math.min(PAL.length - 1, Math.log2(v) - 1)]; }
+        function label(v) { return v >= 1024 ? (v / 1024) + 'K' : String(v); }
+
+        var cv = $('cv'), ctx = cv.getContext('2d'), W = 300, H = 500, R = 18, ROWH = 31, DPR = 1;
+        // grid[row][col] = number or 0. Rows alternate full / indented; "shift" says whether row 0 is indented.
+        var grid = [], shift = 0, cur = 2, nxt = 4, score = 0, best = S.getInt(KEY_BEST, 0, 0), shots = 0, over = false;
+        var shot = null, aim = null, fx = [], pops = {}, busy = false;
+        $('best').textContent = best;
+
+        function rnd(n) { return Math.floor(Math.random() * n); }
+        function indented(r) { return (r + shift) % 2 === 1; }
+        function colsIn(r) { return indented(r) ? COLS - 1 : COLS; }
+        function cx(r, c) { return R + c * 2 * R + (indented(r) ? R : 0); }
+        function cy(r) { return R + r * ROWH; }
+        function neighbours(r, c) {
+            var o = indented(r), list = [[r, c - 1], [r, c + 1]];
+            var d = o ? [0, 1] : [-1, 0];
+            [r - 1, r + 1].forEach(function (rr) { d.forEach(function (dc) { list.push([rr, c + dc]); }); });
+            return list.filter(function (p) { return p[0] >= 0 && p[0] < grid.length && p[1] >= 0 && p[1] < colsIn(p[0]); });
+        }
+        // a new row never has two equal numbers touching (they'd look as if they should have merged)
+        function newRow(r) {
+            var row = [], n = colsIn(r);
+            grid[r] = row;
+            for (var c = 0; c < n; c++) {
+                row.push(0);
+                var near = neighbours(r, c).map(function (p) { return grid[p[0]] ? grid[p[0]][p[1]] : 0; }), v, tries = 0;
+                do { v = randomValue(true); } while (near.indexOf(v) >= 0 && tries++ < 20);
+                row[c] = v;
+            }
+            return row;
+        }
+        // mostly small numbers, a few bigger ones; shooter numbers favour ones already on the board
+        function randomValue(forRow) {
+            var w = forRow ? [30, 26, 20, 12, 8, 4] : [34, 28, 20, 12, 6];
+            var t = w.reduce(function (a, b) { return a + b; }), x = Math.random() * t;
+            for (var i = 0; i < w.length; i++) { if ((x -= w[i]) < 0) return Math.pow(2, i + 1); }
+            return 2;
+        }
+        function shooterValue() {
+            var present = {};
+            grid.forEach(function (row) { row.forEach(function (v) { if (v && v <= 64) present[v] = 1; }); });
+            var vals = Object.keys(present).map(Number);
+            return vals.length && Math.random() < 0.75 ? vals[rnd(vals.length)] : randomValue(false);
+        }
+
+        // ---------- save ----------
+        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 1, grid: grid, shift: shift, cur: cur, nxt: nxt, score: score, shots: shots, over: over })); }
+        function load() {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || !Array.isArray(o.grid) || o.over) return false;
+                grid = o.grid; shift = o.shift | 0; cur = o.cur; nxt = o.nxt; score = o.score | 0; shots = o.shots | 0; over = false;
+                return true;
+            } catch (e) { return false; }
+        }
+        function newGame() {
+            grid = []; shift = 0; score = 0; shots = 0; over = false; fx = []; pops = {}; shot = null;
+            for (var r = 0; r < START_ROWS; r++) grid.push(null);
+            for (r = START_ROWS - 1; r >= 0; r--) grid[r] = newRow(r);
+            cur = shooterValue(); nxt = shooterValue();
+            $('score').textContent = 0; save();
+        }
+
+        // ---------- layout ----------
+        function layout() {
+            var m = document.querySelector('main'), w = Math.min(m.clientWidth - 16, 480), h = m.clientHeight - 8;
+            if (w / h > 0.68) w = Math.floor(h * 0.68);
+            W = w; H = h; R = W / (2 * COLS); ROWH = R * Math.sqrt(3);
+            DPR = window.devicePixelRatio || 1;
+            cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            var sw = $('swapBtn'); sw.style.left = 'calc(50% + ' + (W / 2 - 96) + 'px)';
+        }
+        function gunX() { return W / 2; }
+        function gunY() { return H - R * 2.2; }
+        function dangerY() { return gunY() - R * 2.4; }
+
+        // ---------- drawing ----------
+        function drawBubble(x, y, v, scale, alpha) {
+            var r = R * 0.94 * (scale || 1);
+            ctx.globalAlpha = alpha == null ? 1 : alpha;
+            var g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+            g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, colourOf(v)); g.addColorStop(1, shade(colourOf(v)));
+            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+            ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.stroke();
+            var t = label(v); ctx.font = '800 ' + Math.round(r * (t.length > 3 ? 0.62 : t.length > 2 ? 0.74 : 0.9)) + 'px DM Sans, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.strokeText(t, x, y + 1);
+            ctx.fillStyle = v >= 4096 ? '#1a1f33' : '#fff'; ctx.fillText(t, x, y + 1);
+            ctx.globalAlpha = 1;
+        }
+        function shade(hex) { var n = parseInt(hex.slice(1), 16), r = (n >> 16) * 0.62, g = ((n >> 8) & 255) * 0.62, b = (n & 255) * 0.62; return 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')'; }
+        function draw(now) {
+            ctx.clearRect(0, 0, W, H);
+            // danger line
+            ctx.setLineDash([8, 6]); ctx.strokeStyle = 'rgba(255,120,120,0.55)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(6, dangerY()); ctx.lineTo(W - 6, dangerY()); ctx.stroke(); ctx.setLineDash([]);
+            // shots left before the next row
+            var left = SHOTS_PER_ROW - (shots % SHOTS_PER_ROW);
+            for (var i = 0; i < SHOTS_PER_ROW; i++) { ctx.fillStyle = i < left ? 'rgba(255,181,71,0.9)' : 'rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.arc(12 + i * 12, H - 14, 4, 0, Math.PI * 2); ctx.fill(); }
+            for (var r = 0; r < grid.length; r++) for (var c = 0; c < grid[r].length; c++) {
+                var v = grid[r][c]; if (!v) continue;
+                var p = pops[r + ',' + c], sc = 1;
+                if (p) { var k = (now - p) / 260; if (k >= 1) delete pops[r + ',' + c]; else sc = 1 + 0.35 * Math.sin(k * Math.PI); }
+                drawBubble(cx(r, c), cy(r), v, sc);
+            }
+            // aiming guide
+            if (aim && !shot && !over) {
+                var path = trace(aim.a, 900);
+                ctx.fillStyle = 'rgba(255,255,255,0.55)';
+                for (var d = 0; d < path.length; d++) { ctx.beginPath(); ctx.arc(path[d][0], path[d][1], 2.6, 0, Math.PI * 2); ctx.fill(); }
+            }
+            fx = fx.filter(function (f) {
+                var k = (now - f.t0) / f.dur; if (k >= 1) return false;
+                if (f.kind === 'fall') drawBubble(f.x, f.y + f.vy * k * 0.6 + 900 * k * k * 0.5, f.v, 1, 1 - k);
+                else if (f.kind === 'burst') drawBubble(f.x, f.y, f.v, 1 + k * 0.8, 1 - k);
+                else if (f.kind === 'text') { ctx.globalAlpha = 1 - k; ctx.font = '800 ' + Math.round(R * 0.9) + 'px DM Sans, sans-serif'; ctx.fillStyle = '#ffd36b'; ctx.textAlign = 'center'; ctx.fillText(f.s, f.x, f.y - 30 * k); ctx.globalAlpha = 1; }
+                return true;
+            });
+            if (shot) drawBubble(shot.x, shot.y, shot.v);
+            // gun: current and next
+            if (!over) {
+                if (!shot) drawBubble(gunX(), gunY(), cur);
+                drawBubble(gunX() - R * 3.2, gunY() + R * 0.5, nxt, 0.7, 0.85);
+                ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '700 ' + Math.round(R * 0.5) + 'px DM Sans, sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText('next', gunX() - R * 3.2, gunY() + R * 1.55);
+            }
+        }
+
+        // ---------- aiming and flight ----------
+        function angleTo(px, py) {
+            var a = Math.atan2(gunY() - py, px - gunX());   // 0 = right, PI/2 = straight up
+            return Math.max(0.12, Math.min(Math.PI - 0.12, a));
+        }
+        // dots along the path, with wall bounces, until it would hit something
+        function trace(a, maxLen) {
+            var x = gunX(), y = gunY(), dx = Math.cos(a), dy = -Math.sin(a), pts = [], step = 4, travelled = 0, nextDot = 18;
+            while (travelled < maxLen) {
+                x += dx * step; y += dy * step; travelled += step;
+                if (x < R) { x = R; dx = -dx; } if (x > W - R) { x = W - R; dx = -dx; }
+                if (hits(x, y)) break;
+                if (travelled >= nextDot) { pts.push([x, y]); nextDot += 18; }
+            }
+            return pts;
+        }
+        function hits(x, y) {
+            if (y <= R) return true;
+            for (var r = 0; r < grid.length; r++) { var yy = cy(r); if (Math.abs(yy - y) > 2 * R) continue;
+                for (var c = 0; c < grid[r].length; c++) if (grid[r][c] && Math.hypot(cx(r, c) - x, yy - y) < 2 * R * 0.86) return true; }
+            return false;
+        }
+        function fire() {
+            if (!aim || shot || over || busy) return;
+            var a = aim.a; aim = null;
+            shot = { x: gunX(), y: gunY(), dx: Math.cos(a), dy: -Math.sin(a), v: cur };
+            cur = nxt; nxt = shooterValue();
+        }
+        function fly(dt) {
+            var dist = 1500 * dt, step = 3;
+            for (var t = 0; t < dist; t += step) {
+                shot.x += shot.dx * step; shot.y += shot.dy * step;
+                if (shot.x < R) { shot.x = R; shot.dx = -shot.dx; } if (shot.x > W - R) { shot.x = W - R; shot.dx = -shot.dx; }
+                if (hits(shot.x, shot.y)) { land(); return; }
+            }
+        }
+        // put the bubble in the nearest free spot touching the pile (or the top)
+        function land() {
+            var spot = null;
+            var rr = Math.max(0, Math.round((shot.y - R) / ROWH));
+            for (var r = Math.max(0, rr - 1); r <= rr + 1; r++) {
+                if (r >= grid.length) { while (grid.length <= r) grid.push(emptyRow(grid.length)); }
+                for (var c = 0; c < colsIn(r); c++) {
+                    if (grid[r][c]) continue;
+                    var attached = r === 0 || neighbours(r, c).some(function (p) { return grid[p[0]][p[1]]; });
+                    if (!attached) continue;
+                    var d = Math.hypot(cx(r, c) - shot.x, cy(r) - shot.y);
+                    if (!spot || d < spot.d) spot = { r: r, c: c, d: d };
+                }
+            }
+            var v = shot.v; shot = null;
+            if (!spot) { checkOver(); return; }
+            grid[spot.r][spot.c] = v; pops[spot.r + ',' + spot.c] = performance.now();
+            shots++;
+            busy = true;
+            resolve(spot.r, spot.c, function () {
+                dropFloating();
+                if (shots % SHOTS_PER_ROW === 0) pushRow();
+                trim(); busy = false;
+                $('score').textContent = score;
+                if (score > best) { best = score; S.setInt(KEY_BEST, best); $('best').textContent = best; }
+                checkOver(); save();
+            });
+        }
+        function emptyRow(r) { var row = []; for (var c = 0; c < colsIn(r); c++) row.push(0); return row; }
+        function trim() { while (grid.length && grid[grid.length - 1].every(function (v) { return !v; })) grid.pop(); }
+
+        // ---------- merging ----------
+        function cluster(r, c) {
+            var v = grid[r][c], seen = {}, out = [], q = [[r, c]]; seen[r + ',' + c] = 1;
+            while (q.length) { var p = q.shift(); out.push(p); neighbours(p[0], p[1]).forEach(function (n) { var k = n[0] + ',' + n[1]; if (!seen[k] && grid[n[0]][n[1]] === v) { seen[k] = 1; q.push(n); } }); }
+            return out;
+        }
+        function resolve(r, c, done) {
+            var cl = cluster(r, c);
+            if (cl.length < 2) { done(); return; }
+            var v = grid[r][c], nv = v * Math.pow(2, cl.length - 1);
+            // the new number lands where it can merge again if possible, otherwise where the shot landed
+            var at = [r, c];
+            for (var i = 0; i < cl.length; i++) if (neighbours(cl[i][0], cl[i][1]).some(function (n) { return grid[n[0]][n[1]] === nv; })) { at = cl[i]; break; }
+            var now = performance.now();
+            cl.forEach(function (p) { if (p[0] !== at[0] || p[1] !== at[1]) { fx.push({ kind: 'burst', x: cx(p[0], p[1]), y: cy(p[0]), v: v, t0: now, dur: 260 }); grid[p[0]][p[1]] = 0; } });
+            grid[at[0]][at[1]] = nv; pops[at[0] + ',' + at[1]] = now;
+            score += nv; fx.push({ kind: 'text', s: '+' + nv, x: cx(at[0], at[1]), y: cy(at[0]), t0: now, dur: 700 });
+            buzz(10);
+            $('announce').textContent = cl.length + ' ' + v + 's made ' + nv;
+            if (nv >= 2048) {
+                // a 2048 bursts and clears everything around it
+                setTimeout(function () {
+                    var t = performance.now(), gone = [[at[0], at[1]]].concat(neighbours(at[0], at[1]));
+                    gone.forEach(function (p) { var vv = grid[p[0]][p[1]]; if (vv) { fx.push({ kind: 'burst', x: cx(p[0], p[1]), y: cy(p[0]), v: vv, t0: t, dur: 400 }); score += vv; grid[p[0]][p[1]] = 0; } });
+                    fx.push({ kind: 'text', s: 'Boom!', x: cx(at[0], at[1]), y: cy(at[0]), t0: t, dur: 900 });
+                    buzz(60); done();
+                }, 260);
+                return;
+            }
+            setTimeout(function () { resolve(at[0], at[1], done); }, 230);
+        }
+        function dropFloating() {
+            var seen = {}, q = [];
+            for (var c = 0; c < (grid[0] ? grid[0].length : 0); c++) if (grid[0][c]) { seen['0,' + c] = 1; q.push([0, c]); }
+            while (q.length) { var p = q.shift(); neighbours(p[0], p[1]).forEach(function (n) { var k = n[0] + ',' + n[1]; if (!seen[k] && grid[n[0]][n[1]]) { seen[k] = 1; q.push(n); } }); }
+            var now = performance.now(), n = 0;
+            for (var r = 0; r < grid.length; r++) for (c = 0; c < grid[r].length; c++) if (grid[r][c] && !seen[r + ',' + c]) {
+                fx.push({ kind: 'fall', x: cx(r, c), y: cy(r), v: grid[r][c], vy: -80, t0: now, dur: 700 }); score += grid[r][c]; grid[r][c] = 0; n++;
+            }
+            if (n) $('announce').textContent = n + ' bubbles dropped';
+        }
+        function pushRow() { shift = 1 - shift; grid.unshift(null); grid[0] = newRow(0); }
+        function checkOver() {
+            for (var r = 0; r < grid.length; r++) if (cy(r) + R > dangerY() && grid[r].some(function (v) { return v; })) { gameOver(); return; }
+        }
+        function gameOver() {
+            over = true; save();
+            $('overScore').textContent = score;
+            $('overText').textContent = score >= best && score > 0 ? 'A new best score!' : 'Best: ' + best;
+            setTimeout(function () { $('overModal').classList.add('active'); $('againBtn').focus(); }, 500);
+        }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+
+        // ---------- input ----------
+        function pt(e) { var b = cv.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; }
+        var pid = null;
+        cv.addEventListener('pointerdown', function (e) { if (over || shot || busy) return; pid = e.pointerId; var p = pt(e); aim = { a: angleTo(p.x, p.y) }; e.preventDefault(); });
+        window.addEventListener('pointermove', function (e) { if (pid === null || e.pointerId !== pid) return; var p = pt(e); aim = { a: angleTo(p.x, p.y) }; });
+        window.addEventListener('pointerup', function (e) { if (pid === null || e.pointerId !== pid) return; pid = null; fire(); });
+        window.addEventListener('pointercancel', function () { pid = null; aim = null; });
+        // keyboard: arrows aim, space shoots
+        var kAim = Math.PI / 2;
+        document.addEventListener('keydown', function (e) {
+            if (document.querySelector('.modal-overlay.active')) return;
+            if (e.key === 'ArrowLeft') { kAim = Math.min(Math.PI - 0.12, kAim + 0.05); aim = { a: kAim }; e.preventDefault(); }
+            else if (e.key === 'ArrowRight') { kAim = Math.max(0.12, kAim - 0.05); aim = { a: kAim }; e.preventDefault(); }
+            else if (e.key === ' ' || e.key === 'Enter') { if (!aim) aim = { a: kAim }; fire(); e.preventDefault(); }
+            else if (e.key === 's') swap();
+        });
+        function swap() { if (over || shot || busy) return; var t = cur; cur = nxt; nxt = t; save(); }
+        $('swapBtn').addEventListener('click', swap);
+
+        var last = 0;
+        function frame(t) {
+            requestAnimationFrame(frame);
+            var dt = last ? Math.min(0.05, (t - last) / 1000) : 0; last = t;
+            if (shot) fly(dt);
+            draw(t);
+        }
+
+        function openHelp() { $('helpModal').classList.add('active'); $('helpClose').focus(); }
+        function closeHelp() { $('helpModal').classList.remove('active'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', openHelp);
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        $('newBtn').addEventListener('click', function () { closeHelp(); newGame(); });
+        $('againBtn').addEventListener('click', function () { $('overModal').classList.remove('active'); newGame(); });
+        window.addEventListener('resize', layout);
+
+        layout();
+        if (!load()) newGame();
+        $('score').textContent = score;
+        requestAnimationFrame(frame);
+        if (!S.getFlag(KEY_SEEN)) openHelp();
+        window.__bd = function () { return { grid: grid, cur: cur, nxt: nxt, score: score, over: over, shots: shots, busy: busy, shot: !!shot, W: W, H: H, gun: [gunX(), gunY()] }; };
+    })();
+    </script>
+</body>
+</html>

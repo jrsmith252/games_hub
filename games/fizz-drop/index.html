@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Fizz Drop — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #fff4e6; --deep: #5a2d82; --accent: #ffcf5c; --ink: #2b1a3a; --ink-soft: #6e5a80; --line: #e8d6f2; }
+        html, body.fd { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.fd { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important;
+            background: radial-gradient(circle at 20% 0%, #fff 0, var(--bg) 55%), var(--bg); }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); }
+        .scores { flex: none; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 8px 10px 4px; }
+        .pill { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px; min-width: 92px; text-align: center; }
+        .pill small { display: block; font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft); }
+        .pill b { font-size: 1.15rem; }
+        .pill.next { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .pill.next canvas { width: 34px; height: 34px; }
+        main { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 4px 8px calc(10px + env(safe-area-inset-bottom)); }
+        #cv { display: block; touch-action: none; }
+        .ladder { flex: none; display: flex; justify-content: center; gap: 3px; padding: 0 8px 6px; flex-wrap: wrap; }
+        .ladder span { width: 22px; height: 22px; border-radius: 50%; font-size: 0.55rem; font-weight: 800; color: #fff; display: inline-flex; align-items: center; justify-content: center; text-shadow: 0 1px 1px rgba(0,0,0,0.45); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(43,26,58,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 400px; background: #fff; border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--deep); }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 12px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal b { color: var(--ink); }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(43,26,58,0.2); }
+        .big { font-size: 2.4rem; font-weight: 800; color: var(--deep); margin: 4px 0; }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title" id="gameTitle">Fizz Drop</div></div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play and new game"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+    </header>
+    <div class="scores">
+        <div class="pill"><small>Score</small><b id="score">0</b></div>
+        <div class="pill"><small>Best</small><b id="best">0</b></div>
+        <div class="pill next" aria-label="Next bubble"><small>Next</small><canvas id="nextCv" width="68" height="68"></canvas></div>
+    </div>
+    <main><canvas id="cv" aria-label="Jar. Move to choose where to drop, let go to drop." role="img"></canvas></main>
+    <div class="ladder" id="ladder" aria-label="The bubbles from smallest to largest"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li><b>Move</b> along the top to choose where to drop, and <b>let go</b> to drop the bubble into the jar.</li>
+                <li>When two bubbles with the <b>same number</b> touch, they fizz together into the next, bigger bubble: 2 + 2 makes 4, 4 + 4 makes 8, all the way up to 2048.</li>
+                <li>Two 2048s together burst for a big bonus.</li>
+                <li>Bigger bubbles score more. Plan where things land so the right ones meet.</li>
+                <li>Don't let the jar overflow: if bubbles stay above the dashed line, the game ends.</li>
+            </ol>
+            <p>The row of bubbles under the jar shows every size, smallest to largest.</p>
+            <button class="btn" id="helpClose">Play</button>
+            <button class="btn secondary" id="newBtn">Start a new game</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="overModal" role="dialog" aria-modal="true" aria-labelledby="overTitle">
+        <div class="modal">
+            <h2 id="overTitle">The jar's full!</h2>
+            <div class="big" id="overScore">0</div>
+            <p id="overText"></p>
+            <button class="btn" id="againBtn">Play again</button>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Fizz Drop';
+        var S = window.HubStorage, $ = function (id) { return document.getElementById(id); };
+        var KEY_BEST = 'fizzdrop_best', KEY_STATE = 'fizzdrop_state', KEY_SEEN = 'fizzdrop_seen';
+        document.body.classList.add('fd'); document.title = GAME_NAME + ' — Game Hub';
+        // eleven sizes: 2, 4, 8 ... 2048. Each has its own colour, and its number is always shown.
+        var TIERS = 11, PAL = ['#ef5b7a', '#ff9f43', '#ffd166', '#7bd389', '#38b6a8', '#4aa3f0', '#7c6cf0', '#c264e0', '#f06292', '#ff7043', '#ffca28'];
+        function val(t) { return Math.pow(2, t + 1); }
+        var cv = $('cv'), ctx = cv.getContext('2d'), W = 300, H = 500, DPR = 1, LINE = 60;
+        function rad(t) { return W * (0.042 + 0.0175 * t + 0.0011 * t * t); }
+
+        var balls = [], cur = 0, nxt = 0, score = 0, best = S.getInt(KEY_BEST, 0, 0), over = false, dropX = 0, aiming = false, cooldown = 0, danger = 0, fx = [], nid = 1;
+        $('best').textContent = best;
+
+        function pickNew() { var w = [34, 28, 20, 12, 6], x = Math.random() * 100; for (var i = 0; i < w.length; i++) { if ((x -= w[i]) < 0) return i; } return 0; }
+        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 1, W: W, balls: balls.map(function (b) { return [b.t, Math.round(b.x * 10) / 10, Math.round(b.y * 10) / 10]; }), cur: cur, nxt: nxt, score: score })); }
+        function load() {
+            try {
+                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || !Array.isArray(o.balls)) return false;
+                var k = W / (o.W || W);
+                balls = o.balls.map(function (a) { return { id: nid++, t: a[0], x: a[1] * k, y: a[2] * k, vx: 0, vy: 0, r: rad(a[0]), age: 5 }; });
+                cur = o.cur; nxt = o.nxt; score = o.score | 0; return true;
+            } catch (e) { return false; }
+        }
+        function newGame() { balls = []; fx = []; score = 0; over = false; danger = 0; cur = pickNew(); nxt = pickNew(); $('score').textContent = 0; dropX = W / 2; save(); drawNext(); }
+
+        function layout() {
+            var m = document.querySelector('main'), w = Math.min(m.clientWidth - 16, 460), h = m.clientHeight - 14;
+            if (w / h > 0.72) w = Math.floor(h * 0.72);
+            var oldW = W; W = w; H = h; LINE = rad(4) * 2 + 18;
+            DPR = window.devicePixelRatio || 1;
+            cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            if (oldW && oldW !== W) balls.forEach(function (b) { b.x *= W / oldW; b.y *= W / oldW; b.r = rad(b.t); });
+            dropX = Math.min(Math.max(dropX || W / 2, rad(cur)), W - rad(cur));
+        }
+
+        // ---------- drawing ----------
+        function shade(hex, k) { var n = parseInt(hex.slice(1), 16), r = (n >> 16) * k, g = ((n >> 8) & 255) * k, b = (n & 255) * k; return 'rgb(' + Math.min(255, r | 0) + ',' + Math.min(255, g | 0) + ',' + Math.min(255, b | 0) + ')'; }
+        function bubble(c, x, y, r, t, alpha) {
+            c.globalAlpha = alpha == null ? 1 : alpha;
+            var col = PAL[t], g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.08, x, y, r);
+            g.addColorStop(0, '#ffffff'); g.addColorStop(0.22, col); g.addColorStop(1, shade(col, 0.68));
+            c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+            c.lineWidth = Math.max(1.5, r * 0.06); c.strokeStyle = 'rgba(60,20,80,0.25)'; c.stroke();
+            var s = val(t) >= 1024 ? (val(t) / 1024) + 'K' : String(val(t));
+            c.font = '800 ' + Math.round(r * (s.length > 3 ? 0.6 : s.length > 2 ? 0.72 : 0.86)) + 'px DM Sans, sans-serif';
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.lineWidth = Math.max(2, r * 0.12); c.strokeStyle = 'rgba(40,10,60,0.45)'; c.strokeText(s, x, y + 1);
+            c.fillStyle = '#fff'; c.fillText(s, x, y + 1);
+            c.globalAlpha = 1;
+        }
+        function drawNext() { var c = $('nextCv').getContext('2d'); c.clearRect(0, 0, 68, 68); bubble(c, 34, 34, 13 + nxt * 3.5, nxt); }
+        function draw(now) {
+            ctx.clearRect(0, 0, W, H);
+            // the jar
+            ctx.fillStyle = 'rgba(255,255,255,0.75)'; roundRect(0, 0, W, H, 18); ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = '#e1cdee'; roundRect(1.5, 1.5, W - 3, H - 3, 18); ctx.stroke();
+            ctx.setLineDash([8, 6]); ctx.lineWidth = 2; ctx.strokeStyle = danger > 0 ? 'rgba(220,40,60,' + (0.5 + 0.5 * Math.abs(Math.sin(now / 150))) + ')' : 'rgba(200,80,110,0.5)';
+            ctx.beginPath(); ctx.moveTo(8, LINE); ctx.lineTo(W - 8, LINE); ctx.stroke(); ctx.setLineDash([]);
+            // where it will drop
+            if (!over && cooldown <= 0) {
+                var r = rad(cur);
+                ctx.strokeStyle = 'rgba(90,45,130,0.18)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(dropX, r * 2 + 6); ctx.lineTo(dropX, H); ctx.stroke();
+                bubble(ctx, dropX, r + 4, r, cur);
+            }
+            balls.forEach(function (b) { bubble(ctx, b.x, b.y, b.r * (b.pop ? 1 + 0.25 * Math.max(0, 1 - (now - b.pop) / 220) : 1), b.t); });
+            fx = fx.filter(function (f) {
+                var k = (now - f.t0) / f.dur; if (k >= 1) return false;
+                if (f.kind === 'ring') { ctx.globalAlpha = 1 - k; ctx.strokeStyle = PAL[f.t]; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1 + k * 0.8), 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
+                if (f.kind === 'text') { ctx.globalAlpha = 1 - k; ctx.font = '800 20px DM Sans, sans-serif'; ctx.fillStyle = '#5a2d82'; ctx.textAlign = 'center'; ctx.fillText(f.s, f.x, f.y - 34 * k); ctx.globalAlpha = 1; }
+                return true;
+            });
+        }
+        function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+        // ---------- physics ----------
+        var G = 2200;
+        function step(dt) {
+            balls.forEach(function (b) { b.vy += G * dt; b.vx *= 0.995; b.x += b.vx * dt; b.y += b.vy * dt; b.age += dt; });
+            for (var it = 0; it < 6; it++) {
+                for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
+                    var a = balls[i], b = balls[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, ov = a.r + b.r - d;
+                    if (ov <= 0) continue;
+                    if (a.t === b.t && !a.gone && !b.gone) { a.meet = b; continue; }
+                    var nx = dx / d, ny = dy / d, ma = 1 / (a.r * a.r), mb = 1 / (b.r * b.r), tot = ma + mb;
+                    a.x -= nx * ov * ma / tot; a.y -= ny * ov * ma / tot; b.x += nx * ov * mb / tot; b.y += ny * ov * mb / tot;
+                    var rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+                    if (rv < 0) { var imp = -rv * 1.1 / tot; a.vx -= imp * ma * nx; a.vy -= imp * ma * ny; b.vx += imp * mb * nx; b.vy += imp * mb * ny; }
+                    // a little friction so piles settle instead of sliding forever
+                    var tx = -ny, ty = nx, tv = (b.vx - a.vx) * tx + (b.vy - a.vy) * ty, f = tv * 0.04 / tot;
+                    a.vx += f * ma * tx; a.vy += f * ma * ty; b.vx -= f * mb * tx; b.vy -= f * mb * ty;
+                }
+                balls.forEach(function (b) {
+                    if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.2; }
+                    if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.2; }
+                    if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.1; b.vx *= 0.96; }
+                });
+            }
+            merges();
+        }
+        function merges() {
+            var now = performance.now();
+            for (var i = 0; i < balls.length; i++) {
+                var a = balls[i], b = a.meet; a.meet = null;
+                if (!b || a.gone || b.gone || balls.indexOf(b) < 0) continue;
+                a.gone = b.gone = true;
+                var x = (a.x * a.r * a.r + b.x * b.r * b.r) / (a.r * a.r + b.r * b.r), y = (a.y + b.y) / 2;
+                if (a.t === TIERS - 1) {
+                    // two of the biggest: they burst
+                    score += 2 * val(a.t); fx.push({ kind: 'ring', x: x, y: y, r: a.r, t: a.t, t0: now, dur: 700 }, { kind: 'text', s: 'Burst! +' + 2 * val(a.t), x: x, y: y, t0: now, dur: 1100 });
+                    buzz(60); continue;
+                }
+                var t = a.t + 1, nb = { id: nid++, t: t, x: x, y: y, vx: (a.vx + b.vx) / 2, vy: Math.min(0, (a.vy + b.vy) / 2) - 60, r: rad(t), age: 1, pop: now };
+                balls.push(nb);
+                score += val(t);
+                fx.push({ kind: 'ring', x: x, y: y, r: nb.r, t: t, t0: now, dur: 450 }, { kind: 'text', s: '+' + val(t), x: x, y: y - nb.r, t0: now, dur: 800 });
+                buzz(8);
+                if (t >= 8) $('announce').textContent = 'Made ' + val(t) + '!';
+            }
+            if (balls.some(function (b) { return b.gone; })) {
+                balls = balls.filter(function (b) { return !b.gone; });
+                $('score').textContent = score;
+                if (score > best) { best = score; S.setInt(KEY_BEST, best); $('best').textContent = best; }
+            }
+        }
+        // overflow: a settled bubble poking above the line for two seconds in a row
+        function checkOverflow(dt) {
+            var high = balls.some(function (b) { return b.age > 1.2 && b.y - b.r < LINE && Math.abs(b.vy) < 120; });
+            danger = high ? danger + dt : 0;
+            if (danger > 2) gameOver();
+        }
+        function gameOver() {
+            over = true; S.setString(KEY_STATE, 'null');
+            $('overScore').textContent = score;
+            $('overText').textContent = score >= best && score > 0 ? 'A new best score!' : 'Best: ' + best;
+            setTimeout(function () { $('overModal').classList.add('active'); $('againBtn').focus(); }, 400);
+        }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+
+        // ---------- dropping ----------
+        function drop() {
+            if (over || cooldown > 0 || document.querySelector('.modal-overlay.active')) return;
+            var r = rad(cur);
+            balls.push({ id: nid++, t: cur, x: Math.min(Math.max(dropX, r), W - r), y: r + 4, vx: 0, vy: 80, r: r, age: 0 });
+            cur = nxt; nxt = pickNew(); drawNext();
+            cooldown = 0.55;
+            $('announce').textContent = 'Dropped. Next is ' + val(cur);
+        }
+        function aimAt(e) { var b = cv.getBoundingClientRect(), r = rad(cur); dropX = Math.min(Math.max(e.clientX - b.left, r), W - r); }
+        var pid = null;
+        cv.addEventListener('pointerdown', function (e) { if (over) return; pid = e.pointerId; aimAt(e); e.preventDefault(); });
+        window.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' && pid === null && e.target === cv) aimAt(e); if (pid !== null && e.pointerId === pid) aimAt(e); });
+        window.addEventListener('pointerup', function (e) { if (pid === null || e.pointerId !== pid) return; pid = null; drop(); });
+        window.addEventListener('pointercancel', function () { pid = null; });
+        document.addEventListener('keydown', function (e) {
+            if (document.querySelector('.modal-overlay.active')) return;
+            var r = rad(cur);
+            if (e.key === 'ArrowLeft') { dropX = Math.max(r, dropX - W / 24); e.preventDefault(); }
+            else if (e.key === 'ArrowRight') { dropX = Math.min(W - r, dropX + W / 24); e.preventDefault(); }
+            else if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { drop(); e.preventDefault(); }
+        });
+
+        var last = 0, saveT = 0;
+        function frame(t) {
+            requestAnimationFrame(frame);
+            var dt = last ? Math.min(0.05, (t - last) / 1000) : 0; last = t;
+            if (!over && !document.hidden && !document.querySelector('.modal-overlay.active')) {
+                var n = Math.max(1, Math.ceil(dt / (1 / 180)));
+                for (var k = 0; k < n; k++) step(dt / n);
+                cooldown -= dt;
+                checkOverflow(dt);
+                saveT += dt; if (saveT > 1.5) { saveT = 0; save(); }
+            }
+            draw(t);
+        }
+
+        function openHelp() { $('helpModal').classList.add('active'); $('helpClose').focus(); }
+        function closeHelp() { $('helpModal').classList.remove('active'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', openHelp);
+        $('helpClose').addEventListener('click', closeHelp);
+        $('helpX').addEventListener('click', closeHelp);
+        $('newBtn').addEventListener('click', function () { closeHelp(); newGame(); });
+        $('againBtn').addEventListener('click', function () { $('overModal').classList.remove('active'); newGame(); });
+        window.addEventListener('resize', layout);
+        document.addEventListener('visibilitychange', function () { if (document.hidden && !over) save(); });
+
+        $('ladder').innerHTML = PAL.map(function (c, t) { var s = val(t) >= 1024 ? (val(t) / 1024) + 'K' : val(t); return '<span style="background:' + c + '">' + s + '</span>'; }).join('');
+        layout();
+        if (!load()) newGame(); else { $('score').textContent = score; drawNext(); }
+        requestAnimationFrame(frame);
+        if (!S.getFlag(KEY_SEEN)) openHelp();
+        window.__fd = function () { return { balls: balls.map(function (b) { return { t: b.t, x: b.x, y: b.y, r: b.r }; }), cur: cur, score: score, over: over, W: W, H: H, cooldown: cooldown }; };
+    })();
+    </script>
+</body>
+</html>

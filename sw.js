@@ -1,11 +1,11 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
    Pages and assets are fetched network-first, so updates show up straight away when online.
    Bump CACHE_VERSION (and the version in the hub footer) when releasing. */
-const CACHE_VERSION = 'v1.21.0';
+const CACHE_VERSION = 'v1.22.0';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [
-  'balance', 'breakout', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fourfold', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'simon',
+  'balance', 'breakout', 'bubble-doubles', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fizz-drop', 'fourfold', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'simon',
   'sliding-puzzle', 'snake', 'sudoku', 'tetris', 'tic-tac-toe', 'twenty48', 'way-out', 'word-search'
 ];
 
