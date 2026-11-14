@@ -17,8 +17,6 @@
         .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
         .title-block { flex: 1; text-align: center; }
         .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); }
-        .level-btn { background: none; border: 0; font: inherit; color: #fff; font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; opacity: 0.92; }
-        .level-btn .tough { color: var(--accent); font-weight: 700; }
 
         main { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px 6px; }
         .wrap { max-width: 520px; margin: 0 auto; }
@@ -80,11 +78,24 @@
         .defn .pos { font-style: italic; color: var(--ink-soft); margin-right: 6px; }
         .modal .defn .ex { color: var(--ink-soft); font-style: italic; margin: 0; }
         .bigword { font-weight: 800; letter-spacing: 4px; font-size: 1.6rem; color: var(--deep); text-transform: uppercase; }
-        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
-        .level-cell { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .level-cell small { font-size: 0.6rem; color: #d97706; letter-spacing: 1px; min-height: 0.8em; }
-        .level-cell.current { border: 2px solid var(--deep); }
-        .level-cell.tough { background: #f6efdc; }
+        .modes { flex: none; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 8px 10px 0; flex-wrap: wrap; }
+        .seg { display: inline-flex; background: #e9e3d6; border-radius: 12px; padding: 3px; }
+        .seg button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: none; font: inherit; font-weight: 700; font-size: 0.88rem; color: var(--ink-soft); cursor: pointer; }
+        .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .tally { display: flex; gap: 6px; font-size: 0.85rem; font-weight: 700; }
+        .tally span { background: #e9e3d6; border-radius: 10px; padding: 0 10px; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; }
+        .tally .ok { color: var(--ok); } .tally .no { color: #b4473e; }
+        .ctrl.give { flex: 0.8; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; margin-bottom: 6px; }
+        .stats div { font-size: 1.5rem; font-weight: 800; color: var(--ink); }
+        .stats small { display: block; font-size: 0.68rem; color: var(--ink-soft); font-weight: 500; line-height: 1.2; }
+        .modal h3 { font-size: 0.78rem; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-soft); margin: 14px 0 8px; }
+        .dist { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+        .dist .bar2 { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; }
+        .dist .bar2 span:first-child { width: 64px; color: #d97706; letter-spacing: 1px; }
+        .dist .bar2 span:last-child { background: #9aa79b; color: #fff; padding: 2px 8px; border-radius: 4px; text-align: right; min-width: 24px; }
+        .dist .bar2.now span:last-child { background: var(--ok); }
+        .pass { font-weight: 800; color: var(--ok); font-size: 1rem; margin: 2px 0 6px; }
         .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     </style>
     <meta name="theme-color" content="#0a0f1a">
@@ -103,16 +114,22 @@
         <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
         <div class="title-block">
             <div class="game-title" id="gameTitle">Go-Between</div>
-            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+            <div class="sub" id="sub" style="font-size:0.8rem;opacity:0.9"></div>
         </div>
+        <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
         <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
     </header>
+    <div class="modes">
+        <div class="seg" role="tablist" aria-label="Puzzle type"><button id="dailyTab" role="tab">Daily</button><button id="practiceTab" role="tab">Practice</button></div>
+        <div class="tally" id="tally" aria-live="polite"></div>
+    </div>
     <main><div class="wrap">
         <div class="mystery" id="mystery" role="button" tabindex="0" aria-label="Mystery word"><small>Mystery word</small><div class="tiles" id="mysteryTiles"></div></div>
         <div id="clues"></div>
     </div></main>
     <div class="bar">
-        <button class="ctrl" id="hintBtn">💡 Hint <small id="hintNote">reveals a letter</small></button>
+        <button class="ctrl" id="hintBtn">💡 Hint <small id="hintNote"></small></button>
+        <button class="ctrl give" id="giveBtn">Give up</button>
     </div>
     <div class="keyboard" id="keyboard" aria-label="Keyboard"></div>
     <div class="toast" id="toast" role="status" aria-live="assertive"></div>
@@ -127,28 +144,35 @@
                 <li>Each answer <b>goes between</b> two words: it follows the first and comes before the second. Sunday <b>roast</b>, <b>roast</b> potatoes.</li>
                 <li>The <b>first letters</b> of the answers, top to bottom, spell the <b>mystery word</b>.</li>
                 <li>Tap a clue and type. Solve the mystery word at any time and the first letter of every answer is filled in for you.</li>
-                <li>A <b>hint</b> reveals the next letter of the clue you're on. Finish with no hints for 3 stars, one or two for 2 stars.</li>
+                <li>A <b>hint</b> reveals the next letter of the clue you're on. You get <b>3 hints</b> a puzzle.</li>
             </ol>
+            <p><b>Daily</b>: one puzzle a day, the same for everyone. No hints for 3 stars, one hint for 2, two for 1. Use all three and it's still a pass, with no stars.</p>
+            <p><b>Practice</b>: as many puzzles as you like. Solve it for a pass, or give up and try a new one.</p>
             <button class="btn" id="helpClose">Let's play</button>
         </div>
     </div>
-    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <div class="modal-overlay" id="endModal" role="dialog" aria-modal="true" aria-labelledby="endTitle">
         <div class="modal">
-            <h2 id="winTitle">Solved!</h2>
-            <div class="stars" id="winStars"></div>
-            <div class="bigword" id="winWord"></div>
-            <div id="winDef"></div>
-            <p id="winText"></p>
-            <button class="btn" id="nextBtn">Next level</button>
-            <button class="btn secondary" id="replayBtn">Replay for 3 stars</button>
+            <button class="modal-x" id="endX" aria-label="Close">✕</button>
+            <h2 id="endTitle">Solved!</h2>
+            <div class="stars" id="endStars"></div>
+            <div class="pass" id="endPass"></div>
+            <div class="bigword" id="endWord"></div>
+            <div id="endDef"></div>
+            <p id="endText"></p>
+            <div id="endBtns"></div>
         </div>
     </div>
-    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+    <div class="modal-overlay" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
         <div class="modal">
-            <button class="modal-x" id="levelX" aria-label="Close">✕</button>
-            <h2 id="levelTitle">Levels</h2>
-            <div class="level-grid" id="levelGrid"></div>
-            <button class="btn secondary" id="levelClose">Close</button>
+            <button class="modal-x" id="statsX" aria-label="Close">✕</button>
+            <h2 id="statsTitle">Statistics</h2>
+            <h3>Daily</h3>
+            <div class="stats" id="dailyStats"></div>
+            <div class="dist" id="dailyDist"></div>
+            <h3>Practice</h3>
+            <div class="stats" id="practiceStats"></div>
+            <button class="btn secondary" id="statsClose">Close</button>
         </div>
     </div>
 
@@ -161,64 +185,87 @@
         'use strict';
         var GAME_NAME = 'Go-Between';
         var S = window.HubStorage, $ = function (id) { return document.getElementById(id); };
-        var KEY_PROGRESS = 'gobetween_progress', KEY_STARS = 'gobetween_stars', KEY_STATE = 'gobetween_state', KEY_SEEN = 'gobetween_seen';
+        var KEY_SEEN = 'gobetween_seen';
         document.body.classList.add('gb'); document.title = GAME_NAME + ' — Game Hub';
 
         // ---------- puzzles ----------
         var LINKS = window.GOBETWEEN_LINKS.map(function (s) { var p = s.split('|'); var ans = p[1].split('/'); return { left: p[0], answer: ans[0], alts: ans, right: p[2] }; });
         var BY = {}; LINKS.forEach(function (k, i) { var c = k.answer[0]; (BY[c] = BY[c] || []).push(i); });
+        var MAX_HINTS = 3;
         function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
         function shuffle(a, r) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-        function lengthFor(n) { return n <= 5 ? 4 : n <= 20 ? 5 : n % 10 === 0 ? 6 : n <= 50 ? (n % 2 ? 5 : 6) : 6; }
-        function isTough(n) { return n >= 10 && n % 10 === 0; }
         // a mystery word works if every letter has enough different clues (no two clues with the same answer)
         function feasible(w) {
             var need = {}; for (var i = 0; i < w.length; i++) need[w[i]] = (need[w[i]] || 0) + 1;
             for (var c in need) { var answers = {}; (BY[c] || []).forEach(function (k) { answers[LINKS[k].answer] = 1; }); if (Object.keys(answers).length < need[c]) return false; }
             return true;
         }
+        // shared British/American words only, so the mystery word is spelt the same for everyone
         var POOLS = {};
-        function pool(len) {
-            if (POOLS[len]) return POOLS[len];
-            var W = window.CRACKWORD_WORDS[len === 4 || len === 5 || len === 6 ? len : 6];
-            // shared British/American words only, so the mystery word is spelt the same for everyone
-            return (POOLS[len] = shuffle(W.a.split(' ').filter(feasible), rng(9000 + len)));
-        }
-        function build(n) {
-            var len = lengthFor(n), idx = 0;
-            for (var m = 1; m < n; m++) if (lengthFor(m) === len) idx++;
-            var P = pool(len), word = P[idx % P.length], r = rng(n * 7919 + 13), used = {}, clues = [];
+        function pool(len) { return POOLS[len] || (POOLS[len] = shuffle(window.CRACKWORD_WORDS[len].a.split(' ').filter(feasible), rng(9000 + len))); }
+        // clue numbers for a word: one per letter, never two with the same answer
+        function cluesFor(word, r) {
+            var used = {}, out = [];
+            used[word] = 1;   // an answer must never give away the mystery word itself
             for (var i = 0; i < word.length; i++) {
-                var opts = shuffle((BY[word[i]] || []).slice(), r).filter(function (k) { return !used[LINKS[k].answer]; });
-                var k = opts[0]; used[LINKS[k].answer] = 1; clues.push(LINKS[k]);
+                var k = shuffle((BY[word[i]] || []).slice(), r).filter(function (x) { return !used[LINKS[x].answer]; })[0];
+                used[LINKS[k].answer] = 1; out.push(k);
             }
-            return { number: n, word: word, clues: clues, tough: isTough(n) };
+            return out;
         }
+        // The daily puzzle: same for everyone on the same date. Five letters, six at weekends.
+        function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+        function dayIndex(ds) { var p = ds.split('-'); return Math.round((Date.UTC(+p[0], +p[1] - 1, +p[2]) - Date.UTC(2026, 10, 15)) / 86400000); }
+        function dailyPuzzle(ds) {
+            var di = dayIndex(ds), dow = new Date(ds + 'T12:00:00').getDay(), len = dow === 0 || dow === 6 ? 6 : 5;
+            var P = pool(len), word = P[((di % P.length) + P.length) % P.length];
+            return { word: word, clues: cluesFor(word, rng(di * 7919 + 101)), date: ds };
+        }
+        // A practice puzzle: a word you haven't had, mostly five letters
+        function practicePuzzle() {
+            var len = [4, 5, 5, 5, 6, 6][Math.floor(Math.random() * 6)];
+            var played = loadJSON('gobetween_played', []); if (!Array.isArray(played)) played = [];
+            var seen = {}; played.forEach(function (w) { seen[w] = 1; });
+            var fresh = pool(len).filter(function (w) { return !seen[w]; });
+            if (!fresh.length) { played = played.filter(function (w) { return w.length !== len; }); fresh = pool(len); }
+            var word = fresh[Math.floor(Math.random() * fresh.length)];
+            played.push(word); S.setString('gobetween_played', JSON.stringify(played));
+            return { word: word, clues: cluesFor(word, Math.random) };
+        }
+        function loadJSON(k, d) { try { var v = JSON.parse(S.getString(k, 'null')); return v === null ? d : v; } catch (e) { return d; } }
 
         // ---------- state ----------
-        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
-        var stars = (function () { var out = {}; try { var o = JSON.parse(S.getString(KEY_STARS, '{}')); if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (/^\d+$/.test(k) && [1, 2, 3].indexOf(o[k]) !== -1) out[k] = o[k]; }); } catch (e) { /* ignore */ } return out; })();
-        var levelNo = progress.level, P = null, entry = [], solved = [], hinted = [], mystery = '', mysterySolved = false, hints = 0, done = false, sel = 0, pos = 0;
+        // mode: 'daily' or 'practice'. Each keeps its own puzzle in progress.
+        var mode = S.getString('gobetween_mode', 'daily') === 'practice' ? 'practice' : 'daily';
+        var P = null, entry = [], solved = [], hinted = [], mystery = '', mysterySolved = false, hints = 0, done = false, result = null, sel = 0, pos = 0;
         // sel: -1 = the mystery word, otherwise a clue number; pos: the letter being typed
-        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, entry: entry, solved: solved, hinted: hinted, mystery: mystery, mysterySolved: mysterySolved, hints: hints, done: done })); }
-        function load(n) {
-            try {
-                var o = JSON.parse(S.getString(KEY_STATE, 'null'));
-                if (!o || o.v !== 1 || o.level !== n || !Array.isArray(o.entry) || o.entry.length !== P.clues.length) return false;
-                entry = o.entry; solved = o.solved; hinted = o.hinted || P.clues.map(function () { return []; }); mystery = o.mystery || ''; mysterySolved = !!o.mysterySolved; hints = o.hints | 0; done = !!o.done;
-                return true;
-            } catch (e) { return false; }
+        function key() { return mode === 'daily' ? 'gobetween_daily' : 'gobetween_practice'; }
+        function save() { S.setString(key(), JSON.stringify({ v: 2, word: P.word, clues: P.clueIds, date: P.date || null, entry: entry, solved: solved, hinted: hinted, mystery: mystery, mysterySolved: mysterySolved, hints: hints, done: done, result: result })); }
+        function blank() {
+            entry = P.clues.map(function (c) { return Array(c.answer.length + 1).join(' '); });
+            solved = P.clues.map(function () { return false; }); hinted = P.clues.map(function () { return []; });
+            mystery = Array(P.word.length + 1).join(' '); mysterySolved = false; hints = 0; done = false; result = null;
         }
-        function start(n) {
-            levelNo = n; P = build(n);
-            if (!load(n)) {
-                entry = P.clues.map(function (c) { return Array(c.answer.length + 1).join(' '); });
-                solved = P.clues.map(function () { return false; }); hinted = P.clues.map(function () { return []; });
-                mystery = Array(P.word.length + 1).join(' '); mysterySolved = false; hints = 0; done = false;
+        function use(pz) { P = { word: pz.word, clueIds: pz.clues, clues: pz.clues.map(function (k) { return LINKS[k]; }), date: pz.date }; }
+        function load() {
+            var o = loadJSON(key(), null);
+            if (mode === 'daily' && (!o || o.date !== today())) o = null;
+            if (o && o.v === 2 && Array.isArray(o.clues) && o.clues.every(function (k) { return LINKS[k] && LINKS[k].answer; })) {
+                use({ word: o.word, clues: o.clues, date: o.date });
+                if (Array.isArray(o.entry) && o.entry.length === P.clues.length) {
+                    entry = o.entry; solved = o.solved; hinted = o.hinted; mystery = o.mystery; mysterySolved = !!o.mysterySolved; hints = o.hints | 0; done = !!o.done; result = o.result || null;
+                    return true;
+                }
             }
-            ['winModal', 'levelModal'].forEach(closeModal);
-            $('levelBtn').innerHTML = 'Level ' + n + (P.tough ? ' · <span class="tough">Tough</span>' : '') + ' ▾';
-            sel = firstOpen(); pos = nextEmpty(sel, -1);
+            return false;
+        }
+        function start(newPractice) {
+            if (newPractice || !load()) { use(mode === 'daily' ? dailyPuzzle(today()) : practicePuzzle()); blank(); }
+            closeModal('endModal');
+            $('dailyTab').classList.toggle('on', mode === 'daily'); $('practiceTab').classList.toggle('on', mode === 'practice');
+            $('dailyTab').setAttribute('aria-selected', mode === 'daily'); $('practiceTab').setAttribute('aria-selected', mode === 'practice');
+            $('sub').textContent = mode === 'daily' ? 'Daily · ' + new Date(today() + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Practice';
+            sel = firstOpen(); pos = sel < -1 ? 0 : nextEmpty(sel, -1);
             render(); save();
         }
         function firstOpen() { for (var i = 0; i < P.clues.length; i++) if (!solved[i]) return i; return -1; }
@@ -254,8 +301,11 @@
                 return '<div class="clue' + (solved[i] ? ' solved' : '') + (i === sel ? ' sel' : '') + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + esc(c.left + ', blank, ' + c.right + '. ' + c.answer.length + ' letters' + (solved[i] ? ': ' + c.answer : '')) + '">' +
                     '<span class="l">' + esc(c.left) + '</span><span class="tiles">' + tileRow(i) + '</span><span class="r">' + esc(c.right) + '</span></div>';
             }).join('');
-            $('hintBtn').disabled = done;
-            $('hintNote').textContent = hints ? hints + ' used' : 'reveals a letter';
+            var left = MAX_HINTS - hints;
+            $('hintBtn').disabled = done || left <= 0;
+            $('hintNote').textContent = left + ' left';
+            $('giveBtn').textContent = done ? (mode === 'practice' ? 'New puzzle' : 'See result') : 'Give up';
+            tally();
         }
 
         // ---------- typing ----------
@@ -301,7 +351,7 @@
             toast('Not quite'); buzz(30);
         }
         function afterSolve() {
-            if (solved.every(Boolean)) { mysterySolved = true; mystery = P.word; finish(); return; }
+            if (solved.every(Boolean)) { mysterySolved = true; mystery = P.word; finish(true); return; }
             sel = firstOpenFrom(sel); pos = sel === -2 ? 0 : nextEmpty(sel, -1);
             render(); save();
         }
@@ -313,8 +363,8 @@
 
         // ---------- hints ----------
         function hint() {
-            if (done) return;
-            if (sel < 0 || solved[sel]) { if (mysterySolved || sel < 0) { var o = firstOpen(); if (o < 0) return; sel = o; } }
+            if (done || hints >= MAX_HINTS) return;
+            if (sel < 0 || solved[sel]) { var o = firstOpen(); if (o < 0) return; sel = o; }
             var c = P.clues[sel], e = entry[sel].split(''), p = -1;
             for (var k = 0; k < c.answer.length; k++) if (e[k] !== c.answer[k]) { p = k; break; }
             if (p < 0) return;
@@ -325,37 +375,80 @@
             pos = nextEmpty(sel, p); render(); save();
         }
 
-        // ---------- finishing ----------
-        function starsFor() { return hints === 0 ? 3 : hints <= 2 ? 2 : 1; }
-        function finish() {
-            done = true; render(); save();
-            var s = starsFor();
-            if (s > (stars[levelNo] || 0)) stars[levelNo] = s;
-            if (levelNo + 1 > progress.level) progress.level = levelNo + 1;
-            S.setObject(KEY_PROGRESS, progress); S.setString(KEY_STARS, JSON.stringify(stars));
-            var h = ''; for (var i = 1; i <= 3; i++) h += '<span class="' + (i <= s ? 'lit' : '') + '">★</span>';
-            $('winStars').innerHTML = h; $('winStars').setAttribute('aria-label', s + ' of 3 stars');
-            $('winWord').textContent = P.word;
+        // ---------- results ----------
+        // Daily: 3 stars for no hints, 2 for one, 1 for two, a pass with no stars for three. Give up = missed.
+        function dstats() { var o = loadJSON('gobetween_dstats', null); if (!o || !Array.isArray(o.stars) || o.stars.length !== 4) o = { played: 0, passed: 0, streak: 0, best: 0, stars: [0, 0, 0, 0], last: null }; return o; }
+        function pstats() { var o = loadJSON('gobetween_pstats', null); if (!o || typeof o.played !== 'number') o = { played: 0, passed: 0 }; return o; }
+        function starsFor(h) { return Math.max(0, 3 - h); }
+        function yesterday(ds) { var d = new Date(ds + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+        function record(pass) {
+            if (mode === 'daily') {
+                var s = dstats(); if (s.last === P.date) return;
+                s.played++; if (pass) { s.passed++; s.stars[starsFor(hints)]++; s.streak = s.last === yesterday(P.date) ? s.streak + 1 : 1; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
+                s.last = P.date; S.setString('gobetween_dstats', JSON.stringify(s));
+            } else { var t = pstats(); t.played++; if (pass) t.passed++; S.setString('gobetween_pstats', JSON.stringify(t)); }
+        }
+        function finish(pass) {
+            done = true; result = pass ? 'pass' : 'fail';
+            if (!pass) { P.clues.forEach(function (c, i) { entry[i] = c.answer; solved[i] = true; }); mystery = P.word; mysterySolved = true; }
+            record(pass); render(); save();
+            if (pass) buzz(40);
+            setTimeout(showEnd, pass ? 500 : 200);
+        }
+        function showEnd() {
+            var pass = result === 'pass', st = starsFor(hints);
+            $('endTitle').textContent = pass ? 'Solved!' : 'Here are the answers';
+            var h = ''; if (mode === 'daily' && pass) for (var i = 1; i <= 3; i++) h += '<span class="' + (i <= st ? 'lit' : '') + '">★</span>';
+            $('endStars').innerHTML = h; $('endStars').style.display = h ? '' : 'none';
+            $('endStars').setAttribute('aria-label', st + ' of 3 stars');
+            $('endPass').textContent = pass ? (mode === 'daily' ? (st === 0 ? 'A pass, no stars' : '') : 'Pass') : 'Missed';
+            $('endPass').style.color = pass ? '' : '#b4473e';
+            $('endWord').textContent = P.word;
             var d = (window.CRACKWORD_DEFS || {})[P.word], SP = window.CrackSpelling;
-            $('winDef').innerHTML = d ? '<div class="defn"><p>' + (d[0] ? '<span class="pos">' + esc(d[0]) + '</span>' : '') + esc(SP ? SP.text(d[1]) : d[1]) + '</p>' + (d[2] ? '<p class="ex">“' + esc(SP ? SP.text(d[2]) : d[2]) + '”</p>' : '') + '</div>' : '';
-            $('winText').textContent = hints ? 'Solved with ' + hints + ' hint' + (hints === 1 ? '' : 's') + '.' + (s < 3 ? ' Solve it with no hints for 3 stars.' : '') : 'Solved with no hints!';
-            $('replayBtn').style.display = s === 3 ? 'none' : '';
-            buzz(40);
-            setTimeout(function () { openModal('winModal'); }, 500);
+            $('endDef').innerHTML = d ? '<div class="defn"><p>' + (d[0] ? '<span class="pos">' + esc(d[0]) + '</span>' : '') + esc(SP ? SP.text(d[1]) : d[1]) + '</p>' + (d[2] ? '<p class="ex">“' + esc(SP ? SP.text(d[2]) : d[2]) + '”</p>' : '') + '</div>' : '';
+            $('endText').textContent = pass ? (hints ? 'Solved with ' + hints + ' hint' + (hints === 1 ? '' : 's') + '.' : 'Solved with no hints!') : '';
+            $('endBtns').innerHTML = mode === 'daily'
+                ? '<button class="btn" id="shareBtn">Share</button><button class="btn secondary" id="toPractice">Play practice puzzles</button>'
+                : '<button class="btn" id="nextBtn">Next puzzle</button>';
+            if ($('shareBtn')) $('shareBtn').addEventListener('click', share);
+            if ($('toPractice')) $('toPractice').addEventListener('click', function () { setMode('practice'); });
+            if ($('nextBtn')) $('nextBtn').addEventListener('click', function () { start(true); });
+            openModal('endModal');
+        }
+        function share() {
+            var st = starsFor(hints), pass = result === 'pass';
+            var text = GAME_NAME + ' daily · ' + new Date(P.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '\n' +
+                (pass ? (st ? '★★★☆☆☆'.slice(3 - st, 6 - st) : 'Passed') + ' (' + (hints ? hints + ' hint' + (hints === 1 ? '' : 's') : 'no hints') + ')' : 'Missed') +
+                '\n' + location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '');
+            if (navigator.share) { navigator.share({ text: text }).catch(function () { /* cancelled */ }); return; }
+            try { navigator.clipboard.writeText(text).then(function () { toast('Copied to clipboard'); }, function () { toast('Couldn\'t copy'); }); } catch (e) { toast('Couldn\'t copy'); }
+        }
+        function tally() {
+            if (mode === 'daily') {
+                var s = dstats(), pct = s.played ? Math.round(100 * s.passed / s.played) + '%' : '–';
+                $('tally').innerHTML = '<span aria-label="Daily streak ' + s.streak + '">🔥 ' + s.streak + '</span><span aria-label="Pass rate ' + pct + '">' + pct + '</span>';
+            } else {
+                var t = pstats(), pc = t.played ? Math.round(100 * t.passed / t.played) + '%' : '–';
+                $('tally').innerHTML = '<span aria-label="' + t.passed + ' solved"><b class="ok">✓</b> ' + t.passed + '</span><span aria-label="' + (t.played - t.passed) + ' missed"><b class="no">✕</b> ' + (t.played - t.passed) + '</span><span aria-label="Success rate ' + pc + '">' + pc + '</span>';
+            }
+        }
+        function openStats() {
+            var s = dstats(), t = pstats(), sum = s.stars[1] + 2 * s.stars[2] + 3 * s.stars[3];
+            $('dailyStats').innerHTML = '<div>' + s.played + '<small>Played</small></div><div>' + (s.played ? Math.round(100 * s.passed / s.played) : 0) + '<small>Pass %</small></div><div>' + s.streak + '<small>Streak</small></div><div>' + sum + '<small>Stars won</small></div>';
+            var rows = [[3, '★★★'], [2, '★★'], [1, '★'], [0, 'Pass']], max = Math.max(1, s.played - s.passed, s.stars[0], s.stars[1], s.stars[2], s.stars[3]);
+            var html = rows.map(function (r) { var v = s.stars[r[0]], now = mode === 'daily' && done && result === 'pass' && starsFor(hints) === r[0]; return '<div class="bar2' + (now ? ' now' : '') + '"><span>' + r[1] + '</span><span style="width:' + Math.max(8, Math.round(80 * v / max)) + '%">' + v + '</span></div>'; }).join('');
+            html += '<div class="bar2"><span style="color:#b4473e">Missed</span><span style="width:' + Math.max(8, Math.round(80 * (s.played - s.passed) / max)) + '%;background:#c98b85">' + (s.played - s.passed) + '</span></div>';
+            $('dailyDist').innerHTML = html;
+            $('practiceStats').innerHTML = '<div>' + t.played + '<small>Played</small></div><div>' + t.passed + '<small>Solved</small></div><div>' + (t.played - t.passed) + '<small>Missed</small></div><div>' + (t.played ? Math.round(100 * t.passed / t.played) : 0) + '<small>Success %</small></div>';
+            openModal('statsModal');
         }
         function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function setMode(m) { if (mode !== m) { save(); mode = m; S.setString('gobetween_mode', m); } start(false); }
 
-        // ---------- modals and levels ----------
+        // ---------- modals ----------
         function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } }
         function closeModal(id) { $(id).classList.remove('active'); }
         function anyModal() { return document.querySelector('.modal-overlay.active'); }
-        function openLevels() {
-            var h = '', max = Math.max(progress.level, levelNo);
-            for (var n = 1; n <= max; n++) { var s = stars[n] || 0, str = ''; for (var i = 0; i < s; i++) str += '★';
-                h += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (isTough(n) ? ' tough' : '') + '" data-level="' + n + '" aria-label="Level ' + n + (s ? ', ' + s + ' stars' : '') + '">' + n + '<small>' + str + '</small></button>'; }
-            $('levelGrid').innerHTML = h; openModal('levelModal');
-            var c = $('levelGrid').querySelector('.current'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'center' });
-        }
 
         // ---------- keyboard ----------
         var KEYS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
@@ -365,11 +458,12 @@
                 row.split('').map(function (k) { return '<button class="key" data-k="' + k + '">' + k + '</button>'; }).join('') +
                 (i === 2 ? '<button class="key wide" data-k="back" aria-label="Delete">' + BACK + '</button>' : '') + (i === 1 ? '<span class="spacer"></span>' : '') + '</div>';
         }).join('');
-        $('keyboard').addEventListener('click', function (e) { var k = e.target.closest('.key'); if (!k) return; var v = k.dataset.k; if (v === 'enter') check(); else if (v === 'back') back(); else type(v); });
+        function enter() { if (done) { if (mode === 'practice') start(true); else showEnd(); return; } check(); }
+        $('keyboard').addEventListener('click', function (e) { var k = e.target.closest('.key'); if (!k) return; var v = k.dataset.k; if (v === 'enter') enter(); else if (v === 'back') back(); else type(v); });
         document.addEventListener('keydown', function (e) {
             if (e.ctrlKey || e.metaKey || e.altKey) return;
-            if (anyModal()) { if (e.key === 'Escape') { closeModal('levelModal'); closeHelp(); } return; }
-            if (e.key === 'Enter') { e.preventDefault(); check(); }
+            if (anyModal()) { if (e.key === 'Escape') { closeModal('statsModal'); closeModal('endModal'); closeHelp(); } return; }
+            if (e.key === 'Enter') { e.preventDefault(); enter(); }
             else if (e.key === 'Backspace') { e.preventDefault(); back(); }
             else if (e.key === 'ArrowDown') { e.preventDefault(); select(Math.min(P.clues.length - 1, sel + 1)); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(-1, sel - 1)); }
@@ -380,20 +474,27 @@
         $('clues').addEventListener('click', function (e) { var c = e.target.closest('.clue'); if (!c) return; var t = e.target.closest('.tile'); select(+c.dataset.i, t ? +t.dataset.p : null); });
         $('mystery').addEventListener('click', function (e) { if (mysterySolved) return; var t = e.target.closest('.tile'); select(-1, t ? +t.dataset.p : null); });
         $('hintBtn').addEventListener('click', hint);
+        // Give up (daily: shows the answers, counted as missed) / New puzzle (practice, once finished)
+        $('giveBtn').addEventListener('click', function () {
+            if (done) { if (mode === 'practice') start(true); else showEnd(); return; }
+            if (!window.confirm || window.__noConfirm || window.confirm(mode === 'daily' ? 'Give up today\'s puzzle? It will count as missed.' : 'Give up and see the answers? It will count as missed.')) finish(false);
+        });
+        $('dailyTab').addEventListener('click', function () { setMode('daily'); });
+        $('practiceTab').addEventListener('click', function () { setMode('practice'); });
         function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
         $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
         $('helpClose').addEventListener('click', closeHelp); $('helpX').addEventListener('click', closeHelp);
-        $('levelBtn').addEventListener('click', openLevels);
-        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); }); $('levelX').addEventListener('click', function () { closeModal('levelModal'); });
-        $('levelGrid').addEventListener('click', function (e) { var b = e.target.closest('.level-cell'); if (!b) return; var n = +b.dataset.level; if (n !== levelNo) { S.setString(KEY_STATE, 'null'); start(n); } else closeModal('levelModal'); });
-        $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo + 1); });
-        $('replayBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo); });
-        ['helpModal', 'levelModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+        $('statsBtn').addEventListener('click', openStats);
+        $('statsClose').addEventListener('click', function () { closeModal('statsModal'); }); $('statsX').addEventListener('click', function () { closeModal('statsModal'); });
+        $('endX').addEventListener('click', function () { closeModal('endModal'); });
+        ['helpModal', 'statsModal', 'endModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+        // a new day while the page is open: pick up the new daily puzzle
+        document.addEventListener('visibilitychange', function () { if (!document.hidden && mode === 'daily' && P && P.date !== today()) start(false); });
 
-        start(levelNo);
+        start(false);
         if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
-        window.__gb = function () { return { P: P, entry: entry, solved: solved, sel: sel, pos: pos, hints: hints, done: done, mysterySolved: mysterySolved }; };
-        window.__gbBuild = build;
+        window.__gb = function () { return { P: P, entry: entry, solved: solved, sel: sel, pos: pos, hints: hints, done: done, mysterySolved: mysterySolved, mode: mode, result: result }; };
+        window.__gbDaily = dailyPuzzle;
     })();
     </script>
 </body>
