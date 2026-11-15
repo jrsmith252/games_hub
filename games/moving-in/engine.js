@@ -254,7 +254,8 @@
         return null;
     }
 
-    var api = { generate: generate, plan: plan, rotate: rotate, orientations: orientations, problems: problems, countSolutions: countSolutions, DIRS: DIRS, edgeKey: edgeKey };
+    // the game screen checks this matches, so it never runs with an out-of-date copy of this file
+    var api = { VERSION: 2, generate: generate, plan: plan, rotate: rotate, orientations: orientations, problems: problems, countSolutions: countSolutions, DIRS: DIRS, edgeKey: edgeKey };
     root.MovingIn = api;
     if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

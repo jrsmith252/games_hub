@@ -117,6 +117,17 @@
 
     <script src="engine.js"></script>
     <script>
+    // If a stale copy of engine.js was served (a cache somewhere between here and the server), fetch the
+    // current one before starting, so the levels and the screen always match.
+    (function boot(tries) {
+        var NEED = 2;
+        if (window.MovingIn && window.MovingIn.VERSION === NEED) { start(); return; }
+        if (tries > 1) { start(); return; }
+        var s = document.createElement('script'); s.src = 'engine.js?v=' + NEED + '&t=' + Date.now();
+        s.onload = s.onerror = function () { boot(tries + 1); };
+        document.head.appendChild(s);
+    })(0);
+    function start() {
     (function () {
         'use strict';
         var GAME_NAME = 'Moving In';
@@ -137,10 +148,12 @@
         function closeModal(id) { $(id).classList.remove('active'); }
 
         // ---------- state ----------
-        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 2, level: levelNo, pcs: pcs.map(function (p) { return { cells: p.cells, doors: p.doors, at: p.at }; }), solved: solvedFlag })); }
+        // a fingerprint of the level, so a saved game is only reused for exactly the same floor plan
+        function levelSig() { return L.pieces.map(function (p) { return p.name + p.cells.length + ':' + p.doors.map(String).join('/'); }).join('|') + '#' + L.fixedGrid.join(','); }
+        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 3, sig: levelSig(), level: levelNo, pcs: pcs.map(function (p) { return { cells: p.cells, doors: p.doors, at: p.at }; }), solved: solvedFlag })); }
         function load() {
             try { var o = JSON.parse(S.getString(KEY_STATE, 'null'));
-                if (!o || o.v !== 2 || o.level !== levelNo || !Array.isArray(o.pcs) || o.pcs.length !== L.pieces.length) return false;
+                if (!o || o.v !== 3 || o.sig !== levelSig() || o.level !== levelNo || !Array.isArray(o.pcs) || o.pcs.length !== L.pieces.length) return false;
                 pcs = o.pcs.map(function (p, i) { return { cells: p.cells, doors: p.doors, name: L.pieces[i].name, at: p.at }; }); solvedFlag = !!o.solved; return true;
             } catch (e) { return false; }
         }
@@ -397,6 +410,7 @@
         window.__mi = function () { return { L: L, pcs: pcs, cell: cell, solved: solvedFlag }; };
         window.__hint = hint;
     })();
+    }
     </script>
 </body>
 </html>
