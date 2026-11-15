@@ -91,8 +91,8 @@
                 <li>Some rooms are missing from the floor plan. <b>Drag</b> each room from the tray into the empty space. (Or tap a room, then tap where its top-left square should go.)</li>
                 <li><b>Doors must line up.</b> Where two rooms meet, a door on one side needs a door on the other. A gap in a wall is a door.</li>
                 <li>A door <b>opens one way</b>, into one of the two rooms. A gap with no swing means the door opens into the room that goes there, so that room must show the swing.</li>
-                <li>Only the <b>front door</b> opens to the outside. No other door can lead out of the house.</li>
-                <li>From level 12 the rooms may need <b>turning</b>: choose a room and tap Turn.</li>
+                <li>Only the <b>front door</b> (the Entry's door with the brown doormat) opens to the outside. No other door can lead out of the house.</li>
+                <li>From level 12 the rooms may need <b>turning</b>: tap a room to choose it, then tap it again (or tap Turn) to turn it.</li>
                 <li>Doors that don't line up show in <b style="color:#d64545">red</b>. Tap a placed room to send it back to the tray.</li>
             </ol>
             <p>Every floor plan has exactly one way to fit. Stuck? A hint puts one room in its place.</p>
@@ -229,6 +229,12 @@
                     el('line', { x1: ax, y1: ay, x2: hx, y2: hy, stroke: col, 'stroke-width': Math.max(1.5, sw * 0.6) }, g);
                     el('path', { d: 'M' + hx + ' ' + hy + ' A' + len + ' ' + len + ' 0 0 ' + (cross > 0 ? 1 : 0) + ' ' + bx + ' ' + by, fill: 'none', stroke: col, 'stroke-width': Math.max(1, sw * 0.4) }, g);
                     if (bad) el('circle', { cx: (sg[0] + sg[2]) / 2, cy: (sg[1] + sg[3]) / 2, r: cs * 0.14, fill: 'rgba(214,69,69,0.25)', stroke: '#d64545', 'stroke-width': 2 }, g);
+                    if (doorMap[c + ':' + d + ':front']) {
+                        // a doormat just outside the front door
+                        var ox2 = DIRS[d][1] * cs * 0.16, oy2 = DIRS[d][0] * cs * 0.16, mw = Math.abs(sg[2] - sg[0]) * 0.6 || cs * 0.12, mh = Math.abs(sg[3] - sg[1]) * 0.6 || cs * 0.12;
+                        var mx2 = (sg[0] + sg[2]) / 2 + ox2, my2 = (sg[1] + sg[3]) / 2 + oy2;
+                        el('rect', { x: mx2 - mw / 2, y: my2 - mh / 2, width: mw, height: mh, rx: 2, fill: '#b5651d', stroke: '#7a3f10', 'stroke-width': 1 }, g);
+                    }
                 } }
             // labels
             var seen = {};
@@ -268,7 +274,7 @@
             var h = 1 + Math.max.apply(null, p.cells.map(function (c) { return c[0]; })), w = 1 + Math.max.apply(null, p.cells.map(function (c) { return c[1]; }));
             var grid = []; for (var i = 0; i < h * w; i++) grid.push(-2);
             p.cells.forEach(function (c) { grid[c[0] * w + c[1]] = 0; });
-            var dm = {}; p.doors.forEach(function (d) { var k = (d[0] * w + d[1]) + ':' + d[2]; dm[k] = 1; if (d[4]) dm[k + ':in'] = 1; });
+            var dm = {}; p.doors.forEach(function (d) { var k = (d[0] * w + d[1]) + ':' + d[2]; dm[k] = 1; if (d[4]) dm[k + ':in'] = 1; if (d[3]) dm[k + ':front'] = 1; });
             var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', w * cs); svg.setAttribute('height', h * cs); svg.setAttribute('viewBox', '0 0 ' + w * cs + ' ' + h * cs);
             drawRooms(svg, h, w, cs, grid, dm, function () { return p.name; }, {});
             return svg;
@@ -290,6 +296,13 @@
             pcs[i].at = at; sel = -1; buzz(10);
             announce(pcs[i].name + ' placed.');
             drawBoard(); drawTray(); save(); return true;
+        }
+        // while dragging: outline the squares the room would cover (green if it fits, otherwise nothing)
+        function ghost(i, at) {
+            var old = $('board').querySelector('#ghost'); if (old) old.remove();
+            if (i < 0 || !fitsAt(i, at, false)) return;
+            var g = el('g', { id: 'ghost', 'pointer-events': 'none' }, $('board'));
+            pcs[i].cells.forEach(function (c) { el('rect', { x: (at[1] + c[1]) * cell + 2, y: (at[0] + c[0]) * cell + 2, width: cell - 4, height: cell - 4, rx: 4, fill: 'rgba(63,143,79,0.18)', stroke: '#3f8f4f', 'stroke-width': 2, 'stroke-dasharray': '5 3' }, g); });
         }
         function unplace(i) { pcs[i].at = null; announce(pcs[i].name + ' back in the tray.'); drawBoard(); drawTray(); save(); }
         function turn() {
@@ -355,6 +368,8 @@
             }
             if (!drag.moving) return;
             drag.fl.style.left = (e.clientX - drag.offX) + 'px'; drag.fl.style.top = (e.clientY - drag.offY) + 'px';
+            var br0 = $('board').getBoundingClientRect();
+            ghost(drag.i, [Math.round((e.clientY - drag.offY - br0.top) / cell), Math.round((e.clientX - drag.offX - br0.left) / cell)]);
         });
         window.addEventListener('pointerup', function (e) {
             if (!drag || e.pointerId !== drag.pid) return;
@@ -362,16 +377,19 @@
             if (d.boardTap) { if (sel >= 0) { var c = boardCell(e.clientX, e.clientY); var f0 = pcs[sel].cells.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; })[0]; if (!place(sel, [c[0] - f0[0], c[1] - f0[1]])) toast('It doesn\'t fit there'); } return; }
             if (!d.moving) {
                 // a tap: on the board sends the room back; in the tray chooses it
-                if (d.fromBoard) unplace(d.i); else { sel = sel === d.i ? -1 : d.i; drawTray(); if (sel >= 0) announce(pcs[sel].name + ' chosen. Tap the plan to place it' + (L.rotate ? ', or Turn it first.' : '.')); }
+                // a tap: on the board sends the room back; in the tray chooses it, and tapping it again turns it
+                if (d.fromBoard) unplace(d.i);
+                else if (sel === d.i && L.rotate) turn();
+                else { sel = sel === d.i ? -1 : d.i; drawTray(); if (sel >= 0) announce(pcs[sel].name + ' chosen. Tap the plan to place it' + (L.rotate ? ', or tap it again to turn it.' : '.')); }
                 return;
             }
-            d.fl.remove();
+            d.fl.remove(); ghost(-1);
             var br = $('board').getBoundingClientRect();
             var at = [Math.round((e.clientY - d.offY - br.top) / cell), Math.round((e.clientX - d.offX - br.left) / cell)];
             var i2 = d.i, was = pcs[i2].lift; delete pcs[i2].lift;
             if (!place(i2, at)) { pcs[i2].at = null; if (was && e.clientY < br.bottom) toast('It doesn\'t fit there'); drawBoard(); drawTray(); save(); }
         });
-        window.addEventListener('pointercancel', function () { if (drag && drag.fl) drag.fl.remove(); if (drag && drag.i != null && pcs[drag.i].lift) { pcs[drag.i].at = pcs[drag.i].lift; delete pcs[drag.i].lift; drawBoard(); } drag = null; });
+        window.addEventListener('pointercancel', function () { ghost(-1); if (drag && drag.fl) drag.fl.remove(); if (drag && drag.i != null && pcs[drag.i].lift) { pcs[drag.i].at = pcs[drag.i].lift; delete pcs[drag.i].lift; drawBoard(); } drag = null; });
         document.addEventListener('keydown', function (e) {
             if (document.querySelector('.modal-overlay.active')) { if (e.key === 'Escape') { closeHelp(); closeModal('levelModal'); } return; }
             var pe = document.activeElement && document.activeElement.closest && document.activeElement.closest('.piece');
