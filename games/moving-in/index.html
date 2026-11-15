@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Moving In — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #f4f3ef; --deep: #23395b; --accent: #f2b33d; --ink: #1d2433; --ink-soft: #5d6577; --line: #d9d6cc; --room: #d9d5cb; --wall: #1d2433; --gold: #f2b33d; --sel: #2f6fd6; --bad: #d64545; }
+        html, body.mi { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+        body.mi { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); }
+        .level-btn { background: none; border: 0; font: inherit; color: #fff; font-size: 0.85rem; min-height: 26px; padding: 0 8px; cursor: pointer; }
+        main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 10px 10px 0; gap: 8px; }
+        .boardWrap { flex: 1.25; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+        svg.board { overflow: visible; touch-action: none; }
+        .tray { flex: 1; min-height: 0; width: 100%; max-width: 560px; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center; gap: 12px 16px; padding: 10px; border-top: 1px dashed var(--line); overflow-y: auto; touch-action: none; }
+        .piece { position: relative; cursor: grab; border-radius: 8px; padding: 4px; border: 2px solid transparent; touch-action: none; background: none; }
+        .piece.sel { border-color: var(--sel); background: rgba(47,111,214,0.06); }
+        .piece svg { display: block; overflow: visible; pointer-events: none; }
+        .float { position: fixed; z-index: 30; pointer-events: none; opacity: 0.9; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25)); }
+        .float svg { overflow: visible; }
+        .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(244,243,239,0.97); }
+        .controls .row { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; }
+        .ctrl { flex: 1; min-height: 46px; border-radius: 12px; border: 2px solid rgba(29,36,51,0.18); background: #fff; color: var(--ink); font: inherit; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .toast { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 40; }
+        .toast.show { opacity: 1; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(29,36,51,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        .modal-overlay.active { display: flex; }
+        .modal { position: relative; width: 100%; max-width: 400px; background: #fff; border-radius: 18px; padding: 22px 20px 18px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--deep); }
+        .modal p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px; }
+        .modal ol { text-align: left; color: var(--ink-soft); font-size: 0.93rem; line-height: 1.5; padding-left: 20px; margin-bottom: 12px; }
+        .modal ol li { margin-bottom: 6px; }
+        .modal b { color: var(--ink); }
+        .modal-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; font-size: 1.5rem; color: var(--ink-soft); cursor: pointer; border-radius: 10px; }
+        .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+        .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(29,36,51,0.22); }
+        .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; padding: 2px; }
+        .level-cell { min-height: 48px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+        .level-cell.done { background: #e8f2e9; }
+        .level-cell.current { border: 2px solid var(--deep); }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        .confetti { position: fixed; top: -12px; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block">
+            <div class="game-title" id="gameTitle">Moving In</div>
+            <button class="level-btn" id="levelBtn" aria-label="Choose level">Level 1</button>
+        </div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+    </header>
+    <main>
+        <div class="boardWrap"><svg class="board" id="board" role="img" aria-label="Floor plan"></svg></div>
+        <div class="tray" id="tray" aria-label="Rooms to place"></div>
+    </main>
+    <div class="controls"><div class="row">
+        <button class="ctrl" id="turnBtn"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5"/><path d="M20 3v5.5h-5.5"/></svg>Turn</button>
+        <button class="ctrl" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint</button>
+        <button class="ctrl" id="resetBtn"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Restart</button>
+    </div></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" id="helpX" aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li>Some rooms are missing from the floor plan. <b>Drag</b> each room from the tray into the empty space. (Or tap a room, then tap where its top-left square should go.)</li>
+                <li><b>Doors must line up.</b> Where two rooms meet, a door on one side needs a door on the other. A gap in a wall with a door swing is a door.</li>
+                <li>Only the <b>front door</b> opens to the outside. No other door can lead out of the house.</li>
+                <li>From level 12 the rooms may need <b>turning</b>: choose a room and tap Turn.</li>
+                <li>Doors that don't line up show in <b style="color:#d64545">red</b>. Tap a placed room to send it back to the tray.</li>
+            </ol>
+            <p>Every floor plan has exactly one way to fit. Stuck? A hint puts one room in its place.</p>
+            <button class="btn" id="helpClose">Let's move in</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <div class="modal">
+            <h2 id="winTitle">All moved in!</h2>
+            <p id="winText"></p>
+            <button class="btn" id="nextBtn">Next level</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <button class="modal-x" id="levelX" aria-label="Close">✕</button>
+            <h2 id="levelTitle">Levels</h2>
+            <div class="level-grid" id="levelGrid"></div>
+            <button class="btn secondary" id="levelClose">Close</button>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var GAME_NAME = 'Moving In';
+        var M = window.MovingIn, S = window.HubStorage, $ = function (id) { return document.getElementById(id); };
+        var KEY_PROGRESS = 'movingin_progress', KEY_DONE = 'movingin_done', KEY_STATE = 'movingin_state', KEY_SEEN = 'movingin_seen';
+        var DIRS = M.DIRS, NS = 'http://www.w3.org/2000/svg';
+        document.body.classList.add('mi'); document.title = GAME_NAME + ' — Game Hub';
+
+        var progress = S.getObject(KEY_PROGRESS, { level: 1 }, { level: S.isPosInt });
+        var doneLv = (function () { try { var o = JSON.parse(S.getString(KEY_DONE, '{}')); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })();
+        var levelNo = progress.level, L = null, pcs = [], sel = -1, solvedFlag = false, hintsUsed = 0;
+        // pcs[i] = { cells, doors, name, at: [y,x] or null (in the tray) }
+
+        function toast(m, ms) { var t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 1600); }
+        function announce(m) { $('announce').textContent = m; }
+        function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } }
+        function openModal(id) { $(id).classList.add('active'); var b = $(id).querySelector('.btn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } } }
+        function closeModal(id) { $(id).classList.remove('active'); }
+
+        // ---------- state ----------
+        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, pcs: pcs.map(function (p) { return { cells: p.cells, doors: p.doors, at: p.at }; }), solved: solvedFlag })); }
+        function load() {
+            try { var o = JSON.parse(S.getString(KEY_STATE, 'null'));
+                if (!o || o.v !== 1 || o.level !== levelNo || !Array.isArray(o.pcs) || o.pcs.length !== L.pieces.length) return false;
+                pcs = o.pcs.map(function (p, i) { return { cells: p.cells, doors: p.doors, name: L.pieces[i].name, at: p.at }; }); solvedFlag = !!o.solved; return true;
+            } catch (e) { return false; }
+        }
+        function start(n) {
+            levelNo = n; L = M.generate(n); sel = -1; solvedFlag = false; hintsUsed = 0;
+            if (!load()) pcs = L.pieces.map(function (p) { return { cells: p.cells, doors: p.doors, name: p.name, at: null }; });
+            ['winModal', 'levelModal'].forEach(closeModal);
+            $('levelBtn').textContent = 'Level ' + n + ' ▾';
+            $('turnBtn').style.display = L.rotate ? '' : 'none';
+            layout(); save();
+        }
+
+        // ---------- the layout as it stands ----------
+        function current() {
+            var grid = L.fixedGrid.slice(), doorMap = Object.assign({}, L.fixedDoors), names = {};
+            pcs.forEach(function (p, i) { if (!p.at) return;
+                p.cells.forEach(function (c) { grid[(p.at[0] + c[0]) * L.C + p.at[1] + c[1]] = 100 + i; });
+                p.doors.forEach(function (d) { var k = ((p.at[0] + d[0]) * L.C + p.at[1] + d[1]) + ':' + d[2]; doorMap[k] = 1; if (d[3]) doorMap[k + ':front'] = 1; }); });
+            return { grid: grid, doors: doorMap };
+        }
+        function fitsAt(i, at, ignoreSelf) {
+            var cur = current(), p = pcs[i];
+            for (var k = 0; k < p.cells.length; k++) { var y = at[0] + p.cells[k][0], x = at[1] + p.cells[k][1]; if (y < 0 || y >= L.R || x < 0 || x >= L.C) return false;
+                var g = cur.grid[y * L.C + x]; if (!(g === -1 || (ignoreSelf && g === 100 + i))) return false; }
+            return true;
+        }
+
+        // ---------- drawing ----------
+        var cell = 40, ox = 0, oy = 0;
+        function layout() {
+            var wrap = document.querySelector('.boardWrap'), w = Math.min(wrap.clientWidth - 24, 520), h = wrap.clientHeight - 24;
+            cell = Math.floor(Math.max(24, Math.min(w / L.C, h / L.R, 70)));
+            drawBoard(); drawTray();
+        }
+        function el(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+        // draw a set of rooms on a grid: grid (cell -> id, -1 empty, -2 outside), door map, names per id
+        function drawRooms(svg, R, C, cs, grid, doorMap, nameOf, opts) {
+            opts = opts || {};
+            var g = el('g', {}, svg);
+            var isRoom = function (v) { return v >= 0; };
+            // floor
+            for (var c = 0; c < R * C; c++) { var v = grid[c]; if (v === -2 || v === undefined) continue;
+                var y = Math.floor(c / C), x = c % C;
+                el('rect', { x: x * cs, y: y * cs, width: cs, height: cs, fill: isRoom(v) ? (opts.fill || '#d9d5cb') : '#ffffff', stroke: isRoom(v) ? 'none' : '#d6d3ca', 'stroke-width': 1 }, g); }
+            // the house outline in gold, under the walls
+            if (opts.outline) for (c = 0; c < R * C; c++) { if (grid[c] === -2) continue; var y2 = Math.floor(c / C), x2 = c % C;
+                for (var d = 0; d < 4; d++) { var yy = y2 + DIRS[d][0], xx = x2 + DIRS[d][1]; if (yy >= 0 && yy < R && xx >= 0 && xx < C && grid[yy * C + xx] !== -2) continue;
+                    var s = seg(y2, x2, d, cs, 0); el('line', { x1: s[0], y1: s[1], x2: s[2], y2: s[3], stroke: '#f2b33d', 'stroke-width': cs * 0.22, 'stroke-linecap': 'square' }, g); } }
+            // walls and doors
+            for (c = 0; c < R * C; c++) { var vv = grid[c]; if (!isRoom(vv)) continue; var y3 = Math.floor(c / C), x3 = c % C;
+                for (d = 0; d < 4; d++) {
+                    var y4 = y3 + DIRS[d][0], x4 = x3 + DIRS[d][1], k = y4 * C + x4, inGrid = y4 >= 0 && y4 < R && x4 >= 0 && x4 < C;
+                    var other = inGrid ? grid[k] : -2;
+                    if (other === vv) continue;
+                    // draw each shared wall once (from the lower-numbered cell), outside walls always
+                    if (isRoom(other) && k < c) continue;
+                    var door = !!doorMap[c + ':' + d] || (isRoom(other) && !!doorMap[k + ':' + (d + 2) % 4]);
+                    var bad = opts.bad && opts.bad[c + ':' + d];
+                    var sg = seg(y3, x3, d, cs, 0), sw = Math.max(2.5, cs * 0.075), col = bad ? '#d64545' : '#1d2433';
+                    if (!door) { el('line', { x1: sg[0], y1: sg[1], x2: sg[2], y2: sg[3], stroke: col, 'stroke-width': sw, 'stroke-linecap': 'square' }, g); continue; }
+                    // a door: short wall stubs, a gap, and a quarter-circle swing into this room
+                    var t = 0.18, ax = sg[0] + (sg[2] - sg[0]) * t, ay = sg[1] + (sg[3] - sg[1]) * t, bx = sg[2] - (sg[2] - sg[0]) * t, by = sg[3] - (sg[3] - sg[1]) * t;
+                    el('line', { x1: sg[0], y1: sg[1], x2: ax, y2: ay, stroke: col, 'stroke-width': sw }, g);
+                    el('line', { x1: bx, y1: by, x2: sg[2], y2: sg[3], stroke: col, 'stroke-width': sw }, g);
+                    // the door leaf swings into this cell's room: hinge at one end of the gap, arc to the other
+                    var len = cs * (1 - 2 * t), inX = -DIRS[d][1], inY = -DIRS[d][0];
+                    var hx = ax + inX * len, hy = ay + inY * len;
+                    var cross = (hx - ax) * (by - ay) - (hy - ay) * (bx - ax);
+                    el('line', { x1: ax, y1: ay, x2: hx, y2: hy, stroke: col, 'stroke-width': Math.max(1.5, sw * 0.6) }, g);
+                    el('path', { d: 'M' + hx + ' ' + hy + ' A' + len + ' ' + len + ' 0 0 ' + (cross > 0 ? 1 : 0) + ' ' + bx + ' ' + by, fill: 'none', stroke: col, 'stroke-width': Math.max(1, sw * 0.4) }, g);
+                    if (bad) el('circle', { cx: (sg[0] + sg[2]) / 2, cy: (sg[1] + sg[3]) / 2, r: cs * 0.14, fill: 'rgba(214,69,69,0.25)', stroke: '#d64545', 'stroke-width': 2 }, g);
+                } }
+            // labels
+            var seen = {};
+            for (c = 0; c < R * C; c++) { var id = grid[c]; if (!isRoom(id) || seen[id]) continue; seen[id] = 1;
+                var mine = []; for (var q = 0; q < R * C; q++) if (grid[q] === id) mine.push(q);
+                var my = 0, mx = 0; mine.forEach(function (q) { my += Math.floor(q / C); mx += q % C; }); my /= mine.length; mx /= mine.length;
+                // the square nearest the middle of the room, avoiding squares with a door swinging into them
+                var best = mine[0], bd = 1e9; mine.forEach(function (q) { var dd = Math.pow(Math.floor(q / C) - my, 2) + Math.pow(q % C - mx, 2);
+                    for (var dq = 0; dq < 4; dq++) if (doorMap[q + ':' + dq]) dd += 1.5;
+                    if (dd < bd) { bd = dd; best = q; } });
+                var nm = nameOf(id); if (!nm) continue;
+                // fit the name to the room's width at that row (a corridor one square wide gets small text)
+                var row = Math.floor(best / C), span = 0; for (var q2 = 0; q2 < C; q2++) if (grid[row * C + q2] === id) span++;
+                var words = nm.split(' '), longest = Math.max.apply(null, words.map(function (w) { return w.length; }));
+                var fs = Math.min(cs * 0.3, cs * Math.min(span, 3) * 0.86 / (longest * 0.56));
+                var tx = (best % C + 0.5) * cs, ty = (Math.floor(best / C) + 0.5) * cs - (words.length - 1) * fs * 0.55;
+                words.forEach(function (w, wi) { var t2 = el('text', { x: tx, y: ty + wi * fs * 1.1, 'font-size': fs, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: '#1d2433', 'font-family': 'DM Sans, sans-serif', 'font-weight': 600 }, g); t2.textContent = w; });
+            }
+            return g;
+        }
+        function seg(y, x, d, cs) { var x0 = x * cs, y0 = y * cs; return d === 0 ? [x0, y0, x0 + cs, y0] : d === 1 ? [x0 + cs, y0, x0 + cs, y0 + cs] : d === 2 ? [x0, y0 + cs, x0 + cs, y0 + cs] : [x0, y0, x0, y0 + cs]; }
+        function drawBoard() {
+            var svg = $('board'); svg.innerHTML = '';
+            var W = L.C * cell, H = L.R * cell; svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+            var cur = current(), problems = M.problems(L, cur.grid, cur.doors), bad = {};
+            problems.forEach(function (p) { bad[p[0] + ':' + p[1]] = 1; var y = Math.floor(p[0] / L.C) + DIRS[p[1]][0], x = p[0] % L.C + DIRS[p[1]][1]; bad[(y * L.C + x) + ':' + (p[1] + 2) % 4] = 1; });
+            // only point out door problems between rooms that are both placed (or a door to the outside)
+            drawRooms(svg, L.R, L.C, cell, cur.grid, cur.doors, function (id) { return id >= 100 ? pcs[id - 100].name : L.names[id]; }, { outline: true, bad: bad });
+            // placed rooms are a lighter shade so they read as "yours"
+            pcs.forEach(function (p, i) { if (!p.at) return; p.cells.forEach(function (c2) { el('rect', { x: (p.at[1] + c2[1]) * cell, y: (p.at[0] + c2[0]) * cell, width: cell, height: cell, fill: 'rgba(242,179,61,0.16)', 'pointer-events': 'none' }, svg); }); });
+            svg.setAttribute('aria-label', 'Floor plan, ' + pcs.filter(function (p) { return !p.at; }).length + ' rooms still to place' + (problems.length ? ', some doors don\'t line up' : ''));
+            var r = svg.getBoundingClientRect(); ox = r.left; oy = r.top;
+            checkWin(cur, problems);
+        }
+        function pieceSVG(p, cs) {
+            var h = 1 + Math.max.apply(null, p.cells.map(function (c) { return c[0]; })), w = 1 + Math.max.apply(null, p.cells.map(function (c) { return c[1]; }));
+            var grid = []; for (var i = 0; i < h * w; i++) grid.push(-2);
+            p.cells.forEach(function (c) { grid[c[0] * w + c[1]] = 0; });
+            var dm = {}; p.doors.forEach(function (d) { dm[(d[0] * w + d[1]) + ':' + d[2]] = 1; });
+            var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', w * cs); svg.setAttribute('height', h * cs); svg.setAttribute('viewBox', '0 0 ' + w * cs + ' ' + h * cs);
+            drawRooms(svg, h, w, cs, grid, dm, function () { return p.name; }, {});
+            return svg;
+        }
+        function trayScale() { return Math.max(18, Math.round(cell * 0.62)); }
+        function drawTray() {
+            var t = $('tray'); t.innerHTML = '';
+            pcs.forEach(function (p, i) { if (p.at) return;
+                var b = document.createElement('div'); b.className = 'piece' + (i === sel ? ' sel' : ''); b.dataset.i = i; b.tabIndex = 0; b.setAttribute('role', 'button');
+                b.setAttribute('aria-label', p.name + ', ' + p.cells.length + ' squares, ' + p.doors.length + ' door' + (p.doors.length === 1 ? '' : 's') + (i === sel ? ', chosen' : ''));
+                b.appendChild(pieceSVG(p, trayScale())); t.appendChild(b); });
+            if (!t.children.length && !solvedFlag) { var m = document.createElement('p'); m.style.cssText = 'color:#5d6577;font-size:0.9rem;padding:8px'; m.textContent = 'All rooms placed. Red doors? Tap a room to take it back out.'; t.appendChild(m); }
+            $('turnBtn').disabled = sel < 0;
+        }
+
+        // ---------- placing ----------
+        function place(i, at) {
+            if (!fitsAt(i, at, true)) return false;
+            pcs[i].at = at; sel = -1; buzz(10);
+            announce(pcs[i].name + ' placed.');
+            drawBoard(); drawTray(); save(); return true;
+        }
+        function unplace(i) { pcs[i].at = null; announce(pcs[i].name + ' back in the tray.'); drawBoard(); drawTray(); save(); }
+        function turn() {
+            if (sel < 0 || !L.rotate) return;
+            var r = M.rotate(pcs[sel]); pcs[sel].cells = r.cells; pcs[sel].doors = r.doors; announce(pcs[sel].name + ' turned.'); drawTray(); save();
+        }
+        function checkWin(cur, problems) {
+            if (solvedFlag) return;
+            if (cur.grid.indexOf(-1) >= 0 || problems.length || pcs.some(function (p) { return !p.at; })) return;
+            solvedFlag = true; save();
+            doneLv[levelNo] = 1; S.setString(KEY_DONE, JSON.stringify(doneLv));
+            if (levelNo + 1 > progress.level) { progress.level = levelNo + 1; S.setObject(KEY_PROGRESS, progress); }
+            $('winText').textContent = hintsUsed ? 'Done, with ' + hintsUsed + ' hint' + (hintsUsed === 1 ? '' : 's') + '.' : 'Every room fits and every door lines up.';
+            buzz(40); confetti();
+            setTimeout(function () { openModal('winModal'); }, 700);
+        }
+        // a hint puts one missing room exactly where it belongs (moving anything in its way back to the tray)
+        function hint() {
+            if (solvedFlag) return;
+            var i = -1; for (var k = 0; k < pcs.length; k++) { if (!rightPlace(k)) { i = k; break; } } if (i < 0) return;
+            var target = L.pieces[i].room, cellsAt = []; L.owner.forEach(function (o, c) { if (o === target) cellsAt.push(c); });
+            pcs.forEach(function (p, j) { if (j === i || !p.at) return; if (p.cells.some(function (c) { return cellsAt.indexOf((p.at[0] + c[0]) * L.C + p.at[1] + c[1]) >= 0; })) p.at = null; });
+            // turn it to the way it sits in the house
+            var orig = solutionShape(i), r = { cells: pcs[i].cells, doors: pcs[i].doors };
+            for (var t = 0; t < 4 && sig(r) !== sig(orig); t++) r = M.rotate(r);
+            pcs[i].cells = r.cells; pcs[i].doors = r.doors; pcs[i].at = L.pieces[i].at.slice();
+            hintsUsed++; sel = -1;
+            announce('Hint: ' + pcs[i].name + ' placed.'); toast(pcs[i].name + ' is in its place');
+            drawBoard(); drawTray(); save();
+        }
+        function sig(p) { return p.cells.map(String).sort().join(';') + '|' + p.doors.map(String).sort().join(';'); }
+        function solutionShape(i) { var p = L.pieces[i], r = { cells: p.cells, doors: p.doors }; for (var t = 0; t < (4 - (p.turns || 0)) % 4; t++) r = M.rotate(r); return r; }
+        function rightPlace(i) { var p = pcs[i]; if (!p.at) return false; var s = solutionShape(i); return p.at[0] === L.pieces[i].at[0] && p.at[1] === L.pieces[i].at[1] && sig(p) === sig(s); }
+
+        // ---------- pointer: drag from the tray or the board; tap to choose; tap the board to place ----------
+        var drag = null;
+        function boardCell(x, y) { var r = $('board').getBoundingClientRect(); return [Math.floor((y - r.top) / cell), Math.floor((x - r.left) / cell)]; }
+        function pieceAtBoard(x, y) { var c = boardCell(x, y); if (c[0] < 0 || c[1] < 0 || c[0] >= L.R || c[1] >= L.C) return -1; var g = current().grid[c[0] * L.C + c[1]]; return g >= 100 ? g - 100 : -1; }
+        function startDrag(e, i, fromBoard) {
+            var p = pcs[i], rect;
+            if (fromBoard) { var br = $('board').getBoundingClientRect(); rect = { left: br.left + p.at[1] * cell, top: br.top + p.at[0] * cell }; }
+            else { var svgEl = e.target.closest('.piece').querySelector('svg'); rect = svgEl.getBoundingClientRect(); }
+            var scale = fromBoard ? 1 : cell / trayScale();
+            drag = { i: i, fromBoard: fromBoard, sx: e.clientX, sy: e.clientY, offX: (e.clientX - rect.left) * scale, offY: (e.clientY - rect.top) * scale, pid: e.pointerId, moving: false, fl: null };
+        }
+        document.addEventListener('pointerdown', function (e) {
+            if (solvedFlag || document.querySelector('.modal-overlay.active')) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            var pe = e.target.closest && e.target.closest('.piece');
+            if (pe) { startDrag(e, +pe.dataset.i, false); e.preventDefault(); return; }
+            if (e.target.closest && e.target.closest('#board')) {
+                var i = pieceAtBoard(e.clientX, e.clientY);
+                if (i >= 0) { startDrag(e, i, true); e.preventDefault(); return; }
+                drag = { boardTap: true, pid: e.pointerId, sx: e.clientX, sy: e.clientY };
+            }
+        });
+        window.addEventListener('pointermove', function (e) {
+            if (!drag || drag.boardTap || e.pointerId !== drag.pid) return;
+            if (!drag.moving && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) {
+                drag.moving = true;
+                var f = document.createElement('div'); f.className = 'float'; f.appendChild(pieceSVG(pcs[drag.i], cell)); document.body.appendChild(f); drag.fl = f;
+                if (drag.fromBoard) { pcs[drag.i].lift = pcs[drag.i].at; pcs[drag.i].at = null; drawBoard(); }
+            }
+            if (!drag.moving) return;
+            drag.fl.style.left = (e.clientX - drag.offX) + 'px'; drag.fl.style.top = (e.clientY - drag.offY) + 'px';
+        });
+        window.addEventListener('pointerup', function (e) {
+            if (!drag || e.pointerId !== drag.pid) return;
+            var d = drag; drag = null;
+            if (d.boardTap) { if (sel >= 0) { var c = boardCell(e.clientX, e.clientY); var f0 = pcs[sel].cells.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; })[0]; if (!place(sel, [c[0] - f0[0], c[1] - f0[1]])) toast('It doesn\'t fit there'); } return; }
+            if (!d.moving) {
+                // a tap: on the board sends the room back; in the tray chooses it
+                if (d.fromBoard) unplace(d.i); else { sel = sel === d.i ? -1 : d.i; drawTray(); if (sel >= 0) announce(pcs[sel].name + ' chosen. Tap the plan to place it' + (L.rotate ? ', or Turn it first.' : '.')); }
+                return;
+            }
+            d.fl.remove();
+            var br = $('board').getBoundingClientRect();
+            var at = [Math.round((e.clientY - d.offY - br.top) / cell), Math.round((e.clientX - d.offX - br.left) / cell)];
+            var i2 = d.i, was = pcs[i2].lift; delete pcs[i2].lift;
+            if (!place(i2, at)) { pcs[i2].at = null; if (was && e.clientY < br.bottom) toast('It doesn\'t fit there'); drawBoard(); drawTray(); save(); }
+        });
+        window.addEventListener('pointercancel', function () { if (drag && drag.fl) drag.fl.remove(); if (drag && drag.i != null && pcs[drag.i].lift) { pcs[drag.i].at = pcs[drag.i].lift; delete pcs[drag.i].lift; drawBoard(); } drag = null; });
+        document.addEventListener('keydown', function (e) {
+            if (document.querySelector('.modal-overlay.active')) { if (e.key === 'Escape') { closeHelp(); closeModal('levelModal'); } return; }
+            var pe = document.activeElement && document.activeElement.closest && document.activeElement.closest('.piece');
+            if (pe && (e.key === 'Enter' || e.key === ' ')) { sel = +pe.dataset.i; drawTray(); e.preventDefault(); }
+            else if ((e.key === 'r' || e.key === 'R') && sel >= 0) turn();
+        });
+
+        function confetti() {
+            try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            var cols = ['#f2b33d', '#23395b', '#7bd389', '#ef5b7a', '#4aa3f0'];
+            for (var i = 0; i < 40; i++) { var c = document.createElement('span'); c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = cols[i % cols.length]; document.body.appendChild(c); if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }], { duration: 1400 + Math.random() * 900, delay: Math.random() * 250, fill: 'forwards' });
+                a.onfinish = (function (x) { return function () { x.remove(); }; })(c); }
+        }
+        function openLevels() {
+            var h = '', max = Math.max(progress.level, levelNo);
+            for (var n = 1; n <= max; n++) h += '<button class="level-cell' + (n === levelNo ? ' current' : '') + (doneLv[n] ? ' done' : '') + '" data-level="' + n + '" aria-label="Level ' + n + (doneLv[n] ? ', done' : '') + '">' + n + '</button>';
+            $('levelGrid').innerHTML = h; openModal('levelModal');
+            var c = $('levelGrid').querySelector('.current'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'center' });
+        }
+        $('turnBtn').addEventListener('click', turn);
+        $('hintBtn').addEventListener('click', hint);
+        $('resetBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo); });
+        $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo + 1); });
+        function closeHelp() { closeModal('helpModal'); S.setFlag(KEY_SEEN, true); }
+        $('helpBtn').addEventListener('click', function () { openModal('helpModal'); });
+        $('helpClose').addEventListener('click', closeHelp); $('helpX').addEventListener('click', closeHelp);
+        $('levelBtn').addEventListener('click', openLevels);
+        $('levelClose').addEventListener('click', function () { closeModal('levelModal'); }); $('levelX').addEventListener('click', function () { closeModal('levelModal'); });
+        $('levelGrid').addEventListener('click', function (e) { var b = e.target.closest('.level-cell'); if (!b) return; var n = +b.dataset.level; if (n !== levelNo) { S.setString(KEY_STATE, 'null'); start(n); } else closeModal('levelModal'); });
+        ['helpModal', 'levelModal'].forEach(function (id) { $(id).addEventListener('click', function (e) { if (e.target === $(id)) { if (id === 'helpModal') closeHelp(); else closeModal(id); } }); });
+        var rt = null; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(layout, 150); });
+
+        start(levelNo);
+        if (!S.getFlag(KEY_SEEN)) openModal('helpModal');
+        window.__mi = function () { return { L: L, pcs: pcs, cell: cell, solved: solvedFlag }; };
+        window.__hint = hint;
+    })();
+    </script>
+</body>
+</html>
