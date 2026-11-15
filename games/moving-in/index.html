@@ -89,7 +89,8 @@
             <h2 id="helpTitle">How to play</h2>
             <ol>
                 <li>Some rooms are missing from the floor plan. <b>Drag</b> each room from the tray into the empty space. (Or tap a room, then tap where its top-left square should go.)</li>
-                <li><b>Doors must line up.</b> Where two rooms meet, a door on one side needs a door on the other. A gap in a wall with a door swing is a door.</li>
+                <li><b>Doors must line up.</b> Where two rooms meet, a door on one side needs a door on the other. A gap in a wall is a door.</li>
+                <li>A door <b>opens one way</b>, into one of the two rooms. A gap with no swing means the door opens into the room that goes there, so that room must show the swing.</li>
                 <li>Only the <b>front door</b> opens to the outside. No other door can lead out of the house.</li>
                 <li>From level 12 the rooms may need <b>turning</b>: choose a room and tap Turn.</li>
                 <li>Doors that don't line up show in <b style="color:#d64545">red</b>. Tap a placed room to send it back to the tray.</li>
@@ -136,10 +137,10 @@
         function closeModal(id) { $(id).classList.remove('active'); }
 
         // ---------- state ----------
-        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 1, level: levelNo, pcs: pcs.map(function (p) { return { cells: p.cells, doors: p.doors, at: p.at }; }), solved: solvedFlag })); }
+        function save() { S.setString(KEY_STATE, JSON.stringify({ v: 2, level: levelNo, pcs: pcs.map(function (p) { return { cells: p.cells, doors: p.doors, at: p.at }; }), solved: solvedFlag })); }
         function load() {
             try { var o = JSON.parse(S.getString(KEY_STATE, 'null'));
-                if (!o || o.v !== 1 || o.level !== levelNo || !Array.isArray(o.pcs) || o.pcs.length !== L.pieces.length) return false;
+                if (!o || o.v !== 2 || o.level !== levelNo || !Array.isArray(o.pcs) || o.pcs.length !== L.pieces.length) return false;
                 pcs = o.pcs.map(function (p, i) { return { cells: p.cells, doors: p.doors, name: L.pieces[i].name, at: p.at }; }); solvedFlag = !!o.solved; return true;
             } catch (e) { return false; }
         }
@@ -157,7 +158,7 @@
             var grid = L.fixedGrid.slice(), doorMap = Object.assign({}, L.fixedDoors), names = {};
             pcs.forEach(function (p, i) { if (!p.at) return;
                 p.cells.forEach(function (c) { grid[(p.at[0] + c[0]) * L.C + p.at[1] + c[1]] = 100 + i; });
-                p.doors.forEach(function (d) { var k = ((p.at[0] + d[0]) * L.C + p.at[1] + d[1]) + ':' + d[2]; doorMap[k] = 1; if (d[3]) doorMap[k + ':front'] = 1; }); });
+                p.doors.forEach(function (d) { var k = ((p.at[0] + d[0]) * L.C + p.at[1] + d[1]) + ':' + d[2]; doorMap[k] = 1; if (d[3]) doorMap[k + ':front'] = 1; if (d[4]) doorMap[k + ':in'] = 1; }); });
             return { grid: grid, doors: doorMap };
         }
         function fitsAt(i, at, ignoreSelf) {
@@ -204,8 +205,12 @@
                     var t = 0.18, ax = sg[0] + (sg[2] - sg[0]) * t, ay = sg[1] + (sg[3] - sg[1]) * t, bx = sg[2] - (sg[2] - sg[0]) * t, by = sg[3] - (sg[3] - sg[1]) * t;
                     el('line', { x1: sg[0], y1: sg[1], x2: ax, y2: ay, stroke: col, 'stroke-width': sw }, g);
                     el('line', { x1: bx, y1: by, x2: sg[2], y2: sg[3], stroke: col, 'stroke-width': sw }, g);
-                    // the door leaf swings into this cell's room: hinge at one end of the gap, arc to the other
+                    // the door swings into the room it opens into (only ever one of the two); a plain gap if
+                    // it opens into a room that isn't here yet
+                    var intoMe = !!doorMap[c + ':' + d + ':in'], intoThem = isRoom(other) && !!doorMap[k + ':' + (d + 2) % 4 + ':in'];
+                    if (!intoMe && !intoThem) { if (bad) el('circle', { cx: (sg[0] + sg[2]) / 2, cy: (sg[1] + sg[3]) / 2, r: cs * 0.14, fill: 'rgba(214,69,69,0.25)', stroke: '#d64545', 'stroke-width': 2 }, g); continue; }
                     var len = cs * (1 - 2 * t), inX = -DIRS[d][1], inY = -DIRS[d][0];
+                    if (!intoMe) { inX = -inX; inY = -inY; }
                     var hx = ax + inX * len, hy = ay + inY * len;
                     var cross = (hx - ax) * (by - ay) - (hy - ay) * (bx - ax);
                     el('line', { x1: ax, y1: ay, x2: hx, y2: hy, stroke: col, 'stroke-width': Math.max(1.5, sw * 0.6) }, g);
@@ -223,10 +228,11 @@
                     if (dd < bd) { bd = dd; best = q; } });
                 var nm = nameOf(id); if (!nm) continue;
                 // fit the name to the room's width at that row (a corridor one square wide gets small text)
-                var row = Math.floor(best / C), span = 0; for (var q2 = 0; q2 < C; q2++) if (grid[row * C + q2] === id) span++;
+                var row = Math.floor(best / C), span = 0, c0 = best % C, c1 = c0;
+                while (c0 > 0 && grid[row * C + c0 - 1] === id) c0--; while (c1 < C - 1 && grid[row * C + c1 + 1] === id) c1++; span = c1 - c0 + 1;
                 var words = nm.split(' '), longest = Math.max.apply(null, words.map(function (w) { return w.length; }));
                 var fs = Math.min(cs * 0.3, cs * Math.min(span, 3) * 0.86 / (longest * 0.56));
-                var tx = (best % C + 0.5) * cs, ty = (Math.floor(best / C) + 0.5) * cs - (words.length - 1) * fs * 0.55;
+                var tx = (c0 + c1 + 1) / 2 * cs, ty = (Math.floor(best / C) + 0.5) * cs - (words.length - 1) * fs * 0.55;
                 words.forEach(function (w, wi) { var t2 = el('text', { x: tx, y: ty + wi * fs * 1.1, 'font-size': fs, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: '#1d2433', 'font-family': 'DM Sans, sans-serif', 'font-weight': 600 }, g); t2.textContent = w; });
             }
             return g;
@@ -249,7 +255,7 @@
             var h = 1 + Math.max.apply(null, p.cells.map(function (c) { return c[0]; })), w = 1 + Math.max.apply(null, p.cells.map(function (c) { return c[1]; }));
             var grid = []; for (var i = 0; i < h * w; i++) grid.push(-2);
             p.cells.forEach(function (c) { grid[c[0] * w + c[1]] = 0; });
-            var dm = {}; p.doors.forEach(function (d) { dm[(d[0] * w + d[1]) + ':' + d[2]] = 1; });
+            var dm = {}; p.doors.forEach(function (d) { var k = (d[0] * w + d[1]) + ':' + d[2]; dm[k] = 1; if (d[4]) dm[k + ':in'] = 1; });
             var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', w * cs); svg.setAttribute('height', h * cs); svg.setAttribute('viewBox', '0 0 ' + w * cs + ' ' + h * cs);
             drawRooms(svg, h, w, cs, grid, dm, function () { return p.name; }, {});
             return svg;

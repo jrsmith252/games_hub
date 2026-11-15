@@ -2,7 +2,9 @@
    A house is a set of square cells cut into rooms. Doors sit on the edge between two cells of different rooms
    (or, for the front door, between a cell and the outside). Some rooms are taken out as pieces; the player puts
    them back. A placement is right when every cell is filled and every door lines up: wherever two rooms meet, a
-   door on one side must be a door on the other, and only the front door may open to the outside.
+   door on one side must be a door on the other, and only the front door may open to the outside. Each door
+   swings into exactly one of its two rooms (from the hall into a room, or into the smaller room), so a gap with
+   no swing on a fixed room means the door swings into the missing room next to it.
    Every level is checked by the solver to have exactly one answer (identical pieces count as the same). */
 (function (root) {
     'use strict';
@@ -91,14 +93,20 @@
             if (!!inTree[a] === !!inTree[b]) continue; inTree[a] = inTree[b] = 1; list.push(edges[e]); added = true; } }
         if (Object.keys(inTree).length !== H.n) return null;
         if (H.n >= 9) { var spare = edges.filter(function (k) { return list.indexOf(k) < 0; }); if (spare.length) list.push(spare[0]); }
-        list.forEach(function (k) { var opts = shared[k]; doorSet[opts[Math.floor(r() * opts.length)]] = 1; });
+        var swing = {};
+        list.forEach(function (k) {
+            var opts = shared[k], e = opts[Math.floor(r() * opts.length)], p2 = k.split('-'), a2 = +p2[0], b2 = +p2[1];
+            doorSet[e] = 1;
+            // which room the door swings into: away from the hall, otherwise into the smaller room
+            swing[e] = a2 === hall ? b2 : b2 === hall ? a2 : H.size[a2] < H.size[b2] ? a2 : H.size[b2] < H.size[a2] ? b2 : (r() < 0.5 ? a2 : b2);
+        });
         // the front door: on an outside wall of a room touching the hall (or the hall itself)
         var outside = [];
         owner.forEach(function (o, c) { if (o < 0) return; var y = Math.floor(c / C), x = c % C;
             DIRS.forEach(function (d, di) { var yy = y + d[0], xx = x + d[1]; var out = yy < 0 || yy >= R || xx < 0 || xx >= C || owner[yy * C + xx] === -2; if (out) outside.push({ c: c, d: di, room: o }); }); });
         var near = outside.filter(function (e) { return e.room !== hall && (shared[Math.min(e.room, hall) + '-' + Math.max(e.room, hall)] || []).some(function (k) { return doorSet[k]; }); });
         var fd = (near.length ? near : outside)[Math.floor(r() * (near.length ? near.length : outside.length))];
-        return { set: doorSet, hall: hall, front: fd, deg: deg };
+        return { set: doorSet, swing: swing, hall: hall, front: fd, deg: deg };
     }
 
     // ---------- names ----------
@@ -125,19 +133,19 @@
             if (inRoom) return;
             var isFront = D.front.c === c && D.front.d === di;
             var inHouse = yy >= 0 && yy < P.R && xx >= 0 && xx < P.C && H.owner[yy * C + xx] >= 0;
-            if (isFront || (inHouse && D.set[edgeKey(c, di, C)])) drs.push([p[0] - minY, p[1] - minX, di, isFront ? 1 : 0]);
+            if (isFront || (inHouse && D.set[edgeKey(c, di, C)])) drs.push([p[0] - minY, p[1] - minX, di, isFront ? 1 : 0, isFront || D.swing[edgeKey(c, di, C)] === room ? 1 : 0]);
         }); });
         return { cells: cells.map(function (p) { return [p[0] - minY, p[1] - minX]; }), doors: drs, at: [minY, minX] };
     }
     function rotate(pc) {   // 90 degrees clockwise
         var h = Math.max.apply(null, pc.cells.map(function (c) { return c[0]; }));
         var cells = pc.cells.map(function (c) { return [c[1], h - c[0]]; });
-        var doors = pc.doors.map(function (d) { return [d[1], h - d[0], (d[2] + 1) % 4, d[3]]; });
+        var doors = pc.doors.map(function (d) { return [d[1], h - d[0], (d[2] + 1) % 4].concat(d.slice(3)); });
         return norm({ cells: cells, doors: doors });
     }
     function norm(pc) {
         var my = Math.min.apply(null, pc.cells.map(function (c) { return c[0]; })), mx = Math.min.apply(null, pc.cells.map(function (c) { return c[1]; }));
-        return { cells: pc.cells.map(function (c) { return [c[0] - my, c[1] - mx]; }), doors: pc.doors.map(function (d) { return [d[0] - my, d[1] - mx, d[2], d[3]]; }) };
+        return { cells: pc.cells.map(function (c) { return [c[0] - my, c[1] - mx]; }), doors: pc.doors.map(function (d) { return [d[0] - my, d[1] - mx].concat(d.slice(2)); }) };
     }
     function sig(pc) { return pc.cells.map(String).sort().join(';') + '|' + pc.doors.map(String).sort().join(';'); }
     function orientations(pc, allow) {
@@ -162,7 +170,9 @@
                 if (out) { if (mine && !doorMap[c + ':' + d + ':front']) bad.push([c, d]); continue; }
                 if (grid[k] === grid[c] || grid[k] === -1) continue;
                 var theirs = !!doorMap[k + ':' + (d + 2) % 4];
-                if (mine !== theirs) bad.push([c, d]);
+                if (mine !== theirs) { bad.push([c, d]); continue; }
+                // a door swings one way only: into exactly one of the two rooms
+                if (mine && !!doorMap[c + ':' + d + ':in'] === !!doorMap[k + ':' + (d + 2) % 4 + ':in']) bad.push([c, d]);
             }
         }
         return bad;
@@ -183,13 +193,14 @@
         }
         function localOk(cs, o, at, id) {
             // check the new room's edges against everything already there
-            var mine = {}; o.doors.forEach(function (d) { mine[((at[0] + d[0]) * C + at[1] + d[1]) + ':' + d[2]] = d[3] ? 2 : 1; });
+            var mine = {}, inn = {}; o.doors.forEach(function (d) { var k2 = ((at[0] + d[0]) * C + at[1] + d[1]) + ':' + d[2]; mine[k2] = d[3] ? 2 : 1; if (d[4]) inn[k2] = 1; });
             for (var i = 0; i < cs.length; i++) { var c = cs[i], y = Math.floor(c / C), x = c % C;
                 for (var d = 0; d < 4; d++) { var yy = y + DIRS[d][0], xx = x + DIRS[d][1], k = yy * C + xx, out = yy < 0 || yy >= R || xx < 0 || xx >= C || !L.inside[k];
                     var m = mine[c + ':' + d];
                     if (out) { if (m === 1) return false; continue; }
                     if (cs.indexOf(k) >= 0 || grid[k] === -1) continue;
-                    if (!!m !== !!doorMap[k + ':' + (d + 2) % 4]) return false; } }
+                    if (!!m !== !!doorMap[k + ':' + (d + 2) % 4]) return false;
+                    if (m && !!inn[c + ':' + d] === !!doorMap[k + ':' + (d + 2) % 4 + ':in']) return false; } }
             return true;
         }
         function go() {
@@ -205,7 +216,8 @@
                     var at = [Math.floor(cell / C) - f[0], cell % C - f[1]], cs = fits(o, at);
                     if (!cs || !localOk(cs, o, at, p)) continue;
                     cs.forEach(function (c) { grid[c] = 100 + p; });
-                    var added = o.doors.map(function (d) { var k = ((at[0] + d[0]) * C + at[1] + d[1]) + ':' + d[2]; doorMap[k] = 1; return k; });
+                    var added = [];
+                    o.doors.forEach(function (d) { var k = ((at[0] + d[0]) * C + at[1] + d[1]) + ':' + d[2]; doorMap[k] = 1; added.push(k); if (d[4]) { doorMap[k + ':in'] = 1; added.push(k + ':in'); } });
                     used[p] = true; go(); used[p] = false;
                     cs.forEach(function (c) { grid[c] = -1; }); added.forEach(function (k) { delete doorMap[k]; });
                     if (found > 1) return;
@@ -229,7 +241,8 @@
             var fixedDoors = {};
             H.owner.forEach(function (o, c) { if (o < 0 || cand.indexOf(o) >= 0) return;
                 for (var d = 0; d < 4; d++) { var isFront = D.front.c === c && D.front.d === d; if (isFront || D.set[edgeKey(c, d, P.C)]) { var y = Math.floor(c / P.C), x = c % P.C, yy = y + DIRS[d][0], xx = x + DIRS[d][1];
-                    if (isFront || (yy >= 0 && yy < P.R && xx >= 0 && xx < P.C && H.owner[yy * P.C + xx] !== o)) { fixedDoors[c + ':' + d] = 1; if (isFront) fixedDoors[c + ':' + d + ':front'] = 1; } } } });
+                    if (isFront || (yy >= 0 && yy < P.R && xx >= 0 && xx < P.C && H.owner[yy * P.C + xx] !== o)) { fixedDoors[c + ':' + d] = 1; if (isFront) fixedDoors[c + ':' + d + ':front'] = 1;
+                        if (isFront || D.swing[edgeKey(c, d, P.C)] === o) fixedDoors[c + ':' + d + ':in'] = 1; } } } });
             var pieces = cand.map(function (room) { var pc = pieceOf(room, H, D, P); return { cells: pc.cells, doors: pc.doors, name: nm[room], room: room, at: pc.at }; });
             var L = { number: n, R: P.R, C: P.C, rotate: P.rotate, inside: inside, owner: H.owner, names: nm, front: D.front, fixedGrid: fixedGrid, fixedDoors: fixedDoors, pieces: pieces, doorSet: D.set };
             // the pieces start in a random turn (when turning is on), so the picture isn't a giveaway
