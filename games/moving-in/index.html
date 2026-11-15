@@ -23,7 +23,12 @@
         .tray { flex: 1; min-height: 0; width: 100%; max-width: 560px; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center; gap: 12px 16px; padding: 10px; border-top: 1px dashed var(--line); overflow-y: auto; touch-action: none; }
         .piece { position: relative; cursor: grab; border-radius: 8px; padding: 4px; border: 2px solid transparent; touch-action: none; background: none; }
         .piece.sel { border-color: var(--sel); background: rgba(47,111,214,0.06); }
-        .piece svg { display: block; overflow: visible; pointer-events: none; }
+        .piece svg { display: block; overflow: visible; pointer-events: none; transition: transform 0.18s ease-out; }
+        .piece.spin svg { transform: rotate(90deg); }
+        .turnme { position: absolute; right: -10px; top: -10px; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #fff; background: var(--sel); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.25); z-index: 2; padding: 0; }
+        .turnme svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: none; }
+        .traytip { width: 100%; text-align: center; color: var(--ink-soft); font-size: 0.85rem; margin: -2px 0 2px; }
+        .traytip b { color: var(--sel); }
         .float { position: fixed; z-index: 30; pointer-events: none; opacity: 0.9; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25)); }
         .float svg { overflow: visible; }
         .controls { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(244,243,239,0.97); }
@@ -92,11 +97,19 @@
                 <li><b>Doors must line up.</b> Where two rooms meet, a door on one side needs a door on the other. A gap in a wall is a door.</li>
                 <li>A door <b>opens one way</b>, into one of the two rooms. A gap with no swing means the door opens into the room that goes there, so that room must show the swing.</li>
                 <li>Only the <b>front door</b> (the Entry's door with the brown doormat) opens to the outside. No other door can lead out of the house.</li>
-                <li>From level 12 the rooms may need <b>turning</b>: tap a room to choose it, then tap it again (or tap Turn) to turn it.</li>
+                <li>From level 12 the rooms may need <b>turning</b>: tap the blue <b>↻</b> on a room (or tap a room twice) to turn it.</li>
                 <li>Doors that don't line up show in <b style="color:#d64545">red</b>. Tap a placed room to send it back to the tray.</li>
             </ol>
             <p>Every floor plan has exactly one way to fit. Stuck? A hint puts one room in its place.</p>
             <button class="btn" id="helpClose">Let's move in</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="turnModal" role="dialog" aria-modal="true" aria-labelledby="turnTitle">
+        <div class="modal">
+            <h2 id="turnTitle">New: turn the rooms</h2>
+            <p>From now on, rooms may arrive the wrong way round. Tap the <b style="color:#2f6fd6">blue turn button ↻</b> on a room to turn it a quarter turn, as many times as you need, then drag it into place.</p>
+            <p>Look at the doors: a room only fits when its doors face the right way.</p>
+            <button class="btn" id="turnOk">Got it</button>
         </div>
     </div>
     <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
@@ -164,6 +177,7 @@
             $('levelBtn').textContent = 'Level ' + n + ' ▾';
             $('turnBtn').style.display = L.rotate ? '' : 'none';
             layout(); save();
+            if (L.rotate && !S.getFlag('movingin_turnSeen')) { S.setFlag('movingin_turnSeen', true); if (!$('helpModal').classList.contains('active')) openModal('turnModal'); }
         }
 
         // ---------- the layout as it stands ----------
@@ -285,9 +299,13 @@
             pcs.forEach(function (p, i) { if (p.at) return;
                 var b = document.createElement('div'); b.className = 'piece' + (i === sel ? ' sel' : ''); b.dataset.i = i; b.tabIndex = 0; b.setAttribute('role', 'button');
                 b.setAttribute('aria-label', p.name + ', ' + p.cells.length + ' squares, ' + p.doors.length + ' door' + (p.doors.length === 1 ? '' : 's') + (i === sel ? ', chosen' : ''));
-                b.appendChild(pieceSVG(p, trayScale())); t.appendChild(b); });
+                b.appendChild(pieceSVG(p, trayScale()));
+                if (L.rotate) { var tb = document.createElement('button'); tb.className = 'turnme'; tb.dataset.turn = i; tb.setAttribute('aria-label', 'Turn ' + p.name);
+                    tb.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5"/><path d="M20 3v5.5h-5.5"/></svg>'; b.appendChild(tb); }
+                t.appendChild(b); });
+            if (L.rotate && t.children.length) { var tip = document.createElement('p'); tip.className = 'traytip'; tip.innerHTML = 'Tap <b>↻</b> to turn a room, then drag it into place'; t.insertBefore(tip, t.firstChild); }
             if (!t.children.length && !solvedFlag) { var m = document.createElement('p'); m.style.cssText = 'color:#5d6577;font-size:0.9rem;padding:8px'; m.textContent = 'All rooms placed. Red doors? Tap a room to take it back out.'; t.appendChild(m); }
-            $('turnBtn').disabled = sel < 0;
+            $('turnBtn').disabled = false;
         }
 
         // ---------- placing ----------
@@ -305,9 +323,15 @@
             pcs[i].cells.forEach(function (c) { el('rect', { x: (at[1] + c[1]) * cell + 2, y: (at[0] + c[0]) * cell + 2, width: cell - 4, height: cell - 4, rx: 4, fill: 'rgba(63,143,79,0.18)', stroke: '#3f8f4f', 'stroke-width': 2, 'stroke-dasharray': '5 3' }, g); });
         }
         function unplace(i) { pcs[i].at = null; announce(pcs[i].name + ' back in the tray.'); drawBoard(); drawTray(); save(); }
-        function turn() {
-            if (sel < 0 || !L.rotate) return;
-            var r = M.rotate(pcs[sel]); pcs[sel].cells = r.cells; pcs[sel].doors = r.doors; announce(pcs[sel].name + ' turned.'); drawTray(); save();
+        function turn(i) {
+            if (i == null) i = sel;
+            if (!L.rotate) return;
+            if (i < 0) { toast('Choose a room first, or tap the ↻ on a room'); return; }
+            // a quick quarter-turn animation, then redraw the room the new way round
+            var box = $('tray').querySelector('.piece[data-i="' + i + '"]');
+            var done = function () { var r = M.rotate(pcs[i]); pcs[i].cells = r.cells; pcs[i].doors = r.doors; announce(pcs[i].name + ' turned.'); drawTray(); save(); };
+            var reduce = false; try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ignore */ }
+            if (box && !reduce) { box.classList.add('spin'); setTimeout(done, 170); } else done();
         }
         function checkWin(cur, problems) {
             if (solvedFlag) return;
@@ -351,6 +375,8 @@
         document.addEventListener('pointerdown', function (e) {
             if (solvedFlag || document.querySelector('.modal-overlay.active')) return;
             if (e.pointerType === 'mouse' && e.button !== 0) return;
+            var tb = e.target.closest && e.target.closest('.turnme');
+            if (tb) { e.preventDefault(); turn(+tb.dataset.turn); return; }
             var pe = e.target.closest && e.target.closest('.piece');
             if (pe) { startDrag(e, +pe.dataset.i, false); e.preventDefault(); return; }
             if (e.target.closest && e.target.closest('#board')) {
@@ -391,7 +417,8 @@
         });
         window.addEventListener('pointercancel', function () { ghost(-1); if (drag && drag.fl) drag.fl.remove(); if (drag && drag.i != null && pcs[drag.i].lift) { pcs[drag.i].at = pcs[drag.i].lift; delete pcs[drag.i].lift; drawBoard(); } drag = null; });
         document.addEventListener('keydown', function (e) {
-            if (document.querySelector('.modal-overlay.active')) { if (e.key === 'Escape') { closeHelp(); closeModal('levelModal'); } return; }
+            if (document.querySelector('.modal-overlay.active')) { if (e.key === 'Escape') { closeHelp(); closeModal('levelModal'); closeModal('turnModal'); } return; }
+            if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('turnme')) return;   // its own click turns it
             var pe = document.activeElement && document.activeElement.closest && document.activeElement.closest('.piece');
             if (pe && (e.key === 'Enter' || e.key === ' ')) { sel = +pe.dataset.i; drawTray(); e.preventDefault(); }
             else if ((e.key === 'r' || e.key === 'R') && sel >= 0) turn();
@@ -410,7 +437,10 @@
             $('levelGrid').innerHTML = h; openModal('levelModal');
             var c = $('levelGrid').querySelector('.current'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'center' });
         }
-        $('turnBtn').addEventListener('click', turn);
+        $('turnBtn').addEventListener('click', function () { turn(); });
+        $('turnOk').addEventListener('click', function () { closeModal('turnModal'); });
+        // keyboard users: Enter on a turn button
+        $('tray').addEventListener('click', function (e) { if (e.detail !== 0) return; var tb = e.target.closest('.turnme'); if (tb) turn(+tb.dataset.turn); });
         $('hintBtn').addEventListener('click', hint);
         $('resetBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo); });
         $('nextBtn').addEventListener('click', function () { S.setString(KEY_STATE, 'null'); start(levelNo + 1); });
