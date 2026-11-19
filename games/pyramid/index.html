@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pyramid — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <link rel="stylesheet" href="../cards/cardkit.css">
+    <style>
+        :root { --felt: #8a6a2c; --felt2: #735723; --deep: #4a3812; }
+        body.ck { background: radial-gradient(circle at 50% 30%, #9c7a35 0, var(--felt) 45%, var(--felt2) 100%); }
+        .slot.stock { cursor: pointer; }
+        .deckcount { position: absolute; font-size: 0.8rem; font-weight: 700; opacity: 0.95; pointer-events: none; text-align: center; }
+        .val { position: absolute; right: 4%; top: 3%; font-size: 0.62em; font-weight: 800; background: rgba(0,0,0,0.08); border-radius: 4px; padding: 0 3px; color: #333; }
+        .card .val { font-size: 11px; }
+        .pick { position: absolute; left: 0; right: 0; text-align: center; font-weight: 700; pointer-events: none; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title">Pyramid</div><div class="sub" id="sub"></div></div>
+        <div class="right-btns">
+            <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
+            <button class="icon-btn" id="menuBtn" aria-label="How to play, settings and new game"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+        </div>
+    </header>
+    <main><div class="table" id="table" aria-label="Card table"></div><div class="dealing" id="dealing">Shuffling a winnable deal…</div><div class="info" id="info"></div></main>
+    <div class="bar">
+        <button class="ctrl" id="undoBtn"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
+        <button class="ctrl" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint</button>
+        <button class="ctrl" id="newBtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New deal</button>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="menuModal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="menuTitle">How to play</h2>
+            <ol>
+                <li>Clear the <b>pyramid</b>.</li>
+                <li>Tap two uncovered cards that <b>add up to 13</b> and they go: 6 + 7, 4 + 9, Ace + Queen. Aces are 1, <b>Jacks 11, Queens 12</b>.</li>
+                <li>A <b>King</b> is 13 on its own: just tap it.</li>
+                <li>The card on top of the <b>pile</b> can pair up too. Tap the <b>deck</b> to turn over a new pile card. You can go through the deck <b>three times</b>.</li>
+            </ol>
+            <h3>Settings</h3>
+            <label class="toggle-row" for="winToggle"><span><b>Winnable deals only</b><small>Only about half of all deals can be cleared. This checks each one first.</small></span><span class="switch"><input type="checkbox" id="winToggle" role="switch"><span class="track"></span></span></label>
+            <label class="toggle-row" for="valToggle"><span><b>Show card values</b><small>A small number on each card (J 11, Q 12, K 13), so you don't have to work them out.</small></span><span class="switch"><input type="checkbox" id="valToggle" role="switch"><span class="track"></span></span></label>
+            <label class="toggle-row" for="fourToggle"><span><b>Four-colour suits</b><small>Diamonds blue and clubs green, so every suit looks different. Helpful for colour blindness.</small></span><span class="switch"><input type="checkbox" id="fourToggle" role="switch"><span class="track"></span></span></label>
+            <button class="btn" id="menuNew">New deal</button>
+            <button class="btn secondary" id="menuRestart">Restart this deal</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="statsTitle">Statistics</h2>
+            <div id="statsBody"></div>
+            <button class="btn secondary" data-close>Close</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="endModal" role="dialog" aria-modal="true" aria-labelledby="endTitle" data-sticky>
+        <div class="modal">
+            <h2 id="endTitle">Pyramid cleared!</h2>
+            <p id="endText"></p>
+            <div class="stats" id="endStats"></div>
+            <button class="btn" id="endNew">New deal</button>
+            <button class="btn secondary" id="endUndo">Undo last move</button>
+        </div>
+    </div>
+
+    <script src="../cards/cardkit.js"></script>
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.Pyramid, S = window.HubStorage, CK = window.CardKit, $ = CK.$;
+        document.body.classList.add('ck');
+        var VNAME = ['Ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King'];
+        function nameOf(c) { return CK.name(E.rank(c), E.suit(c)); }
+        function needName(v) { return v === 1 ? 'an Ace' : v === 11 ? 'a Jack' : v === 12 ? 'a Queen' : v === 8 ? 'an 8' : 'a ' + v; }
+
+        var winnable = S.getString('pyramid_winnable', 'true') !== 'false';
+        var showVals = S.getFlag('pyramid_values');
+        var four = CK.fourColour('pyramid_four');
+
+        var g = null, sel = null, history = [], moves = 0, started = false, finished = false, counted = false;
+        var clock = CK.clock(function () { if (g) info(); });
+        function save() { if (!g) return; S.setString('pyramid_state', JSON.stringify({ v: 1, g: g, history: history.slice(-80), moves: moves, elapsed: clock.elapsed, started: started, counted: counted })); }
+        function load() {
+            try { var o = JSON.parse(S.getString('pyramid_state', 'null'));
+                if (!o || o.v !== 1 || !o.g || !Array.isArray(o.g.pyr) || o.g.pyr.length !== 28) return false;
+                g = o.g; history = o.history || []; moves = o.moves | 0; clock.elapsed = o.elapsed || 0; started = !!o.started; counted = !!o.counted;
+                if (started) clock.start(); return true;
+            } catch (e) { return false; }
+        }
+        function stats() { return CK.stats('pyramid_stats', ['all']); }
+        function countPlayed() { if (counted) return; counted = true; var o = stats(); o.all.played++; CK.saveStats('pyramid_stats', o); }
+
+        var worker = null, wid = 0;
+        try { worker = new Worker('worker.js'); } catch (e) { worker = null; }
+        function newDeal() {
+            if (started && !finished && counted) { var o = stats(); o.all.streak = 0; CK.saveStats('pyramid_stats', o); }
+            var seed = CK.newSeed(); CK.closeAll();
+            var id = ++wid, done = function (d) { if (id !== wid) return; $('dealing').classList.remove('on'); begin(d); };
+            if (winnable && worker) {
+                $('dealing').classList.add('on'); $('table').style.visibility = 'hidden';
+                worker.onmessage = function (e) { done(e.data.deal); };
+                worker.postMessage({ id: id, seed: seed, winnable: true });
+                setTimeout(function () { if (id === wid && $('dealing').classList.contains('on')) done(E.deal(seed)); }, 6000);
+            } else done(winnable ? E.winnableDeal(seed, 20000) : E.deal(seed));
+        }
+        function begin(d) {
+            g = d; sel = null; history = []; moves = 0; started = false; finished = false; counted = false;
+            clock.elapsed = 0; clock.stop(); $('table').style.visibility = '';
+            build(); render(); save();
+        }
+        function restart() { if (g) begin(E.deal(g.seed)); }
+
+        // ---------- layout ----------
+        var cw = 48, ch = 68, rowStep = 34, top0 = 10, deckY = 300, W = 380, H = 600, x0 = 0;
+        function layout() {
+            var m = document.querySelector('main'); W = Math.min(m.clientWidth - 8, 560); H = m.clientHeight;
+            var byW = (W - 8) / 7.35, byH = (H - 70) / (1.42 * (1 + 6 * 0.5) + 1.42 * 1.5);
+            var unit = Math.min(byW, byH);
+            cw = Math.floor(unit); ch = Math.round(cw * 1.42); rowStep = Math.round(ch * 0.5);
+            x0 = Math.round((W - (7 * unit * 1.04 - unit * 0.04)) / 2);
+            var total = 6 * rowStep + ch + ch * 0.5 + ch + 46;
+            top0 = Math.max(10, Math.round((H - total) * 0.35));
+            deckY = top0 + 6 * rowStep + ch + Math.round(ch * 0.5);
+            $('table').style.width = W + 'px';
+            step = unit * 1.04;
+        }
+        var step = 50;
+        function posX(i) { return x0 + (E.POS[i] + (6 - E.ROW[i]) / 2) * step; }
+        function posY(i) { return top0 + E.ROW[i] * rowStep; }
+        function stockX() { return Math.round(W / 2 - cw - step * 0.3); }
+        function wasteX() { return Math.round(W / 2 + step * 0.3); }
+
+        var els = {}, slotEl = null, countEl = null, pickEl = null;
+        function build() {
+            layout();
+            var t = $('table'); t.innerHTML = ''; els = {};
+            slotEl = document.createElement('div'); slotEl.className = 'slot stock'; slotEl.setAttribute('role', 'button'); slotEl.tabIndex = 0;
+            slotEl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
+            CK.place(slotEl, stockX(), deckY, cw, ch); t.appendChild(slotEl);
+            var ws = document.createElement('div'); ws.className = 'slot'; CK.place(ws, wasteX(), deckY, cw, ch); t.appendChild(ws);
+            countEl = document.createElement('div'); countEl.className = 'deckcount'; t.appendChild(countEl);
+            pickEl = document.createElement('div'); pickEl.className = 'pick'; t.appendChild(pickEl);
+            for (var c = 0; c < 52; c++) { var el = document.createElement('div'); el.className = 'card'; el.dataset.c = c; t.appendChild(el); els[c] = el; }
+        }
+        function valBadge(el, c) { var b = el.querySelector('.val'); if (showVals) { if (!b) { b = document.createElement('span'); b.className = 'val'; el.appendChild(b); } b.textContent = E.val(c); } else if (b) b.remove(); }
+        function render() {
+            if (!g) return;
+            var shown = {};
+            for (var i = 0; i < 28; i++) {
+                var c = g.pyr[i], el = els[c];
+                if (g.gone[i]) { if (!el.dataset.f) { el.classList.add('gone'); el.style.display = 'none'; continue; } if (!el.classList.contains('gone')) { el.classList.add('gone'); setTimeout((function (x) { return function () { if (x.classList.contains('gone')) x.style.display = 'none'; }; })(el), 260); } continue; }
+                el.style.display = ''; shown[c] = 1;
+                var fr = E.free(g, i);
+                CK.place(el, posX(i), posY(i), cw, ch, 10 + E.ROW[i]);
+                CK.face(el, E.rank(c), E.suit(c), true, cw, (fr ? ' free' : ' locked dim') + (sel === 'p' + i ? ' sel' : ''));
+                el.setAttribute('role', 'button'); el.tabIndex = fr ? 0 : -1; if (!fr) el.setAttribute('aria-label', nameOf(c) + ', covered');
+                valBadge(el, c);
+            }
+            g.stock.forEach(function (c, k) { var el = els[c]; el.style.display = ''; el.classList.remove('gone'); shown[c] = 1;
+                CK.place(el, stockX() - Math.min(k, 6) * 0.5, deckY - Math.min(k, 6) * 0.5, cw, ch, 50 + k); CK.face(el, E.rank(c), E.suit(c), false, cw, ' free');
+                el.setAttribute('role', 'button'); el.tabIndex = k === g.stock.length - 1 ? 0 : -1; el.setAttribute('aria-label', 'Deck, ' + g.stock.length + ' left: tap to turn one over'); });
+            g.waste.forEach(function (c, k) { var el = els[c]; var top = k === g.waste.length - 1; el.style.display = ''; el.classList.remove('gone'); shown[c] = 1;
+                CK.place(el, wasteX(), deckY, cw, ch, 80 + k); CK.face(el, E.rank(c), E.suit(c), true, cw, top ? ' free' + (sel === 'w' ? ' sel' : '') : '');
+                el.setAttribute('role', top ? 'button' : 'img'); el.tabIndex = top ? 0 : -1; if (top) el.setAttribute('aria-label', 'Pile: ' + nameOf(c)); valBadge(el, c); });
+            // cards taken away from the pile are simply hidden
+            for (var n = 0; n < 52; n++) if (!shown[n] && g.pyr.indexOf(n) < 0) els[n].style.display = 'none';
+            slotEl.setAttribute('aria-label', E.canRedeal(g) ? 'Turn the pile back into the deck' : 'Deck used up');
+            slotEl.style.opacity = g.stock.length || E.canRedeal(g) ? '' : '0.35';
+            var passLeft = E.PASSES - g.passes;
+            countEl.textContent = g.stock.length + ' in deck · ' + (passLeft ? passLeft + ' more time' + (passLeft === 1 ? '' : 's') + ' round' : 'last time round');
+            CK.place(countEl, 0, deckY + ch + 6, W, 18);
+            // what you're looking for, when a card is picked
+            var sc = sel ? E.cardAt(g, sel) : -1;
+            pickEl.textContent = sc >= 0 ? VNAME[E.rank(sc)] + ' picked: find ' + needName(13 - E.val(sc)) : '';
+            CK.place(pickEl, 0, deckY + ch + 26, W, 20);
+            $('undoBtn').disabled = !history.length || finished;
+            $('sub').textContent = (winnable ? 'Winnable deal' : 'Random deal') + ' · ' + E.left(g) + ' left';
+            info();
+        }
+        function info() { $('info').textContent = moves + ' move' + (moves === 1 ? '' : 's') + ' · ' + CK.fmt(clock.elapsed); }
+
+        // ---------- playing ----------
+        function act(m) {
+            var before = E.clone(g);
+            if (!E.apply(g, m)) return false;
+            history.push(before); if (history.length > 200) history.shift();
+            moves++; if (!started) { started = true; clock.start(); countPlayed(); }
+            sel = null; render(); save();
+            if (E.won(g)) win(); else if (E.stuck(g)) setTimeout(stuckEnd, 500);
+            return true;
+        }
+        function undo() { if (!history.length || finished) return; g = history.pop(); sel = null; moves++; CK.closeAll();
+            for (var c = 0; c < 52; c++) els[c].classList.remove('gone');
+            render(); save(); CK.announce('Undone.'); }
+        function targetOf(c) { var i = g.pyr.indexOf(c); if (i >= 0) return g.gone[i] ? null : 'p' + i; if (g.waste.length && g.waste[g.waste.length - 1] === c) return 'w'; if (g.stock.indexOf(c) >= 0) return 'deck'; return null; }
+        function tap(c) {
+            if (!g || finished) return;
+            var t = targetOf(c); if (!t) return;
+            if (t === 'deck') { drawCard(); return; }
+            if (t !== 'w' && !E.free(g, +t.slice(1))) { CK.toast('That card is still covered'); return; }
+            if (E.val(c) === 13) { act({ a: t }); CK.announce('King cleared.'); return; }
+            if (!sel) { sel = t; render(); CK.announce(nameOf(c) + ' picked. Find ' + needName(13 - E.val(c)) + '.'); return; }
+            if (sel === t) { sel = null; render(); return; }
+            var a = E.cardAt(g, sel);
+            if (E.val(a) + E.val(c) === 13) { act({ a: sel, b: t }); CK.announce(nameOf(a) + ' and ' + nameOf(c) + ' cleared.'); return; }
+            CK.shake(els[c]); CK.toast(VNAME[E.rank(a)] + ' + ' + VNAME[E.rank(c)] + ' is ' + (E.val(a) + E.val(c)) + ', not 13');
+            sel = t; render();
+        }
+        function drawCard() {
+            if (g.stock.length) { act({ draw: true }); var w = g.waste[g.waste.length - 1]; CK.announce('Turned over ' + nameOf(w) + '.'); return; }
+            if (E.canRedeal(g)) { act({ redeal: true }); CK.toast('Pile turned back into the deck'); return; }
+            CK.toast('The deck is used up');
+        }
+        $('table').addEventListener('click', function (e) { if (e.target.closest('.slot.stock')) { drawCard(); return; } var ce = e.target.closest('.card'); if (ce) tap(+ce.dataset.c); else if (sel) { sel = null; render(); } });
+        $('table').addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); if (e.target.closest('.slot.stock')) { drawCard(); return; } var ce = e.target.closest('.card'); if (ce) tap(+ce.dataset.c); });
+        document.addEventListener('keydown', function (e) { if (CK.anyOpen()) return; if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); } else if (e.key === 'd' || e.key === 'D') drawCard(); else if (e.key === 'Escape' && sel) { sel = null; render(); } });
+
+        function elOf(t) { var c = E.cardAt(g, t); return c >= 0 ? els[c] : null; }
+        function hint() {
+            if (!g || finished) return;
+            var r = E.solve(g, 40000), m = r.win ? r.first : null;
+            if (!m) { var ms = E.moves(g); m = ms[0]; if (!m) { CK.toast('No moves left. Try Undo or a new deal', 2200); return; } }
+            if (m.draw || m.redeal) { CK.pulse(m.draw ? [els[g.stock[g.stock.length - 1]]] : [slotEl]); CK.toast(m.draw ? 'Turn over a card from the deck' : 'Turn the pile back into the deck'); CK.announce('Hint: use the deck.'); }
+            else { CK.pulse([elOf(m.a), m.b ? elOf(m.b) : null]); var a = E.cardAt(g, m.a); CK.announce('Hint: ' + nameOf(a) + (m.b ? ' with ' + nameOf(E.cardAt(g, m.b)) : '') + '.'); }
+            if (!r.win && r.states <= 40000) CK.toast('This deal can\'t be cleared from here. Undo might help', 2400);
+        }
+        function win() {
+            finished = true; clock.stop();
+            var o = stats(), st = o.all; st.won++; st.streak++; st.best = Math.max(st.best, st.streak);
+            if (!st.fastest || clock.elapsed < st.fastest) st.fastest = clock.elapsed; if (!st.fewest || moves < st.fewest) st.fewest = moves;
+            CK.saveStats('pyramid_stats', o); S.setString('pyramid_state', 'null');
+            $('endTitle').textContent = 'Pyramid cleared!';
+            $('endText').textContent = 'Cleared in ' + CK.fmt(clock.elapsed) + ' and ' + moves + ' moves' + (g.passes ? '.' : ', first time through the deck.');
+            $('endStats').innerHTML = CK.statRow(st); $('endStats').style.display = ''; $('endUndo').style.display = 'none';
+            CK.buzz(50); CK.confetti(); setTimeout(function () { CK.open('endModal'); }, 700);
+        }
+        function stuckEnd() {
+            if (!E.stuck(g) || finished) return;
+            $('endTitle').textContent = 'Out of moves';
+            $('endText').textContent = E.left(g) + ' card' + (E.left(g) === 1 ? '' : 's') + ' left in the pyramid. You can undo and try another way, or start a new deal.';
+            $('endStats').style.display = 'none'; $('endUndo').style.display = '';
+            CK.open('endModal');
+        }
+
+        function openStats() { var st = stats().all; $('statsBody').innerHTML = '<div class="stats">' + CK.statRow(st) + '</div><p style="margin:8px 0 0;font-size:0.85rem">Best streak ' + st.best + (st.fewest ? ' · fewest moves ' + st.fewest : '') + '</p>'; CK.open('statsModal'); }
+        function syncMenu() { $('winToggle').checked = winnable; $('valToggle').checked = showVals; $('fourToggle').checked = four; }
+        $('menuBtn').addEventListener('click', function () { syncMenu(); CK.open('menuModal'); });
+        $('statsBtn').addEventListener('click', openStats);
+        $('winToggle').addEventListener('change', function () { winnable = this.checked; S.setString('pyramid_winnable', winnable ? 'true' : 'false'); render(); });
+        $('valToggle').addEventListener('change', function () { showVals = this.checked; S.setFlag('pyramid_values', showVals); render(); });
+        $('fourToggle').addEventListener('change', function () { four = this.checked; S.setFlag('pyramid_four', four); document.body.classList.toggle('four', four); });
+        function confirmNew(yes) { if (started && !finished && moves > 3 && window.confirm && !window.__noConfirm && !window.confirm('Start a new deal? This game will count as a loss.')) return; yes(); }
+        $('menuNew').addEventListener('click', function () { confirmNew(newDeal); });
+        $('menuRestart').addEventListener('click', function () { CK.closeAll(); restart(); });
+        $('newBtn').addEventListener('click', function () { confirmNew(newDeal); });
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', hint);
+        $('endNew').addEventListener('click', function () { newDeal(); });
+        $('endUndo').addEventListener('click', undo);
+        var rt = null;
+        function refit() { clearTimeout(rt); rt = setTimeout(function () { if (!g) return; build(); render(); }, 120); }
+        window.addEventListener('resize', refit);
+        try { new ResizeObserver(refit).observe(document.querySelector('main')); } catch (e) { /* ignore */ }
+        document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+        if (load()) { build(); render(); if (E.stuck(g)) setTimeout(stuckEnd, 300); } else newDeal();
+        if (!S.getFlag('pyramid_seen')) { S.setFlag('pyramid_seen', true); syncMenu(); CK.open('menuModal'); }
+        window.__py = function () { return { g: g, moves: moves, finished: finished, sel: sel }; };
+        window.__act = act;
+    })();
+    </script>
+</body>
+</html>
