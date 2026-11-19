@@ -265,7 +265,7 @@
             $('undoBtn').disabled = !history.length;
             $('sub').textContent = 'Draw ' + draw + (draw === 1 ? ' (easier)' : ' (harder)') + (winnable ? ' · winnable' : '');
             info();
-            var autoBtn = E.allOpen(g) && !E.won(g) && !finished;
+            var autoBtn = canFinish() && !E.won(g) && !finished;
             $('hintBtn').innerHTML = autoBtn ? '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>Finish' : '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint';
             $('hintBtn').classList.toggle('go', autoBtn);
             $('stockSlot').setAttribute('aria-label', g.stock.length ? 'Deck, ' + g.stock.length + ' cards: tap to turn over' : g.waste.length ? 'Empty deck: tap to turn the pile back over' : 'Empty deck');
@@ -363,7 +363,7 @@
         // ---------- hint and finish ----------
         function hint() {
             if (!g || finished) return;
-            if (E.allOpen(g)) { finishUp(); return; }
+            if (canFinish()) { finishUp(); return; }
             // follow the solver's winning line (worked out once, then reused while you play along with it);
             // fall back to any sensible move if it can't find a win from here
             var now = JSON.stringify(g), m = null, r = { win: false, first: null };
@@ -384,10 +384,36 @@
             announce(m.draw ? 'Hint: turn over the deck.' : 'Hint: move ' + nameOf(cards[0]) + (m.to === 'f' ? ' home.' : '.'));
         }
         // everything is face up: send every card home, one at a time
+        // Finish turns up as soon as nothing on the board is face down, as long as the solver can see the rest
+        // through (the deck might still need to go round). The check is remembered for each position.
+        var finishMemo = { key: '', path: null };
+        function finishPath() {
+            if (!g || g.down.some(function (d) { return d > 0; })) return null;
+            if (E.allOpen(g)) return [];
+            var k = JSON.stringify(g);
+            if (finishMemo.key !== k) { var r = E.solve(g, 20000); finishMemo = { key: k, path: r.win ? r.path : null }; }
+            return finishMemo.path;
+        }
+        function canFinish() { return finishing || !!finishPath(); }
+        var finishing = false;
         function finishUp() {
+            if (finishing) return;
+            var path = (finishPath() || []).slice();
+            finishing = true;
+            // first play out the deck along the solver's line, then send everything home
+            var play = function () {
+                if (finished) { finishing = false; return; }
+                if (path.length) { var m = path.shift(); act(m); setTimeout(play, 90); return; }
+                tidy();
+            };
+            play();
+        }
+        function tidy() {
             var step = function () {
-                if (E.won(g)) return;
+                if (E.won(g)) { finishing = false; return; }
                 for (var col = 0; col < 7; col++) { var t = g.cols[col]; if (t.length && E.canFound(g, t[t.length - 1])) { act({ from: col, i: t.length - 1, to: 'f' }); setTimeout(step, 70); return; } }
+                if (g.waste.length && E.canFound(g, g.waste[g.waste.length - 1])) { act({ from: 'w', to: 'f' }); setTimeout(step, 70); return; }
+                finishing = false;
             };
             step();
         }
