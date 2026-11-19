@@ -468,6 +468,7 @@
         try { new ResizeObserver(refit).observe(document.querySelector('main')); } catch (e) { /* ignore */ }
         document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
 
+        if (window.HubNoSwipeBack) window.HubNoSwipeBack(document.querySelector('main'), { onBlocked: function () { toast('Tap ‹ at the top left to leave the game', 2200); } });
         if (load()) { build(); render(); } else newDeal();
         if (!S.getFlag('solitaire_seen')) { S.setFlag('solitaire_seen', true); syncMenu(); openModal('menuModal'); }
         window.__so = function () { return { g: g, moves: moves, finished: finished, history: history.length }; };

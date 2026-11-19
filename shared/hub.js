@@ -91,6 +91,31 @@
         listeners.forEach(function (fn) { try { fn(true); } catch (e) { /* ignore */ } });
     });
 
+    // ---- Keep the phone's swipe-from-the-edge "back" gesture out of a play area ----
+    // Games where you drag things call HubNoSwipeBack(theirPlayArea). Leaving is what the ‹ button is for.
+    window.HubNoSwipeBack = function (el, opts) {
+        opts = opts || {};
+        var EDGE = 30, start = null;
+        if (el) {
+            // iOS Safari: a touch that starts right at the screen edge won't begin the back swipe. Stopping it also
+            // stops the tap's click, so a tap there is passed on by hand.
+            el.addEventListener('touchstart', function (e) {
+                var t = e.touches[0]; start = null;
+                if (!t || e.touches.length > 1) return;
+                if (t.clientX < EDGE || t.clientX > window.innerWidth - EDGE) { e.preventDefault(); start = { x: t.clientX, y: t.clientY, target: e.target }; }
+            }, { passive: false });
+            el.addEventListener('touchend', function (e) {
+                var t = e.changedTouches[0], s0 = start; start = null;
+                if (s0 && t && Math.abs(t.clientX - s0.x) < 10 && Math.abs(t.clientY - s0.y) < 10 && s0.target && s0.target.click) s0.target.click();
+            });
+        }
+        // anything that still goes "back" (Android's gesture, a mouse's back button) stays in the game
+        try {
+            if (!history.state || !history.state.hubStay) history.pushState({ hubStay: 1 }, '');
+            window.addEventListener('popstate', function () { history.pushState({ hubStay: 1 }, ''); if (opts.onBlocked) opts.onBlocked(); });
+        } catch (e) { /* ignore */ }
+    };
+
     // ---- Register service worker (PWA / offline). Safe no-op where unsupported or on file:// ----
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
         window.addEventListener('load', function () {
