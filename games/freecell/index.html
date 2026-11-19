@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>FreeCell — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <link rel="stylesheet" href="../cards/cardkit.css">
+    <style>
+        :root { --felt: #5b3f86; --felt2: #4a3270; --deep: #2d1f47; }
+        body.ck { background: radial-gradient(circle at 50% 30%, #6a4b99 0, var(--felt) 45%, var(--felt2) 100%); }
+        .slot.cell { border-style: solid; border-color: rgba(255,255,255,0.35); background: rgba(0,0,0,0.12); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.5px; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title">FreeCell</div><div class="sub" id="sub"></div></div>
+        <div class="right-btns">
+            <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
+            <button class="icon-btn" id="menuBtn" aria-label="How to play, settings and new game"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+        </div>
+    </header>
+    <main><div class="table" id="table" aria-label="Card table"></div><div class="dealing" id="dealing">Shuffling a winnable deal…</div><div class="info" id="info"></div></main>
+    <div class="bar">
+        <button class="ctrl" id="undoBtn"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
+        <button class="ctrl" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint</button>
+        <button class="ctrl" id="newBtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New deal</button>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="menuModal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="menuTitle">How to play</h2>
+            <ol>
+                <li>Build the four piles at the top right from <b>Ace up to King</b>, one suit each.</li>
+                <li>Every card is face up. In the columns, stack cards <b>downwards in alternating colours</b> (a red 6 on a black 7).</li>
+                <li>The four <b>free cells</b> at the top left each hold one card while you dig out the one you need.</li>
+                <li>Any card can go into an empty column. You can move a run of cards at once if you have enough free cells and empty columns to shuffle them through.</li>
+                <li><b>Drag</b> cards where you want them, or just <b>tap</b> a card and it goes to the best place it can.</li>
+            </ol>
+            <h3>Settings</h3>
+            <label class="toggle-row" for="winToggle"><span><b>Winnable deals only</b><small>Almost every FreeCell deal can be won, and this checks each one first to make sure.</small></span><span class="switch"><input type="checkbox" id="winToggle" role="switch"><span class="track"></span></span></label>
+            <label class="toggle-row" for="autoToggle"><span><b>Send cards home automatically</b><small>Cards that nothing else could need go straight to the piles.</small></span><span class="switch"><input type="checkbox" id="autoToggle" role="switch"><span class="track"></span></span></label>
+            <label class="toggle-row" for="fourToggle"><span><b>Four-colour suits</b><small>Diamonds blue and clubs green, so every suit looks different. Helpful for colour blindness.</small></span><span class="switch"><input type="checkbox" id="fourToggle" role="switch"><span class="track"></span></span></label>
+            <button class="btn" id="menuNew">New deal</button>
+            <button class="btn secondary" id="menuRestart">Restart this deal</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="statsTitle">Statistics</h2>
+            <div id="statsBody"></div>
+            <button class="btn secondary" data-close>Close</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle" data-sticky>
+        <div class="modal">
+            <h2 id="winTitle">You won!</h2>
+            <p id="winText"></p>
+            <div class="stats" id="winStats"></div>
+            <button class="btn" id="winNew">New deal</button>
+        </div>
+    </div>
+
+    <script src="../cards/cardkit.js"></script>
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.FreeCell, S = window.HubStorage, CK = window.CardKit, $ = CK.$;
+        document.body.classList.add('ck');
+        function nameOf(c) { return CK.name(E.rank(c), E.suit(c)); }
+
+        var winnable = S.getString('freecell_winnable', 'true') !== 'false';
+        var auto = S.getString('freecell_auto', 'true') !== 'false';
+        var four = CK.fourColour('freecell_four');
+
+        var g = null, history = [], moves = 0, started = false, finished = false, counted = false;
+        var clock = CK.clock(function () { if (g) info(); });
+        function save() { if (!g) return; S.setString('freecell_state', JSON.stringify({ v: 1, g: g, history: history.slice(-80), moves: moves, elapsed: clock.elapsed, started: started, counted: counted })); }
+        function load() {
+            try { var o = JSON.parse(S.getString('freecell_state', 'null'));
+                if (!o || o.v !== 1 || !o.g || !Array.isArray(o.g.cols) || o.g.cols.length !== 8) return false;
+                g = o.g; history = o.history || []; moves = o.moves | 0; clock.elapsed = o.elapsed || 0; started = !!o.started; counted = !!o.counted;
+                if (started) clock.start(); return true;
+            } catch (e) { return false; }
+        }
+        function stats() { return CK.stats('freecell_stats', ['all']); }
+        function countPlayed() { if (counted) return; counted = true; var o = stats(); o.all.played++; CK.saveStats('freecell_stats', o); }
+
+        // ---------- dealing and hints come from a background worker ----------
+        var worker = null, wid = 0, waiting = {};
+        try { worker = new Worker('worker.js'); worker.onmessage = function (e) { var cb = waiting[e.data.id]; delete waiting[e.data.id]; if (cb) cb(e.data); }; } catch (e) { worker = null; }
+        function ask(msg, cb, fallback, ms) {
+            var id = ++wid; msg.id = id;
+            if (!worker) { cb(fallback()); return id; }
+            waiting[id] = cb; worker.postMessage(msg);
+            setTimeout(function () { if (waiting[id]) { delete waiting[id]; cb(fallback()); } }, ms || 6000);
+            return id;
+        }
+        var dealId = 0;
+        function newDeal() {
+            if (started && !finished && counted) { var o = stats(); o.all.streak = 0; CK.saveStats('freecell_stats', o); }
+            var seed = CK.newSeed(); CK.closeAll();
+            if (!winnable) { begin(E.deal(seed)); return; }
+            $('dealing').classList.add('on'); $('table').style.visibility = 'hidden';
+            var my = dealId = ask({ type: 'deal', seed: seed, winnable: true }, function (r) { if (my !== dealId) return; $('dealing').classList.remove('on'); begin(r.deal); }, function () { return { deal: E.deal(seed) }; });
+        }
+        function begin(d) {
+            g = d; history = []; moves = 0; started = false; finished = false; counted = false; sel = null;
+            clock.elapsed = 0; clock.stop(); $('table').style.visibility = '';
+            if (auto) E.autoHome(g);
+            build(); render(); save();
+        }
+        function restart() { if (g) begin(E.deal(g.seed)); }
+
+        // ---------- layout ----------
+        var cw = 44, ch = 62, gap = 5, top0 = 8, tabTop = 80, W = 380, H = 600;
+        function layout() {
+            var m = document.querySelector('main'); W = Math.min(m.clientWidth - 8, 640); H = m.clientHeight;
+            gap = Math.max(3, Math.round(W * 0.012));
+            cw = Math.floor((W - 9 * gap) / 8); ch = Math.round(cw * 1.42);
+            top0 = gap + 2; tabTop = top0 + ch + gap * 3;
+            $('table').style.width = W + 'px';
+        }
+        function slotX(i) { return gap + i * (cw + gap); }
+        function colYs(col) {
+            var n = g.cols[col].length, up = ch * 0.34, avail = H - tabTop - ch - 22;
+            if (n > 1 && (n - 1) * up > avail) up = Math.max(ch * 0.12, avail / (n - 1));
+            var ys = []; for (var i = 0; i < n; i++) ys.push(tabTop + i * up); return ys;
+        }
+        var els = {}, positions = {};
+        function build() {
+            layout();
+            var t = $('table'); t.innerHTML = ''; els = {};
+            for (var k = 0; k < 4; k++) { var c = document.createElement('div'); c.className = 'slot cell'; c.textContent = 'FREE'; CK.place(c, slotX(k), top0, cw, ch); t.appendChild(c); }
+            for (var f = 0; f < 4; f++) { var fs = document.createElement('div'); fs.className = 'slot'; fs.textContent = CK.SUITS[f]; fs.style.fontSize = Math.round(cw * 0.5) + 'px'; CK.place(fs, slotX(4 + f), top0, cw, ch); t.appendChild(fs); }
+            for (var col = 0; col < 8; col++) { var cs = document.createElement('div'); cs.className = 'slot'; CK.place(cs, slotX(col), tabTop, cw, ch); t.appendChild(cs); }
+            for (var n = 0; n < 52; n++) { var el = document.createElement('div'); el.className = 'card'; el.dataset.c = n; el.setAttribute('role', 'button'); el.tabIndex = 0; t.appendChild(el); els[n] = el; }
+        }
+        function put(c, x, y, z) { var el = els[c]; if (!el.classList.contains('drag')) CK.place(el, x, y, cw, ch, z); else { el.style.width = cw + 'px'; el.style.height = ch + 'px'; } CK.face(el, E.rank(c), E.suit(c), true, cw, sel && sel.indexOf(c) >= 0 ? ' sel' : ''); positions[c] = { x: x, y: y }; }
+        function render() {
+            if (!g) return; positions = {};
+            g.cells.forEach(function (c, k) { if (c >= 0) put(c, slotX(k), top0, 20); });
+            for (var f = 0; f < 4; f++) for (var r = 0; r < g.found[f]; r++) put(f * 13 + r, slotX(4 + f), top0, 1 + r);
+            for (var col = 0; col < 8; col++) { var ys = colYs(col); g.cols[col].forEach(function (c, i) { put(c, slotX(col), ys[i], 100 + i); }); }
+            $('undoBtn').disabled = !history.length || finished;
+            $('sub').textContent = (winnable ? 'Winnable deal' : 'Random deal') + ' · ' + E.freeCells(g) + ' free cell' + (E.freeCells(g) === 1 ? '' : 's');
+            var fin = canFinish() && !E.won(g) && !finished;
+            $('hintBtn').innerHTML = fin ? '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>Finish' : '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint';
+            $('hintBtn').classList.toggle('go', fin);
+            info();
+        }
+        function info() { $('info').textContent = moves + ' move' + (moves === 1 ? '' : 's') + ' · ' + CK.fmt(clock.elapsed); }
+        // every column already runs high to low: nothing is in the way any more
+        function canFinish() { for (var col = 0; col < 8; col++) { var t = g.cols[col]; for (var i = 1; i < t.length; i++) if (E.rank(t[i]) > E.rank(t[i - 1])) return false; } return true; }
+
+        // ---------- moving ----------
+        function act(m) {
+            var before = E.clone(g);
+            if (!E.apply(g, m)) return false;
+            if (auto) E.autoHome(g);
+            history.push(before); if (history.length > 300) history.shift();
+            moves++; if (!started) { started = true; clock.start(); countPlayed(); }
+            sel = null; render(); save();
+            if (E.won(g)) win();
+            return true;
+        }
+        function undo() { if (!history.length || finished) return; g = history.pop(); moves++; sel = null; render(); save(); CK.announce('Undone.'); }
+        function where(c) {
+            var k = g.cells.indexOf(c); if (k >= 0) return { from: 'c' + k };
+            for (var col = 0; col < 8; col++) { var i = g.cols[col].indexOf(c); if (i >= 0) return E.runOk(g, col, i) ? { from: col, i: i } : { blocked: true }; }
+            return null;   // on a foundation
+        }
+        function tooMany(w, to) {
+            var n = g.cols[w.from].length - w.i, cap = E.capacity(g, to);
+            CK.toast('You can move ' + cap + ' card' + (cap === 1 ? '' : 's') + ' at once right now, not ' + n + '. Free a cell or empty a column for more.', 3000);
+        }
+        // a tap sends the card to the best place: home, onto a column, an empty column, then a free cell
+        function autoMove(c) {
+            var w = where(c); if (!w || w.blocked) return false;
+            var single = typeof w.from === 'string' || w.i === g.cols[w.from].length - 1;
+            if (single && E.canFound(g, c) && act({ from: w.from, i: w.i, to: 'f' })) { CK.announce(nameOf(c) + ' home.'); return true; }
+            var big = false;
+            for (var col = 0; col < 8; col++) { if (col === w.from || !g.cols[col].length || !E.fits(g, col, c)) continue; if (act({ from: w.from, i: w.i, to: col })) { CK.announce(nameOf(c) + ' moved.'); return true; } big = true; }
+            if (!(typeof w.from === 'number' && w.i === 0)) for (col = 0; col < 8; col++) { if (g.cols[col].length) continue; if (act({ from: w.from, i: w.i, to: col })) { CK.announce(nameOf(c) + ' moved to an empty column.'); return true; } big = true; break; }
+            if (single && typeof w.from === 'number' && act({ from: w.from, i: w.i, to: 'c' })) { CK.announce(nameOf(c) + ' to a free cell.'); return true; }
+            if (big && typeof w.from === 'number') { tooMany(w, -1); return 'told'; }
+            return false;
+        }
+
+        // ---------- pointer (same feel as Solitaire: drag a run, or tap) ----------
+        var drag = null, sel = null;
+        function tableXY(e) { var r = $('table').getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+        $('table').addEventListener('pointerdown', function (e) {
+            if (!g || finished || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            var ce = e.target.closest('.card'); if (!ce) return;
+            var c = +ce.dataset.c, w = where(c); if (!w) return;
+            if (w.blocked) { drag = { c: c, blocked: true, pid: e.pointerId, sx: e.clientX, sy: e.clientY }; return; }
+            var cards = typeof w.from === 'number' ? g.cols[w.from].slice(w.i) : [c], p = tableXY(e);
+            drag = { c: c, w: w, cards: cards, sx: e.clientX, sy: e.clientY, ox: p.x - positions[c].x, oy: p.y - positions[c].y, pid: e.pointerId, moving: false };
+            e.preventDefault();
+        });
+        window.addEventListener('pointermove', function (e) {
+            if (!drag || drag.blocked || e.pointerId !== drag.pid) return;
+            if (!drag.moving && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) { drag.moving = true; drag.cards.forEach(function (c, k) { els[c].classList.add('drag'); els[c].style.zIndex = 1000 + k; }); }
+            if (!drag.moving) return;
+            var p = tableXY(e), base = positions[drag.c];
+            drag.cards.forEach(function (c) { var pos = positions[c]; els[c].style.left = (p.x - drag.ox + (pos.x - base.x)) + 'px'; els[c].style.top = (p.y - drag.oy + (pos.y - base.y)) + 'px'; });
+        });
+        window.addEventListener('pointerup', function (e) {
+            if (!drag || e.pointerId !== drag.pid) return;
+            var d = drag; drag = null;
+            if (d.blocked) { CK.shake(els[d.c]); CK.toast('Only a run in alternating colours can move together'); return; }
+            d.cards.forEach(function (c) { els[c].classList.remove('drag'); });
+            if (!d.moving) { var r = autoMove(d.c); if (!r) { CK.shake(els[d.c]); render(); } return; }
+            var p = tableXY(e), cx = p.x - d.ox + cw / 2, cy = p.y - d.oy + ch / 3, to = null;
+            if (cy < tabTop - gap) { to = cx < slotX(4) - gap / 2 ? 'c' : 'f'; }
+            else { var best = 1e9; for (var col = 0; col < 8; col++) { var dx = Math.abs(cx - (slotX(col) + cw / 2)); if (dx < best && dx < cw) { best = dx; to = col; } } }
+            if (to === null || to === d.w.from) { render(); return; }
+            if (!act({ from: d.w.from, i: d.w.i, to: to })) {
+                if (typeof to === 'number' && typeof d.w.from === 'number' && E.fits(g, to, d.c)) tooMany(d.w, to);
+                else CK.toast(to === 'c' ? (E.freeCells(g) ? 'Only one card fits in a free cell' : 'The free cells are full') : 'That card can\'t go there');
+                render();
+            }
+        });
+        window.addEventListener('pointercancel', function () { if (drag && !drag.blocked) { drag.cards.forEach(function (c) { els[c].classList.remove('drag'); }); } drag = null; render(); });
+        $('table').addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var ce = e.target.closest('.card'); if (!ce) return; e.preventDefault(); if (!autoMove(+ce.dataset.c)) CK.toast('No move for that card'); });
+        document.addEventListener('keydown', function (e) { if (CK.anyOpen()) return; if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); } });
+
+        // ---------- hint and finish ----------
+        var thinking = false;
+        function hint() {
+            if (!g || finished || thinking) return;
+            if (canFinish()) { finishUp(); return; }
+            thinking = true; $('hintBtn').disabled = true;
+            var snap = JSON.stringify(g);
+            ask({ type: 'solve', g: E.clone(g) }, function (r) {
+                thinking = false; $('hintBtn').disabled = false;
+                if (JSON.stringify(g) !== snap) return;
+                var m = r.win && r.path && r.path[0];
+                if (!m) { var ms = E.moves(g); m = ms[0]; if (!m) { CK.toast('No moves left. Try Undo or a new deal', 2400); return; } CK.toast('No sure way to win from here. Undo might help', 2400); }
+                var cards = typeof m.from === 'string' ? [g.cells[+m.from[1]]] : g.cols[m.from].slice(m.i);
+                CK.pulse(cards.map(function (c) { return els[c]; }));
+                CK.announce('Hint: move ' + nameOf(cards[0]) + (m.to === 'f' ? ' home' : m.to === 'c' ? ' to a free cell' : g.cols[m.to].length ? ' onto ' + nameOf(g.cols[m.to][g.cols[m.to].length - 1]) : ' to an empty column') + '.');
+            }, function () { var r = E.solve(g, 15000); return { win: r.win, path: r.path }; }, 8000);
+        }
+        function finishUp() {
+            var step = function () {
+                if (E.won(g) || finished) return;
+                for (var k = 0; k < 4; k++) { var c = g.cells[k]; if (c >= 0 && E.canFound(g, c)) { act({ from: 'c' + k, to: 'f' }); setTimeout(step, 60); return; } }
+                for (var col = 0; col < 8; col++) { var t = g.cols[col]; if (t.length && E.canFound(g, t[t.length - 1])) { act({ from: col, i: t.length - 1, to: 'f' }); setTimeout(step, 60); return; } }
+            };
+            step();
+        }
+        function win() {
+            finished = true; clock.stop();
+            var o = stats(), st = o.all; st.won++; st.streak++; st.best = Math.max(st.best, st.streak);
+            if (!st.fastest || clock.elapsed < st.fastest) st.fastest = clock.elapsed; if (!st.fewest || moves < st.fewest) st.fewest = moves;
+            CK.saveStats('freecell_stats', o); S.setString('freecell_state', 'null');
+            $('winText').textContent = 'Won in ' + CK.fmt(clock.elapsed) + ' and ' + moves + ' moves.';
+            $('winStats').innerHTML = CK.statRow(st);
+            CK.buzz(50); CK.confetti(); setTimeout(function () { CK.open('winModal'); }, 900);
+        }
+
+        // ---------- menus ----------
+        function openStats() { var st = stats().all; $('statsBody').innerHTML = '<div class="stats">' + CK.statRow(st) + '</div><p style="margin:8px 0 0;font-size:0.85rem">Best streak ' + st.best + (st.fewest ? ' · fewest moves ' + st.fewest : '') + '</p>'; CK.open('statsModal'); }
+        function syncMenu() { $('winToggle').checked = winnable; $('autoToggle').checked = auto; $('fourToggle').checked = four; }
+        $('menuBtn').addEventListener('click', function () { syncMenu(); CK.open('menuModal'); });
+        $('statsBtn').addEventListener('click', openStats);
+        $('winToggle').addEventListener('change', function () { winnable = this.checked; S.setString('freecell_winnable', winnable ? 'true' : 'false'); render(); });
+        $('autoToggle').addEventListener('change', function () { auto = this.checked; S.setString('freecell_auto', auto ? 'true' : 'false'); });
+        $('fourToggle').addEventListener('change', function () { four = this.checked; S.setFlag('freecell_four', four); document.body.classList.toggle('four', four); });
+        function confirmNew(yes) { if (started && !finished && moves > 3 && window.confirm && !window.__noConfirm && !window.confirm('Start a new deal? This game will count as a loss.')) return; yes(); }
+        $('menuNew').addEventListener('click', function () { confirmNew(newDeal); });
+        $('menuRestart').addEventListener('click', function () { CK.closeAll(); restart(); });
+        $('newBtn').addEventListener('click', function () { confirmNew(newDeal); });
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', hint);
+        $('winNew').addEventListener('click', function () { newDeal(); });
+        var rt = null;
+        function refit() { clearTimeout(rt); rt = setTimeout(function () { if (!g || drag) return; build(); render(); }, 120); }
+        window.addEventListener('resize', refit);
+        try { new ResizeObserver(refit).observe(document.querySelector('main')); } catch (e) { /* ignore */ }
+        document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+        if (load()) { build(); render(); } else newDeal();
+        if (!S.getFlag('freecell_seen')) { S.setFlag('freecell_seen', true); syncMenu(); CK.open('menuModal'); }
+        window.__fc = function () { return { g: g, moves: moves, finished: finished }; };
+        window.__act = act;
+    })();
+    </script>
+</body>
+</html>
