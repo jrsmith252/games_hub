@@ -82,3 +82,6 @@
 @keyframes combo { 0% { opacity: 0; transform: translateY(6px) scale(0.8); } 20% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-26px) scale(1); } }
 .card.gone { opacity: 0; transform: scale(0.6); transition: opacity 0.25s, transform 0.25s, left 0.18s, top 0.18s; pointer-events: none; }
 .btn-row { display: flex; gap: 8px; } .btn-row .btn { flex: 1; }
+/* rank and suit side by side in the corner, so an overlapped card still shows both */
+.card .tl { white-space: nowrap; }
+.card .tl i { display: inline; font-size: 0.82em; margin-left: 1px; }
