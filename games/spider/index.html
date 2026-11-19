@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Spider — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <link rel="stylesheet" href="../cards/cardkit.css">
+    <style>
+        :root { --felt: #7a3b3b; --felt2: #632f2f; --deep: #3f1d1d; }
+        body.ck { background: radial-gradient(circle at 50% 30%, #8c4646 0, var(--felt) 45%, var(--felt2) 100%); }
+        .card { border-radius: 5px; }
+        .card.back { border-width: 1.5px; }
+        .stockbtn { position: absolute; cursor: pointer; }
+        .stockbtn .card { cursor: pointer; }
+        .lbl { color: #fff; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title">Spider</div><div class="sub" id="sub"></div></div>
+        <div class="right-btns">
+            <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
+            <button class="icon-btn" id="menuBtn" aria-label="How to play, settings and new game"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+        </div>
+    </header>
+    <main><div class="table" id="table" aria-label="Card table"></div><div class="dealing" id="dealing">Shuffling a winnable deal…</div><div class="info" id="info"></div></main>
+    <div class="bar">
+        <button class="ctrl" id="undoBtn"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
+        <button class="ctrl" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint</button>
+        <button class="ctrl" id="newBtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New deal</button>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="menuModal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="menuTitle">How to play</h2>
+            <ol>
+                <li>Build a full run from <b>King down to Ace in one suit</b> and it leaves the table. Clear all eight runs to win.</li>
+                <li>Any card can go on a card <b>one higher</b>, whatever the suit, but only cards in a run of <b>one suit</b> can move together.</li>
+                <li>Any card or run can go into an empty column.</li>
+                <li>Stuck? Tap the <b>deck</b> (top right) to deal one new card onto every column. Every column needs at least one card first.</li>
+                <li><b>Drag</b> cards where you want them, or just <b>tap</b> one and it goes to the best place it can.</li>
+            </ol>
+            <h3>Settings</h3>
+            <p class="seg-label">How many suits</p>
+            <div class="seg" role="group" aria-label="How many suits"><button id="s1">1 suit<small>Easier</small></button><button id="s2">2 suits<small>Medium</small></button><button id="s4">4 suits<small>Hard</small></button></div>
+            <p class="seg-note" id="suitNote"></p>
+            <label class="toggle-row" for="fourToggle"><span><b>Four-colour suits</b><small>Diamonds blue and clubs green, so every suit looks different. Helpful for colour blindness.</small></span><span class="switch"><input type="checkbox" id="fourToggle" role="switch"><span class="track"></span></span></label>
+            <button class="btn" id="menuNew">New deal</button>
+            <button class="btn secondary" id="menuRestart">Restart this deal</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="statsTitle">Statistics</h2>
+            <div id="statsBody"></div>
+            <button class="btn secondary" data-close>Close</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle" data-sticky>
+        <div class="modal">
+            <h2 id="winTitle">You won!</h2>
+            <p id="winText"></p>
+            <div class="stats" id="winStats"></div>
+            <button class="btn" id="winNew">New deal</button>
+        </div>
+    </div>
+
+    <script src="../cards/cardkit.js"></script>
+    <script src="engine.js"></script>
+    <script src="deals.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.Spider, S = window.HubStorage, CK = window.CardKit, $ = CK.$;
+        var BANK = window.SPIDER_DEALS || {};
+        document.body.classList.add('ck');
+
+        var suits = +S.getString('spider_suits', '1'); if ([1, 2, 4].indexOf(suits) < 0) suits = 1;
+        var four = CK.fourColour('spider_four');
+        function nameOf(c) { return CK.name(E.rank(c), E.suit(g, c)); }
+        // 1 suit: every deal is checked as it's dealt. 2 and 4 suits: deals come from a bank checked in advance.
+        function checked(n) { return n === 1 || (BANK[n] && BANK[n].length > 0); }
+
+        var g = null, history = [], moves = 0, started = false, finished = false, counted = false;
+        var clock = CK.clock(function () { if (g) info(); });
+        function save() { if (!g) return; S.setString('spider_state', JSON.stringify({ v: 1, g: g, history: history.slice(-50), moves: moves, elapsed: clock.elapsed, started: started, counted: counted })); }
+        function load() {
+            try { var o = JSON.parse(S.getString('spider_state', 'null'));
+                if (!o || o.v !== 1 || !o.g || !Array.isArray(o.g.cols) || o.g.cols.length !== 10) return false;
+                g = o.g; history = o.history || []; moves = o.moves | 0; clock.elapsed = o.elapsed || 0; started = !!o.started; counted = !!o.counted; suits = g.suits;
+                if (started) clock.start(); return true;
+            } catch (e) { return false; }
+        }
+        function stats() { return CK.stats('spider_stats', ['1', '2', '4']); }
+        function countPlayed() { if (counted) return; counted = true; var o = stats(); o[suits].played++; CK.saveStats('spider_stats', o); }
+
+        var worker = null, wid = 0, waiting = {};
+        try { worker = new Worker('worker.js'); worker.onmessage = function (e) { var cb = waiting[e.data.id]; delete waiting[e.data.id]; if (cb) cb(e.data); }; } catch (e) { worker = null; }
+        function ask(msg, cb, fallback, ms) {
+            var id = ++wid; msg.id = id;
+            if (!worker) { cb(fallback()); return id; }
+            waiting[id] = cb; worker.postMessage(msg);
+            setTimeout(function () { if (waiting[id]) { delete waiting[id]; cb(fallback()); } }, ms || 6000);
+            return id;
+        }
+        // next deal from the bank, without repeats until you've had them all
+        function bankSeed(n) {
+            var list = BANK[n], key = 'spider_played_' + n, played;
+            try { played = JSON.parse(S.getString(key, '[]')); } catch (e) { played = []; } if (!Array.isArray(played)) played = [];
+            var left = list.filter(function (sd) { return played.indexOf(sd) < 0; });
+            if (!left.length) { played = []; left = list.slice(); }
+            var sd = left[Math.floor(Math.random() * left.length)]; played.push(sd); S.setString(key, JSON.stringify(played));
+            return sd;
+        }
+        var dealId = 0;
+        function newDeal() {
+            if (started && !finished && counted) { var o = stats(); o[suits].streak = 0; CK.saveStats('spider_stats', o); }
+            CK.closeAll();
+            if (suits !== 1 && checked(suits)) { begin(E.deal(bankSeed(suits), suits, 1 + Math.floor(Math.random() * 1e6))); return; }
+            var seed = CK.newSeed();
+            if (suits !== 1) { begin(E.deal(seed, suits)); return; }
+            $('dealing').classList.add('on'); $('table').style.visibility = 'hidden';
+            var my = dealId = ask({ type: 'deal', seed: seed, suits: 1, winnable: true }, function (r) { if (my !== dealId) return; $('dealing').classList.remove('on'); begin(r.deal); }, function () { return { deal: E.deal(seed, 1) }; }, 8000);
+        }
+        function begin(d) {
+            g = d; history = []; moves = 0; started = false; finished = false; counted = false;
+            clock.elapsed = 0; clock.stop(); $('table').style.visibility = '';
+            build(); render(); save();
+        }
+        function restart() { if (g) begin(E.deal(g.seed, g.suits, g.variant || 0)); }
+
+        // ---------- layout ----------
+        var cw = 34, ch = 48, gap = 3, top0 = 6, tabTop = 70, W = 380, H = 600;
+        function layout() {
+            var m = document.querySelector('main'); W = Math.min(m.clientWidth - 6, 720); H = m.clientHeight;
+            gap = Math.max(2, Math.round(W * 0.008));
+            cw = Math.floor((W - 11 * gap) / 10); ch = Math.round(cw * 1.42);
+            top0 = gap + 3; tabTop = top0 + ch + gap * 3;
+            $('table').style.width = W + 'px';
+        }
+        function slotX(i) { return gap + i * (cw + gap); }
+        function colYs(col) {
+            var t = g.cols[col], n = t.length, d = g.down[col], dn = ch * 0.16, up = ch * 0.38, avail = H - tabTop - ch - 22;
+            var need = d * dn + Math.max(0, n - d - 1) * up;
+            if (need > avail && n - d > 1) up = Math.max(ch * 0.15, (avail - d * dn) / (n - d - 1));
+            if (d * dn + Math.max(0, n - d - 1) * up > avail && d) dn = Math.max(ch * 0.05, (avail - Math.max(0, n - d - 1) * up) / d);
+            var ys = [], y = tabTop; for (var i = 0; i < n; i++) { ys.push(y); y += i < d ? dn : up; } return ys;
+        }
+        var els = {}, positions = {}, stockBtn = null, doneLbl = null;
+        function build() {
+            layout();
+            var t = $('table'); t.innerHTML = ''; els = {};
+            for (var col = 0; col < 10; col++) { var cs = document.createElement('div'); cs.className = 'slot'; CK.place(cs, slotX(col), tabTop, cw, ch); t.appendChild(cs); }
+            stockBtn = document.createElement('div'); stockBtn.className = 'stockbtn'; stockBtn.setAttribute('role', 'button'); stockBtn.tabIndex = 0; t.appendChild(stockBtn);
+            doneLbl = document.createElement('div'); doneLbl.className = 'lbl'; t.appendChild(doneLbl);
+            for (var n = 0; n < 104; n++) { var el = document.createElement('div'); el.className = 'card'; el.dataset.c = n; t.appendChild(el); els[n] = el; }
+        }
+        function render() {
+            if (!g) return; positions = {};
+            // finished runs: a King of each at the top left; the deck: one back per deal left, at the top right
+            var shown = {};
+            var doneCards = finishedKings();
+            doneCards.forEach(function (c, k) { var el = els[c]; CK.place(el, slotX(0) + k * cw * 0.32, top0, cw, ch, 10 + k); el.dataset.f = ''; CK.face(el, 12, g.done[k], true, cw); el.dataset.f = 'k'; el.tabIndex = -1; el.removeAttribute('role'); shown[c] = 1; });
+            doneLbl.textContent = g.done.length ? '' : 'Runs 0 of 8'; CK.place(doneLbl, slotX(0), top0 + ch * 0.38, cw * 3, 16);
+            var deals = g.stock.length / 10;
+            stockBtn.innerHTML = ''; var sx = slotX(9) - (deals - 1) * cw * 0.28;
+            CK.place(stockBtn, sx, top0, cw + Math.max(0, deals - 1) * cw * 0.28, ch, 5);
+            stockBtn.style.display = deals ? '' : 'none';
+            stockBtn.setAttribute('aria-label', 'Deck: ' + deals + ' deal' + (deals === 1 ? '' : 's') + ' left. Tap to deal a card onto every column.');
+            for (var k = 0; k < deals; k++) { var b = document.createElement('div'); b.className = 'card back'; CK.place(b, k * cw * 0.28, 0, cw, ch, k); stockBtn.appendChild(b); }
+            // cards still in the deck, or gone in finished runs, are hidden
+            g.stock.forEach(function (c) { els[c].style.display = 'none'; });
+            var onTable = {};
+            for (var col = 0; col < 10; col++) { var ys = colYs(col); g.cols[col].forEach(function (c, i) {
+                var el = els[c]; onTable[c] = 1; el.style.display = '';
+                var up = i >= g.down[col];
+                if (!el.classList.contains('drag')) CK.place(el, slotX(col), ys[i], cw, ch, 100 + i);
+                CK.face(el, E.rank(c), E.suit(g, c), up, cw, up && !E.runOk(g, col, i) ? ' locked' : '');
+                el.setAttribute('role', up ? 'button' : 'img'); el.tabIndex = up ? 0 : -1;
+                positions[c] = { x: slotX(col), y: ys[i] };
+            }); }
+            for (var n = 0; n < 104; n++) if (!onTable[n] && !shown[n]) els[n].style.display = 'none'; else if (shown[n]) els[n].style.display = '';
+            $('undoBtn').disabled = !history.length || finished;
+            $('sub').textContent = suits + ' suit' + (suits === 1 ? '' : 's') + ' · ' + (checked(suits) ? 'winnable' : 'random deal') + ' · ' + g.done.length + '/8 runs';
+            info();
+        }
+        // pick one card to stand for each finished run (any card not on the table or in the deck)
+        function finishedKings() {
+            var used = {}, out = [];
+            g.cols.forEach(function (t) { t.forEach(function (c) { used[c] = 1; }); }); g.stock.forEach(function (c) { used[c] = 1; });
+            var free = []; for (var c = 0; c < 104; c++) if (!used[c]) free.push(c);
+            for (var k = 0; k < g.done.length; k++) out.push(free[k * 13]);
+            return out;
+        }
+        function info() { $('info').textContent = moves + ' move' + (moves === 1 ? '' : 's') + ' · ' + CK.fmt(clock.elapsed); }
+
+        // ---------- moving ----------
+        function act(m) {
+            var before = E.clone(g), doneBefore = g.done.length;
+            if (!E.apply(g, m)) return false;
+            history.push(before); if (history.length > 200) history.shift();
+            moves++; if (!started) { started = true; clock.start(); countPlayed(); }
+            render(); save();
+            if (g.done.length > doneBefore) { CK.toast('Run complete! ' + g.done.length + ' of 8'); CK.buzz(30); }
+            if (E.won(g)) win();
+            return true;
+        }
+        function undo() { if (!history.length || finished) return; g = history.pop(); moves++; render(); save(); CK.announce('Undone.'); }
+        function where(c) { for (var col = 0; col < 10; col++) { var i = g.cols[col].indexOf(c); if (i >= 0) return i < g.down[col] ? null : E.runOk(g, col, i) ? { from: col, i: i } : { blocked: true }; } return null; }
+        // a tap: onto the same suit first, then any card one higher, then an empty column
+        function autoMove(c) {
+            var w = where(c); if (!w || w.blocked) return false;
+            var best = -1, bestP = -1;
+            for (var col = 0; col < 10; col++) {
+                if (col === w.from) continue; var t = g.cols[col];
+                if (t.length && E.rank(t[t.length - 1]) === E.rank(c) + 1) { var p = E.suit(g, t[t.length - 1]) === E.suit(g, c) ? 3 : 2; if (p > bestP) { bestP = p; best = col; } }
+                else if (!t.length && w.i > 0 && bestP < 1) { bestP = 1; best = col; }
+            }
+            if (best >= 0 && act({ from: w.from, i: w.i, to: best })) { CK.announce(nameOf(c) + ' moved.'); return true; }
+            return false;
+        }
+        function dealRow() {
+            if (!g || finished) return;
+            if (!g.stock.length) { CK.toast('No more deals left'); return; }
+            if (!E.canDeal(g)) { CK.toast('Put a card in every empty column first', 2200); CK.shake(stockBtn); return; }
+            act({ deal: true }); CK.announce('Dealt a new card onto every column.');
+        }
+
+        var drag = null;
+        function tableXY(e) { var r = $('table').getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+        $('table').addEventListener('pointerdown', function (e) {
+            if (!g || finished || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            if (e.target.closest('.stockbtn')) { e.preventDefault(); dealRow(); return; }
+            var ce = e.target.closest('.card'); if (!ce) return;
+            var c = +ce.dataset.c, w = where(c); if (!w) return;
+            if (w.blocked) { drag = { c: c, blocked: true, pid: e.pointerId }; return; }
+            var p = tableXY(e);
+            drag = { c: c, w: w, cards: g.cols[w.from].slice(w.i), sx: e.clientX, sy: e.clientY, ox: p.x - positions[c].x, oy: p.y - positions[c].y, pid: e.pointerId, moving: false };
+            e.preventDefault();
+        });
+        window.addEventListener('pointermove', function (e) {
+            if (!drag || drag.blocked || e.pointerId !== drag.pid) return;
+            if (!drag.moving && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) { drag.moving = true; drag.cards.forEach(function (c, k) { els[c].classList.add('drag'); els[c].style.zIndex = 1000 + k; }); }
+            if (!drag.moving) return;
+            var p = tableXY(e), base = positions[drag.c];
+            drag.cards.forEach(function (c) { var pos = positions[c]; els[c].style.left = (p.x - drag.ox + (pos.x - base.x)) + 'px'; els[c].style.top = (p.y - drag.oy + (pos.y - base.y)) + 'px'; });
+        });
+        window.addEventListener('pointerup', function (e) {
+            if (!drag || e.pointerId !== drag.pid) return;
+            var d = drag; drag = null;
+            if (d.blocked) { CK.shake(els[d.c]); CK.toast('Only cards in one suit, in order, move together', 2200); return; }
+            d.cards.forEach(function (c) { els[c].classList.remove('drag'); });
+            if (!d.moving) { if (!autoMove(d.c)) { CK.shake(els[d.c]); render(); } return; }
+            var p = tableXY(e), cx = p.x - d.ox + cw / 2, to = null, best = 1e9;
+            for (var col = 0; col < 10; col++) { var dx = Math.abs(cx - (slotX(col) + cw / 2)); if (dx < best && dx < cw * 1.1) { best = dx; to = col; } }
+            if (to === null || to === d.w.from || !act({ from: d.w.from, i: d.w.i, to: to })) { if (to !== null && to !== d.w.from) CK.toast('It needs a card one higher'); render(); }
+        });
+        window.addEventListener('pointercancel', function () { if (drag && !drag.blocked) drag.cards.forEach(function (c) { els[c].classList.remove('drag'); }); drag = null; render(); });
+        $('table').addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault();
+            if (e.target.closest('.stockbtn')) { dealRow(); return; }
+            var ce = e.target.closest('.card'); if (ce && !autoMove(+ce.dataset.c)) CK.toast('No move for that card');
+        });
+        document.addEventListener('keydown', function (e) { if (CK.anyOpen()) return; if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); } else if (e.key === 'd' || e.key === 'D') dealRow(); });
+
+        // ---------- hint ----------
+        var thinking = false;
+        function hint() {
+            if (!g || finished || thinking) return;
+            thinking = true; $('hintBtn').disabled = true;
+            var snap = JSON.stringify(g);
+            ask({ type: 'solve', g: E.clone(g) }, function (r) {
+                thinking = false; $('hintBtn').disabled = false;
+                if (JSON.stringify(g) !== snap) return;
+                var m = r.win && r.path && r.path[0];
+                if (!m) {
+                    // no sure win found: suggest the most promising move
+                    var ms = E.moves(g).filter(function (x) { return !x.deal; });
+                    m = ms[0] || (E.canDeal(g) ? { deal: true } : null);
+                    if (!m) { CK.toast(g.stock.length ? 'Fill the empty columns, then deal' : 'No moves left. Try Undo or a new deal', 2400); return; }
+                }
+                if (m.deal) { CK.pulse(Array.prototype.slice.call(stockBtn.children)); CK.toast('Deal a new row'); CK.announce('Hint: deal a new row.'); return; }
+                var cards = g.cols[m.from].slice(m.i); CK.pulse(cards.map(function (c) { return els[c]; }));
+                var to = g.cols[m.to];
+                CK.announce('Hint: move ' + nameOf(cards[0]) + (to.length ? ' onto ' + nameOf(to[to.length - 1]) : ' to an empty column') + '.');
+            }, function () { return { win: false, path: null }; }, 8000);
+        }
+        function win() {
+            finished = true; clock.stop();
+            var o = stats(), st = o[suits]; st.won++; st.streak++; st.best = Math.max(st.best, st.streak);
+            if (!st.fastest || clock.elapsed < st.fastest) st.fastest = clock.elapsed; if (!st.fewest || moves < st.fewest) st.fewest = moves;
+            CK.saveStats('spider_stats', o); S.setString('spider_state', 'null');
+            $('winText').textContent = 'All eight runs cleared in ' + CK.fmt(clock.elapsed) + ' and ' + moves + ' moves.';
+            $('winStats').innerHTML = CK.statRow(st);
+            CK.buzz(50); CK.confetti(); setTimeout(function () { CK.open('winModal'); }, 900);
+        }
+
+        // ---------- menus ----------
+        var NOTES = { 1: 'Every card is a spade, so any run can move. A good place to start. Every deal can be won.',
+            2: 'Spades and hearts. You\'ll need to keep the two suits apart. Every deal can be won.',
+            4: 'All four suits: the full challenge, and not every deal can be won, even with perfect play.' };
+        function openStats() {
+            var o = stats();
+            $('statsBody').innerHTML = [1, 2, 4].map(function (n) { var st = o[n]; return '<h3>' + n + ' suit' + (n === 1 ? '' : 's') + '</h3><div class="stats">' + CK.statRow(st) + '</div><p style="margin:6px 0 0;font-size:0.85rem">Best streak ' + st.best + (st.fewest ? ' · fewest moves ' + st.fewest : '') + '</p>'; }).join('');
+            CK.open('statsModal');
+        }
+        function syncMenu() {
+            [1, 2, 4].forEach(function (n) { $('s' + n).classList.toggle('on', suits === n); $('s' + n).setAttribute('aria-pressed', suits === n); });
+            $('suitNote').textContent = NOTES[suits].replace(' Every deal can be won.', checked(suits) ? ' Every deal can be won.' : ''); $('fourToggle').checked = four;
+        }
+        function setSuits(n) { if (n === suits) return; if (started && !finished && moves > 3 && window.confirm && !window.__noConfirm && !window.confirm('Start a new deal? This game will count as a loss.')) return; suits = n; S.setString('spider_suits', String(n)); syncMenu(); newDeal(); CK.toast(n + ' suit' + (n === 1 ? '' : 's') + ': new deal'); }
+        [1, 2, 4].forEach(function (n) { $('s' + n).addEventListener('click', function () { setSuits(n); }); });
+        $('menuBtn').addEventListener('click', function () { syncMenu(); CK.open('menuModal'); });
+        $('statsBtn').addEventListener('click', openStats);
+        $('fourToggle').addEventListener('change', function () { four = this.checked; S.setFlag('spider_four', four); document.body.classList.toggle('four', four); });
+        function confirmNew(yes) { if (started && !finished && moves > 3 && window.confirm && !window.__noConfirm && !window.confirm('Start a new deal? This game will count as a loss.')) return; yes(); }
+        $('menuNew').addEventListener('click', function () { confirmNew(newDeal); });
+        $('menuRestart').addEventListener('click', function () { CK.closeAll(); restart(); });
+        $('newBtn').addEventListener('click', function () { confirmNew(newDeal); });
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', hint);
+        $('winNew').addEventListener('click', function () { newDeal(); });
+        var rt = null;
+        function refit() { clearTimeout(rt); rt = setTimeout(function () { if (!g || drag) return; build(); render(); }, 120); }
+        window.addEventListener('resize', refit);
+        try { new ResizeObserver(refit).observe(document.querySelector('main')); } catch (e) { /* ignore */ }
+        document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+        if (load()) { build(); render(); } else newDeal();
+        if (!S.getFlag('spider_seen')) { S.setFlag('spider_seen', true); syncMenu(); CK.open('menuModal'); }
+        window.__sp = function () { return { g: g, moves: moves, finished: finished }; };
+        window.__act = act;
+    })();
+    </script>
+</body>
+</html>
