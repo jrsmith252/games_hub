@@ -23,9 +23,10 @@
         .pill b { font-size: 1.15rem; }
         .pill.next { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .pill.next canvas { width: 34px; height: 34px; }
-        main { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 4px 8px calc(10px + env(safe-area-inset-bottom)); }
+        /* the jar never spills outside its space (so it can't cover the row of sizes underneath) */
+        main { flex: 1; min-height: 0; display: flex; justify-content: center; overflow: hidden; padding: 4px 8px 6px; }
         #cv { display: block; touch-action: none; }
-        .ladder { flex: none; display: flex; justify-content: center; gap: 3px; padding: 0 8px 6px; flex-wrap: wrap; }
+        .ladder { flex: none; display: flex; justify-content: center; gap: 3px; padding: 0 8px calc(8px + env(safe-area-inset-bottom)); flex-wrap: wrap; position: relative; z-index: 1; }
         .ladder span { width: 22px; height: 22px; border-radius: 50%; font-size: 0.55rem; font-weight: 800; color: #fff; display: inline-flex; align-items: center; justify-content: center; text-shadow: 0 1px 1px rgba(0,0,0,0.45); }
         .modal-overlay { position: fixed; inset: 0; background: rgba(43,26,58,0.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
         .modal-overlay.active { display: flex; }
@@ -122,13 +123,16 @@
         function newGame() { balls = []; fx = []; score = 0; over = false; danger = 0; cur = pickNew(); nxt = pickNew(); $('score').textContent = 0; dropX = W / 2; save(); drawNext(); }
 
         function layout() {
-            var m = document.querySelector('main'), w = Math.min(m.clientWidth - 16, 460), h = m.clientHeight - 14;
+            var m = document.querySelector('main'), w = Math.min(m.clientWidth - 16, 460), h = m.clientHeight - 10;
+            if (h < 120 || w < 100) return;   // not laid out yet
             if (w / h > 0.72) w = Math.floor(h * 0.72);
+            if (Math.abs(w - W) < 1 && Math.abs(h - H) < 1 && cv.width > 300) return;   // nothing changed
             var oldW = W; W = w; H = h; LINE = rad(4) * 2 + 18;
             DPR = window.devicePixelRatio || 1;
             cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
             ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
             if (oldW && oldW !== W) balls.forEach(function (b) { b.x *= W / oldW; b.y *= W / oldW; b.r = rad(b.t); });
+            balls.forEach(function (b) { b.y = Math.min(b.y, H - b.r); b.x = Math.min(Math.max(b.x, b.r), W - b.r); });
             dropX = Math.min(Math.max(dropX || W / 2, rad(cur)), W - rad(cur));
         }
 
@@ -279,7 +283,12 @@
         $('helpX').addEventListener('click', closeHelp);
         $('newBtn').addEventListener('click', function () { closeHelp(); newGame(); });
         $('againBtn').addEventListener('click', function () { $('overModal').classList.remove('active'); newGame(); });
+        // re-fit the jar whenever its space changes: fonts finishing loading, the browser bar showing or hiding,
+        // turning the phone. (Sizing it only once let it end up taller than its space.)
         window.addEventListener('resize', layout);
+        try { new ResizeObserver(function () { layout(); }).observe(document.querySelector('main')); } catch (e) { /* older browsers: resize only */ }
+        try { if (window.visualViewport) window.visualViewport.addEventListener('resize', layout); } catch (e) { /* ignore */ }
+        try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout); } catch (e) { /* ignore */ }
         document.addEventListener('visibilitychange', function () { if (document.hidden && !over) save(); });
 
         $('ladder').innerHTML = PAL.map(function (c, t) { var s = val(t) >= 1024 ? (val(t) / 1024) + 'K' : val(t); return '<span style="background:' + c + '">' + s + '</span>'; }).join('');
