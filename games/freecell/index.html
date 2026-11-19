@@ -188,7 +188,7 @@
         }
         function tooMany(w, to) {
             var n = g.cols[w.from].length - w.i, cap = E.capacity(g, to);
-            CK.toast('You can move ' + cap + ' card' + (cap === 1 ? '' : 's') + ' at once right now, not ' + n + '. Free a cell or empty a column for more.', 3000);
+            CK.toast((cap === 1 ? 'Only 1 card can move' : 'Only ' + cap + ' cards can move') + ' right now, not ' + n + '. Free a cell or empty a column to move more.', 3200);
         }
         // a tap sends the card to the best place: home, onto a column, an empty column, then a free cell
         function autoMove(c) {

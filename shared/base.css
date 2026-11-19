@@ -37,3 +37,6 @@ button, a, [role="button"], .cell, .tile, .card, .key {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
 }
+
+/* Pop-up messages: long ones wrap onto a second line instead of running off the screen */
+.toast { white-space: normal !important; width: max-content; max-width: calc(100vw - 32px); text-align: center; line-height: 1.35; border-radius: 18px !important; box-sizing: border-box; }
