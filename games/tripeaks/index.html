@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>TriPeaks — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <link rel="stylesheet" href="../cards/cardkit.css">
+    <style>
+        :root { --felt: #24607a; --felt2: #1b4d63; --deep: #133746; }
+        body.ck { background: radial-gradient(circle at 50% 30%, #2d7391 0, var(--felt) 45%, var(--felt2) 100%); }
+        .slot.stock { border-style: dashed; cursor: default; }
+        .deckcount { position: absolute; font-size: 0.8rem; font-weight: 700; opacity: 0.9; pointer-events: none; text-align: center; }
+        .scoreline { display: flex; justify-content: center; gap: 8px; position: absolute; left: 0; right: 0; pointer-events: none; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title">TriPeaks</div><div class="sub" id="sub"></div></div>
+        <div class="right-btns">
+            <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
+            <button class="icon-btn" id="menuBtn" aria-label="How to play, settings and new game"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+        </div>
+    </header>
+    <main><div class="table" id="table" aria-label="Card table"></div><div class="dealing" id="dealing">Shuffling a winnable deal…</div><div class="info" id="info"></div></main>
+    <div class="bar">
+        <button class="ctrl" id="undoBtn"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
+        <button class="ctrl" id="hintBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint</button>
+        <button class="ctrl" id="newBtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New deal</button>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="menuModal" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="menuTitle">How to play</h2>
+            <ol>
+                <li>Clear all <b>three peaks</b> of cards.</li>
+                <li>Tap an uncovered card that is <b>one higher or one lower</b> than the card on the pile, in any suit. A 7 can go on a 6 or an 8. <b>King and Ace</b> count as next to each other.</li>
+                <li>Keep going to build a <b>chain</b>: each card in a row scores more than the last.</li>
+                <li>Stuck? Tap the <b>deck</b> for a new pile card. That ends the chain, and the deck only goes round once.</li>
+            </ol>
+            <h3>Settings</h3>
+            <label class="toggle-row" for="winToggle"><span><b>Winnable deals only</b><small>Every deal has been played through first, so there's always a way to clear it.</small></span><span class="switch"><input type="checkbox" id="winToggle" role="switch"><span class="track"></span></span></label>
+            <label class="toggle-row" for="openToggle"><span><b>All cards face up</b><small>See every card from the start, so you can plan ahead. Easier, and scored separately.</small></span><span class="switch"><input type="checkbox" id="openToggle" role="switch"><span class="track"></span></span></label>
+            <label class="toggle-row" for="fourToggle"><span><b>Four-colour suits</b><small>Diamonds blue and clubs green, so every suit looks different. Helpful for colour blindness.</small></span><span class="switch"><input type="checkbox" id="fourToggle" role="switch"><span class="track"></span></span></label>
+            <button class="btn" id="menuNew">New deal</button>
+            <button class="btn secondary" id="menuRestart">Restart this deal</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="statsTitle">Statistics</h2>
+            <div id="statsBody"></div>
+            <button class="btn secondary" data-close>Close</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="endModal" role="dialog" aria-modal="true" aria-labelledby="endTitle" data-sticky>
+        <div class="modal">
+            <h2 id="endTitle">You cleared the peaks!</h2>
+            <p id="endText"></p>
+            <div class="stats" id="endStats"></div>
+            <button class="btn" id="endNew">New deal</button>
+            <button class="btn secondary" id="endUndo">Undo last move</button>
+        </div>
+    </div>
+
+    <script src="../cards/cardkit.js"></script>
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.TriPeaks, S = window.HubStorage, CK = window.CardKit, $ = CK.$;
+        document.body.classList.add('ck');
+
+        var winnable = S.getString('tripeaks_winnable', 'true') !== 'false';
+        var open = S.getFlag('tripeaks_open');
+        var four = CK.fourColour('tripeaks_four');
+        function mode() { return open ? 'open' : 'classic'; }
+
+        // ---------- state ----------
+        // g: the deal; chain: cards played in a row; score; history holds earlier { g, chain, score }
+        var g = null, chain = 0, score = 0, bestChain = 0, history = [], moves = 0, started = false, finished = false, counted = false;
+        var clock = CK.clock(function () { if (g) info(); });
+        function save() { if (!g) return; S.setString('tripeaks_state', JSON.stringify({ v: 1, g: g, chain: chain, score: score, bestChain: bestChain, history: history.slice(-60), moves: moves, elapsed: clock.elapsed, started: started, counted: counted, open: open })); }
+        function load() {
+            try { var o = JSON.parse(S.getString('tripeaks_state', 'null'));
+                if (!o || o.v !== 1 || !o.g || !Array.isArray(o.g.tab) || o.g.tab.length !== 28) return false;
+                g = o.g; chain = o.chain | 0; score = o.score | 0; bestChain = o.bestChain | 0; history = o.history || []; moves = o.moves | 0; clock.elapsed = o.elapsed || 0; started = !!o.started; counted = !!o.counted; open = !!o.open;
+                if (started) clock.start(); return true;
+            } catch (e) { return false; }
+        }
+        function stats() { return CK.stats('tripeaks_stats', ['classic', 'open']); }
+        function countPlayed() { if (counted) return; counted = true; var o = stats(); o[mode()].played++; CK.saveStats('tripeaks_stats', o); }
+
+        // ---------- dealing ----------
+        var worker = null, wid = 0;
+        try { worker = new Worker('worker.js'); } catch (e) { worker = null; }
+        function newDeal() {
+            if (started && !finished && counted) { var o = stats(); o[mode()].streak = 0; CK.saveStats('tripeaks_stats', o); }
+            var seed = CK.newSeed(); CK.closeAll();
+            var id = ++wid, done = function (d) { if (id !== wid) return; $('dealing').classList.remove('on'); begin(d); };
+            if (winnable && worker) {
+                $('dealing').classList.add('on'); $('table').style.visibility = 'hidden';
+                worker.onmessage = function (e) { done(e.data.deal); };
+                worker.postMessage({ id: id, seed: seed, winnable: true });
+                setTimeout(function () { if (id === wid && $('dealing').classList.contains('on')) done(E.deal(seed)); }, 6000);
+            } else done(winnable ? E.winnableDeal(seed, 20000) : E.deal(seed));
+        }
+        function begin(d) {
+            g = d; chain = 0; score = 0; bestChain = 0; history = []; moves = 0; started = false; finished = false; counted = false;
+            clock.elapsed = 0; clock.stop(); $('table').style.visibility = '';
+            build(); render(); save();
+        }
+        function restart() { if (g) begin(E.deal(g.seed)); }
+
+        // ---------- layout ----------
+        var cw = 36, ch = 51, step = 18, rowStep = 26, top0 = 10, deckY = 200, W = 380, H = 600, x0 = 0;
+        function layout() {
+            var m = document.querySelector('main'); W = Math.min(m.clientWidth - 8, 600); H = m.clientHeight;
+            // ten cards across the bottom row, a hair apart
+            var byW = (W - 8) / 10.25, byH = (H - 60) / (1.42 * (1 + 3 * 0.58) + 1.42 * 1.55);
+            var unit = Math.min(byW, byH);
+            cw = Math.floor(unit); ch = Math.round(cw * 1.42); step = unit / 2 * 1.025;
+            rowStep = Math.round(ch * 0.58);
+            var total = 3 * rowStep + ch + ch * 0.45 + ch + 22;
+            top0 = Math.max(10, Math.round((H - total) * 0.38));
+            x0 = Math.round((W - (18 * step + cw)) / 2);
+            deckY = top0 + 3 * rowStep + ch + Math.round(ch * 0.45);
+            $('table').style.width = W + 'px';
+        }
+        function posX(i) { return x0 + E.COL[i] * step; }
+        function posY(i) { return top0 + E.ROW[i] * rowStep; }
+        // the deck is fanned out on the left so you can see how many are left; the pile sits in the middle
+        function deckX(k) { var n = Math.max(1, g.stock.length), span = Math.min(cw * 0.16, (W / 2 - cw * 1.6) / 23); return x0 + k * span; }
+        function wasteX() { return Math.round(W / 2 + cw * 0.35); }
+
+        var els = {}, slotEl = null, countEl = null, comboEl = null;
+        function build() {
+            layout();
+            var t = $('table'); t.innerHTML = ''; els = {};
+            slotEl = document.createElement('div'); slotEl.className = 'slot stock'; t.appendChild(slotEl);
+            CK.place(slotEl, x0, deckY, cw, ch);
+            countEl = document.createElement('div'); countEl.className = 'deckcount'; t.appendChild(countEl);
+            comboEl = document.createElement('div'); comboEl.className = 'combo'; t.appendChild(comboEl);
+            for (var c = 0; c < 52; c++) { var el = document.createElement('div'); el.className = 'card'; el.dataset.c = c; t.appendChild(el); els[c] = el; }
+        }
+        // where each card is: { i: peak position } | { stock: index } | { waste: index }
+        function render() {
+            if (!g) return;
+            var at = {}, i, z = 1;
+            g.stock.forEach(function (c, k) { CK.place(els[c], deckX(k), deckY, cw, ch, 10 + k); CK.face(els[c], E.rank(c), E.suit(c), false, cw); els[c].classList.add('free'); els[c].setAttribute('role', 'button'); els[c].tabIndex = k === g.stock.length - 1 ? 0 : -1; at[c] = 1;
+                els[c].setAttribute('aria-label', 'Deck, ' + g.stock.length + ' left: tap for a new pile card'); });
+            g.waste.forEach(function (c, k) { CK.place(els[c], wasteX(), deckY, cw, ch, 40 + k); CK.face(els[c], E.rank(c), E.suit(c), true, cw); els[c].tabIndex = -1; els[c].removeAttribute('role'); at[c] = 1;
+                if (k === g.waste.length - 1) els[c].setAttribute('aria-label', 'Pile: ' + CK.name(E.rank(c), E.suit(c))); });
+            for (i = 0; i < 28; i++) {
+                var c = g.tab[i]; if (g.gone[i]) continue;
+                var fr = E.free(g, i), up = open || E.faceUp(g, i);
+                CK.place(els[c], posX(i), posY(i), cw, ch, 100 + E.ROW[i]);
+                CK.face(els[c], E.rank(c), E.suit(c), up, cw, fr ? ' free' : ' locked' + (up ? ' dim' : ''));
+                els[c].setAttribute('role', 'button'); els[c].tabIndex = fr ? 0 : -1;
+                if (up && !fr) els[c].setAttribute('aria-label', CK.name(E.rank(c), E.suit(c)) + ', covered');
+            }
+            countEl.textContent = g.stock.length ? g.stock.length + ' in deck' : 'Deck used';
+            countEl.style.left = x0 + 'px'; countEl.style.top = (deckY + ch + 4) + 'px'; countEl.style.width = (deckX(Math.max(0, g.stock.length - 1)) - x0 + cw) + 'px';
+            slotEl.style.display = g.stock.length ? 'none' : '';
+            $('undoBtn').disabled = !history.length || finished;
+            $('sub').textContent = (open ? 'Face up' : 'Classic') + (winnable ? ' · winnable' : '');
+            info();
+        }
+        function info() { $('info').textContent = 'Score ' + score + ' · chain ' + chain + ' · ' + CK.fmt(clock.elapsed); }
+
+        // ---------- playing ----------
+        function act(m) {
+            var before = { g: E.clone(g), chain: chain, score: score, bestChain: bestChain };
+            if (!E.apply(g, m)) return false;
+            history.push(before); if (history.length > 200) history.shift();
+            moves++; if (!started) { started = true; clock.start(); countPlayed(); }
+            var gained = 0;
+            if (m.draw) chain = 0;
+            else {
+                chain++; bestChain = Math.max(bestChain, chain); gained = chain;
+                // a peak top gone: a bonus (the last one is worth more)
+                if (E.ROW[m.t] === 0) gained += E.won(g) ? 30 : 15;
+                if (E.won(g)) gained += 5 * g.stock.length;
+                score += gained;
+                floatText('+' + gained + (chain > 1 ? '  chain ' + chain : ''), posX(m.t), posY(m.t));
+            }
+            render(); save();
+            if (E.won(g)) win();
+            else if (E.stuck(g)) setTimeout(stuckEnd, 500);
+            return true;
+        }
+        function floatText(txt, x, y) { comboEl.textContent = txt; comboEl.style.left = (x - cw * 0.3) + 'px'; comboEl.style.top = (y - 10) + 'px'; comboEl.classList.remove('go'); void comboEl.offsetWidth; comboEl.classList.add('go'); }
+        function undo() {
+            if (!history.length || finished) return;
+            var h = history.pop(); g = h.g; chain = h.chain; score = h.score; bestChain = h.bestChain; moves++;
+            CK.closeAll(); render(); save(); CK.announce('Undone.');
+        }
+        function tapCard(c) {
+            if (!g || finished) return;
+            if (g.stock.indexOf(c) >= 0) { drawCard(); return; }
+            var i = g.tab.indexOf(c); if (i < 0 || g.gone[i]) return;
+            if (!E.free(g, i)) { CK.toast('That card is still covered'); return; }
+            if (!act({ t: i })) { CK.shake(els[c]); CK.toast('It must be one higher or lower than the pile card'); return; }
+            CK.announce(CK.name(E.rank(c), E.suit(c)) + ' played. Chain ' + chain + '.');
+        }
+        function drawCard() {
+            if (!g.stock.length) { CK.toast('The deck is used up'); return; }
+            act({ draw: true }); var t = E.top(g); CK.announce('New pile card: ' + CK.name(E.rank(t), E.suit(t)));
+        }
+        $('table').addEventListener('click', function (e) { var ce = e.target.closest('.card'); if (ce) tapCard(+ce.dataset.c); });
+        $('table').addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var ce = e.target.closest('.card'); if (!ce) return; e.preventDefault(); tapCard(+ce.dataset.c); });
+        document.addEventListener('keydown', function (e) {
+            if (CK.anyOpen()) return;
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+            else if (e.key === 'd' || e.key === 'D') drawCard();
+        });
+
+        // ---------- hint ----------
+        function hint() {
+            if (!g || finished) return;
+            var r = E.solve(g, 40000), m = r.win ? r.first : null;
+            if (!m) { var ps = E.playable(g); m = ps.length ? { t: ps[0] } : g.stock.length ? { draw: true } : null; }
+            if (!m) { CK.toast('No moves left. Try Undo or a new deal', 2200); return; }
+            if (m.draw) { CK.pulse([els[g.stock[g.stock.length - 1]]]); CK.toast(r.win ? 'Nothing to play: take a card from the deck' : 'Take a card from the deck'); CK.announce('Hint: take a card from the deck.'); }
+            else { var c = g.tab[m.t]; CK.pulse([els[c]]); CK.announce('Hint: play ' + CK.name(E.rank(c), E.suit(c)) + '.'); }
+            if (!r.win && r.states <= 40000) CK.toast('This deal can\'t be cleared from here. Undo might help', 2400);
+        }
+
+        // ---------- the end ----------
+        function win() {
+            finished = true; clock.stop();
+            var o = stats(), st = o[mode()]; st.won++; st.streak++; st.best = Math.max(st.best, st.streak);
+            if (!st.fastest || clock.elapsed < st.fastest) st.fastest = clock.elapsed; st.top = Math.max(st.top, score); st.fewest = Math.max(st.fewest, bestChain);
+            CK.saveStats('tripeaks_stats', o); S.setString('tripeaks_state', 'null');
+            $('endTitle').textContent = 'You cleared the peaks!';
+            $('endText').textContent = 'Score ' + score + ' in ' + CK.fmt(clock.elapsed) + '. Longest chain ' + bestChain + (g.stock.length ? ', with ' + g.stock.length + ' deck cards to spare.' : '.');
+            $('endStats').innerHTML = CK.statRow(st); $('endStats').style.display = ''; $('endUndo').style.display = 'none';
+            CK.buzz(50); CK.confetti(); setTimeout(function () { CK.open('endModal'); }, 700);
+        }
+        function stuckEnd() {
+            if (!E.stuck(g) || finished) return;
+            $('endTitle').textContent = 'Out of moves';
+            $('endText').textContent = E.left(g) + ' card' + (E.left(g) === 1 ? '' : 's') + ' left on the peaks. Score ' + score + '. You can undo and try a different way, or start a new deal.';
+            $('endStats').style.display = 'none'; $('endUndo').style.display = '';
+            CK.open('endModal');
+        }
+
+        // ---------- menus ----------
+        function openStats() {
+            var o = stats();
+            $('statsBody').innerHTML = [['classic', 'Classic'], ['open', 'All cards face up']].map(function (mm) { var st = o[mm[0]]; return '<h3>' + mm[1] + '</h3><div class="stats">' + CK.statRow(st) + '</div><p style="margin:6px 0 0;font-size:0.85rem">Best score ' + st.top + ' · longest chain ' + st.fewest + ' · best streak ' + st.best + '</p>'; }).join('');
+            CK.open('statsModal');
+        }
+        function syncMenu() { $('winToggle').checked = winnable; $('openToggle').checked = open; $('fourToggle').checked = four; }
+        $('menuBtn').addEventListener('click', function () { syncMenu(); CK.open('menuModal'); });
+        $('statsBtn').addEventListener('click', openStats);
+        $('winToggle').addEventListener('change', function () { winnable = this.checked; S.setString('tripeaks_winnable', winnable ? 'true' : 'false'); render(); });
+        $('openToggle').addEventListener('change', function () { var was = open; open = this.checked; S.setFlag('tripeaks_open', open);
+            // changing how many cards you can see mid-game would muddle the scores, so it starts a fresh deal
+            if (started && !finished) { open = was; newDealConfirm(function () { open = $('openToggle').checked; newDeal(); }, function () { $('openToggle').checked = was; S.setFlag('tripeaks_open', was); }); } else render(); });
+        $('fourToggle').addEventListener('change', function () { four = this.checked; S.setFlag('tripeaks_four', four); document.body.classList.toggle('four', four); });
+        function newDealConfirm(yes, no) { if (started && !finished && moves > 3 && window.confirm && !window.__noConfirm && !window.confirm('Start a new deal? This game will count as a loss.')) { if (no) no(); return; } yes(); }
+        $('menuNew').addEventListener('click', function () { newDealConfirm(newDeal); });
+        $('menuRestart').addEventListener('click', function () { CK.closeAll(); restart(); });
+        $('newBtn').addEventListener('click', function () { newDealConfirm(newDeal); });
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', hint);
+        $('endNew').addEventListener('click', function () { newDeal(); });
+        $('endUndo').addEventListener('click', undo);
+        var rt = null;
+        function refit() { clearTimeout(rt); rt = setTimeout(function () { if (!g) return; build(); render(); }, 120); }
+        window.addEventListener('resize', refit);
+        try { new ResizeObserver(refit).observe(document.querySelector('main')); } catch (e) { /* ignore */ }
+        document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+        if (load()) { build(); render(); if (E.stuck(g)) setTimeout(stuckEnd, 300); } else newDeal();
+        if (!S.getFlag('tripeaks_seen')) { S.setFlag('tripeaks_seen', true); syncMenu(); CK.open('menuModal'); }
+        window.__tp = function () { return { g: g, score: score, chain: chain, finished: finished }; };
+        window.__act = act;
+    })();
+    </script>
+</body>
+</html>
