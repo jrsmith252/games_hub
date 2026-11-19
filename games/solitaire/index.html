@@ -58,7 +58,10 @@
         .btn { display: block; width: 100%; min-height: 48px; border-radius: 12px; border: 0; margin-top: 8px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
         .btn.secondary { background: transparent; color: var(--ink); border: 2px solid rgba(0,0,0,0.2); }
         .seg { display: flex; background: #e8ece9; border-radius: 12px; padding: 3px; margin-bottom: 10px; }
-        .seg button { flex: 1; min-height: 40px; border: 0; border-radius: 9px; background: none; font: inherit; font-weight: 700; color: #4d5a55; cursor: pointer; }
+        .seg button { flex: 1; min-height: 48px; padding: 4px 6px; line-height: 1.15; border: 0; border-radius: 9px; background: none; font: inherit; font-weight: 700; color: #4d5a55; cursor: pointer; }
+        .seg button small { display: block; font-size: 0.72rem; font-weight: 600; opacity: 0.75; margin-top: 1px; }
+        .seg-label { font-weight: 700; margin: 0 0 6px; }
+        .seg-note { font-size: 0.85rem; color: #4d5a55; margin: -4px 0 12px; line-height: 1.35; }
         .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #f6f8f7; border: 1px solid #dfe5e2; border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; cursor: pointer; }
         .toggle-row b { display: block; font-size: 0.95rem; }
@@ -114,11 +117,13 @@
                 <li>Build the four piles at the top from <b>Ace up to King</b>, one suit each.</li>
                 <li>In the seven columns, stack cards <b>downwards in alternating colours</b> (a red 6 on a black 7). You can move a whole run at once.</li>
                 <li>Only a <b>King</b> (with anything on it) can go into an empty column.</li>
-                <li>Tap the deck to turn cards over. When it runs out, tap it again to turn the pile back over.</li>
+                <li>Tap the deck to turn cards over: one at a time in <b>Draw 1</b>, or three at a time in <b>Draw 3</b>, where only the top one of the three can be played. When the deck runs out, tap it again to turn the pile back over.</li>
                 <li><b>Drag</b> cards where you want them, or just <b>tap</b> a card and it goes to the best place it can.</li>
             </ol>
             <h3>Settings</h3>
-            <div class="seg" role="tablist" aria-label="Cards turned over at a time"><button id="d1">Draw 1</button><button id="d3">Draw 3</button></div>
+            <p class="seg-label">How many cards the deck turns over</p>
+            <div class="seg" role="group" aria-label="How many cards the deck turns over"><button id="d1">Draw 1<small>Easier</small></button><button id="d3">Draw 3<small>Harder</small></button></div>
+            <p class="seg-note" id="drawNote"></p>
             <label class="toggle-row" for="winToggle"><span><b>Winnable deals only</b><small>Every deal has been played through first, so there's always a way to win.</small></span><span class="switch"><input type="checkbox" id="winToggle" role="switch"><span class="track"></span></span></label>
             <label class="toggle-row" for="fourToggle"><span><b>Four-colour suits</b><small>Diamonds blue and clubs green, so every suit looks different. Helpful for colour blindness.</small></span><span class="switch"><input type="checkbox" id="fourToggle" role="switch"><span class="track"></span></span></label>
             <label class="toggle-row" for="leftToggle"><span><b>Left-handed</b><small>The deck on the right, the piles on the left.</small></span><span class="switch"><input type="checkbox" id="leftToggle" role="switch"><span class="track"></span></span></label>
@@ -258,7 +263,7 @@
             for (var f = 0; f < 4; f++) for (var r = 0; r < g.found[f]; r++) put(f * 13 + r, xFound(f), top0, z++, true);
             for (var col = 0; col < 7; col++) { var ys = colOffsets(col); g.cols[col].forEach(function (c, i) { put(c, slotX(col), ys[i], 100 + i, i >= g.down[col]); }); }
             $('undoBtn').disabled = !history.length;
-            $('sub').textContent = 'Draw ' + draw + (winnable ? ' · winnable' : '');
+            $('sub').textContent = 'Draw ' + draw + (draw === 1 ? ' (easier)' : ' (harder)') + (winnable ? ' · winnable' : '');
             info();
             var autoBtn = E.allOpen(g) && !E.won(g) && !finished;
             $('hintBtn').innerHTML = autoBtn ? '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>Finish' : '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>Hint';
@@ -413,12 +418,13 @@
             $('statsBody').innerHTML = [1, 3].map(function (d) { var st = o[d]; return '<h3>Draw ' + d + '</h3><div class="stats">' + statRow(st) + '</div><p style="margin:6px 0 0;font-size:0.85rem">Best streak ' + st.best + (st.fewest ? ' · fewest moves ' + st.fewest : '') + '</p>'; }).join('');
             openModal('statsModal');
         }
-        function syncMenu() { $('d1').classList.toggle('on', draw === 1); $('d3').classList.toggle('on', draw === 3); $('winToggle').checked = winnable; $('fourToggle').checked = four; $('leftToggle').checked = lefty; }
+        function syncMenu() { $('d1').classList.toggle('on', draw === 1); $('d3').classList.toggle('on', draw === 3); $('d1').setAttribute('aria-pressed', draw === 1); $('d3').setAttribute('aria-pressed', draw === 3);
+            $('drawNote').textContent = draw === 1 ? 'Each tap of the deck turns over one card, and you can always play it. The relaxed way to play.' : 'Each tap turns over three cards, but only the top one can be played, so cards can get stuck underneath. The classic challenge.'; $('winToggle').checked = winnable; $('fourToggle').checked = four; $('leftToggle').checked = lefty; }
         $('menuBtn').addEventListener('click', function () { syncMenu(); openModal('menuModal'); });
         $('menuX').addEventListener('click', closeAll);
         $('statsBtn').addEventListener('click', openStats);
         $('statsX').addEventListener('click', closeAll); $('statsClose').addEventListener('click', closeAll);
-        function setDraw(d) { if (d === draw) return; draw = d; S.setString('solitaire_draw', String(d)); syncMenu(); closeAll(); newDeal(); toast('Draw ' + d + ': new deal'); }
+        function setDraw(d) { if (d === draw) return; draw = d; S.setString('solitaire_draw', String(d)); syncMenu(); closeAll(); newDeal(); toast('Draw ' + d + (d === 1 ? ' (easier)' : ' (harder)') + ': new deal'); }
         $('d1').addEventListener('click', function () { setDraw(1); }); $('d3').addEventListener('click', function () { setDraw(3); });
         $('winToggle').addEventListener('change', function () { winnable = this.checked; S.setString('solitaire_winnable', winnable ? 'true' : 'false'); render(); });
         $('fourToggle').addEventListener('change', function () { four = this.checked; S.setFlag('solitaire_four', four); document.body.classList.toggle('four', four); });
