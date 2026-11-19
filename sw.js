@@ -1,11 +1,11 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
    Pages and assets are fetched network-first, so updates show up straight away when online.
    Bump CACHE_VERSION (and the version in the hub footer) when releasing. */
-const CACHE_VERSION = 'v1.28.0';
+const CACHE_VERSION = 'v1.29.0';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [
-  'balance', 'breakout', 'bubble-doubles', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fizz-drop', 'fourfold', 'freecell', 'go-between', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'moving-in', 'simon', 'solitaire', 'tripeaks',
+  'balance', 'breakout', 'bubble-doubles', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fizz-drop', 'fourfold', 'freecell', 'go-between', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'moving-in', 'pyramid', 'simon', 'solitaire', 'tripeaks',
   'sliding-puzzle', 'snake', 'sudoku', 'tetris', 'tic-tac-toe', 'twenty48', 'way-out', 'word-search'
 ];
 
@@ -37,6 +37,8 @@ const PRECACHE = [
   'games/cards/cardkit.css',
   'games/freecell/engine.js',
   'games/freecell/worker.js',
+  'games/pyramid/engine.js',
+  'games/pyramid/worker.js',
   'games/solitaire/engine.js',
   'games/solitaire/worker.js',
   'games/kindred/engine.js',
