@@ -274,7 +274,6 @@
                 if (dayRec.placed && dayRec.code === code) placed = dayRec.placed; else showAnswer();
             }
             fit();
-            if (done) $('tip').textContent = 'Solved in ' + fmt(elapsed) + (hints ? ' with ' + hints + ' hint' + (hints === 1 ? '' : 's') : ' with no hints') + '. Come back tomorrow for new puzzles.';
         }
         // fill the board with the answer (after giving up, or to show a day already done)
         function showAnswer(after) {
@@ -438,14 +437,25 @@
                 slot.appendChild(el); tray.appendChild(slot);
             });
             var left = placed.filter(function (p) { return !p; }).length;
-            if (!done) $('tip').textContent = sel >= 0 ? 'Tap it again to turn it, or tap a square to put it there' : left ? (full ? '' : left + ' domino' + (left === 1 ? '' : 'es') + ' to place · ' + met + ' of ' + rules + ' rules met') : broken ? 'Not quite: a rule isn\'t met yet' : '';
-            var gb = $('giveUpBtn'); gb.hidden = mode !== 'practice'; gb.textContent = done ? 'Next ' + LNAME[level] + ' puzzle →' : 'Quit and try another';
+            if (done) $('tip').textContent = doneText();
+            else $('tip').textContent = sel >= 0 ? 'Tap it again to turn it, or tap a square to put it there' : left ? (full ? '' : left + ' domino' + (left === 1 ? '' : 'es') + ' to place · ' + met + ' of ' + rules + ' rules met') : broken ? 'Not quite: a rule isn\'t met yet' : '';
+            // under the dominoes: Quit (practice), or once solved, where to go next
+            var gb = $('giveUpBtn'), nx = nextDaily();
+            gb.hidden = mode === 'daily' && !done;
+            gb.textContent = mode === 'practice' ? (done ? 'Next ' + LNAME[level] + ' puzzle →' : 'Quit and try another') : nx ? 'Play today\'s ' + LNAME[nx] + ' →' : 'Go to practice →';
             $('undoBtn').disabled = !history.length || done;
             $('clearBtn').disabled = done || !placed.some(function (p) { return p; });
             $('hintBtn').disabled = done;
             Array.prototype.forEach.call(document.querySelectorAll('.levels button'), function (bt) { var lv = bt.dataset.level; bt.classList.toggle('on', lv === level); bt.classList.toggle('done', mode === 'daily' && !!dailyRecord(lv)); });
             $('dailyTab').classList.toggle('on', mode === 'daily'); $('practiceTab').classList.toggle('on', mode === 'practice');
             sub();
+        }
+        function nextDaily() { return LEVELS.filter(function (lv) { return lv !== level && !dailyRecord(lv); })[0] || null; }
+        function doneText() {
+            var how = 'Solved in ' + fmt(elapsed) + (hints ? ' with ' + hints + ' hint' + (hints === 1 ? '' : 's') : ' with no hints') + '. ';
+            if (mode === 'practice') return how.trim();
+            var left = LEVELS.filter(function (lv) { return !dailyRecord(lv); }).length;
+            return how + (left ? 'Try the other difficulties, or practice mode. New daily puzzles tomorrow.' : 'That\'s all three for today! Come back tomorrow for new puzzles, or try practice mode.');
         }
         function sub() { if (!P) return; $('sub').textContent = (mode === 'daily' ? 'Daily #' + today + ' · ' + LNAME[level] : 'Practice · ' + LNAME[level] + ' #' + num) + ' · ' + fmt(elapsed); }
 
@@ -640,7 +650,7 @@
         $('undoBtn').addEventListener('click', undo);
         $('hintBtn').addEventListener('click', hint);
         $('clearBtn').addEventListener('click', clearBoard);
-        $('giveUpBtn').addEventListener('click', function () { if (done) newPractice(); else quitPuzzle(); });
+        $('giveUpBtn').addEventListener('click', function () { if (mode === 'daily') { var nx = nextDaily(); if (nx) setLevel(nx); else setMode('practice'); return; } if (done) newPractice(); else quitPuzzle(); });
         $('menuBtn').addEventListener('click', function () { $('mistakeToggle').checked = showBad; open('helpModal'); });
         $('mistakeToggle').addEventListener('change', function () { showBad = this.checked; S.setString('spoton_mistakes', showBad ? 'true' : 'false'); render(); });
         var statsView = 'daily';
