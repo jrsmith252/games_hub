@@ -237,6 +237,8 @@
         // ---------- state ----------
         // mode: 'daily' or 'practice'. Each keeps its own puzzle in progress.
         var mode = S.getString('gobetween_mode', 'daily') === 'practice' ? 'practice' : 'daily';
+        // the hub's Daily Challenges links open straight into the daily puzzle
+        try { var qm = new URLSearchParams(location.search).get('mode'); if (qm === 'daily' || qm === 'practice') { mode = qm; S.setString('gobetween_mode', qm); } } catch (e) { /* ignore */ }
         var P = null, entry = [], solved = [], hinted = [], mystery = '', mysterySolved = false, hints = 0, done = false, result = null, sel = 0, pos = 0;
         // sel: -1 = the mystery word, otherwise a clue number; pos: the letter being typed
         function key() { return mode === 'daily' ? 'gobetween_daily' : 'gobetween_practice'; }
@@ -385,7 +387,7 @@
             if (mode === 'daily') {
                 var s = dstats(); if (s.last === P.date) return;
                 s.played++; if (pass) { s.passed++; s.stars[starsFor(hints)]++; s.streak = s.last === yesterday(P.date) ? s.streak + 1 : 1; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
-                s.last = P.date; S.setString('gobetween_dstats', JSON.stringify(s));
+                s.last = P.date; s.lastResult = { pass: pass, stars: pass ? starsFor(hints) : 0 }; S.setString('gobetween_dstats', JSON.stringify(s));
             } else { var t = pstats(); t.played++; if (pass) t.passed++; S.setString('gobetween_pstats', JSON.stringify(t)); }
         }
         function finish(pass) {

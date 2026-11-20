@@ -203,6 +203,10 @@
             fill: none;
             stroke-width: 1.5;
         }
+        .daily-note { color: var(--text-secondary); font-size: 0.82rem; margin: -4px 0 10px; }
+        .daily-status { font-weight: 600; }
+        .game-card.daily-done .daily-status { color: #4caf7a; }
+        .game-card.daily-done .play-btn { background: #4caf7a; }
         .footer { text-align: center; color: var(--text-secondary); font-size: 0.78rem; padding: 8px 0 24px; }
         .footer a { color: var(--text-secondary); }
     </style>
@@ -224,6 +228,31 @@
             <h1>Game Hub</h1>
             <p>32 games · No ads · Just fun</p>
         </header>
+
+        <section class="library-section" id="dailySection">
+            <div class="section-label">Daily Challenges</div>
+            <p class="daily-note" id="dailyNote">A new puzzle every day, the same for everyone.</p>
+            <div class="game-grid">
+                <a href="games/spot-on/index.html?mode=daily" class="game-card" data-daily="spoton">
+                    <div class="game-icon icon-spot-on">🎲</div>
+                    <div class="game-info">
+                        <h3>Spot On</h3>
+                        <p class="daily-status">Easy, Medium and Hard</p>
+                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">3 a day</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+                <a href="games/go-between/index.html?mode=daily" class="game-card" data-daily="gobetween">
+                    <div class="game-icon icon-gobetween">🔗</div>
+                    <div class="game-info">
+                        <h3>Go-Between</h3>
+                        <p class="daily-status">Today's mystery word</p>
+                        <div class="game-meta"><span class="tag">Words</span><span class="tag">1 a day</span></div>
+                    </div>
+                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+                </a>
+            </div>
+        </section>
 
         <section class="library-section">
             <div class="section-label">New</div>
@@ -712,8 +741,40 @@
         </section>
 
         <footer class="footer">
-            <a href="privacy.html">Privacy</a> · Saved on this device only · v1.32.3
+            <a href="privacy.html">Privacy</a> · Saved on this device only · v1.33.0
         </footer>
     </div>
+    <script>
+    // Daily Challenges: show how today's puzzles are going
+    (function () {
+        var S = window.HubStorage;
+        function json(k) { try { return JSON.parse(S.getString(k, 'null')); } catch (e) { return null; } }
+        function update() {
+            var d = new Date(), ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+            var dayNo = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 10, 19)) / 86400000) + 1;
+            var total = 0, doneCount = 0;
+            // Spot On: three levels a day
+            var so = json('spoton_daily'), lv = so && so.day === dayNo && so.levels ? so.levels : {};
+            var names = [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']], n = 0;
+            var soText = names.map(function (x) { if (lv[x[0]]) n++; return x[1] + (lv[x[0]] ? ' ✓' : ''); }).join(' · ');
+            setCard('spoton', n === 3 ? 'All three done today ✓' : n ? soText : 'Easy, Medium and Hard to play', n === 3);
+            total += 3; doneCount += n;
+            // Go-Between: one a day
+            var gb = json('gobetween_dstats'), gbDone = gb && gb.last === ds, r = gb && gb.lastResult;
+            setCard('gobetween', gbDone ? (r ? (r.pass ? 'Solved today ' + '★★★☆☆☆'.slice(3 - r.stars, 6 - r.stars) : 'Missed today. New one tomorrow') : 'Done today ✓') : 'Today\'s mystery word to find', gbDone);
+            total += 1; doneCount += gbDone ? 1 : 0;
+            var note = document.getElementById('dailyNote');
+            if (note) note.textContent = doneCount === total ? 'All of today\'s challenges done. New ones tomorrow.' : doneCount ? doneCount + ' of ' + total + ' done today. A new set every day, the same for everyone.' : 'A new set every day, the same for everyone.';
+        }
+        function setCard(key, text, done) {
+            var a = document.querySelector('[data-daily="' + key + '"]'); if (!a) return;
+            a.querySelector('.daily-status').textContent = text; a.classList.toggle('daily-done', !!done);
+        }
+        update();
+        // coming back from a game (including the back/forward cache) refreshes the panel
+        window.addEventListener('pageshow', update);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) update(); });
+    })();
+    </script>
 </body>
 </html>
