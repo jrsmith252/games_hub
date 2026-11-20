@@ -1,11 +1,11 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
    Pages and assets are fetched network-first, so updates show up straight away when online.
    Bump CACHE_VERSION (and the version in the hub footer) when releasing. */
-const CACHE_VERSION = 'v1.35.2';
+const CACHE_VERSION = 'v1.36.0';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [
-  'balance', 'breakout', 'bubble-doubles', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fizz-drop', 'fourfold', 'freecell', 'go-between', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'moving-in', 'pick-and-mix', 'pyramid', 'simon', 'solitaire', 'spider', 'spot-on', 'tripeaks',
+  'balance', 'breakout', 'bubble-doubles', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fizz-drop', 'flip-side', 'fourfold', 'freecell', 'go-between', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'moving-in', 'pick-and-mix', 'pyramid', 'simon', 'solitaire', 'spider', 'spot-on', 'tripeaks',
   'sliding-puzzle', 'snake', 'sudoku', 'tetris', 'tic-tac-toe', 'twenty48', 'way-out', 'word-search'
 ];
 
@@ -18,6 +18,7 @@ const PRECACHE = [
   'shared/base.css',
   'shared/fonts.css',
   'shared/hub.js',
+  'shared/duel.js',
   'shared/fonts/dm-sans-latin-400-normal.woff2',
   'shared/fonts/dm-sans-latin-500-normal.woff2',
   'shared/fonts/dm-sans-latin-600-normal.woff2',
@@ -43,6 +44,7 @@ const PRECACHE = [
   'games/spider/engine.js',
   'games/spider/worker.js',
   'games/spider/deals.js',
+  'games/flip-side/engine.js',
   'games/pick-and-mix/engine.js',
   'games/pick-and-mix/levels.js',
   'games/spot-on/engine.js',
