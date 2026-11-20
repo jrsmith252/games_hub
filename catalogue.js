@@ -4,8 +4,24 @@
      icon     emoji shown on its tile          bg      the tile's background
      cat      word | logic | puzzle | cards | arcade                  tags    little labels
      fresh    how new it is (higher = newer; missing = not new)      daily   link to its daily mode
-     progress [storage key, field, label] to show "Level 12" in Jump back in */
+     progress [storage key, field, label] to show "Level 12" in Jump back in
+     friends  true if it can be played against friends (shows under the Play a friend filter) */
 window.HUB_GAMES = [
+ {
+  "slug": "flip-side",
+  "name": "Flip Side",
+  "blurb": "Flip your friend's discs, or the computer's",
+  "about": "Classic Reversi. Trap the other colour's discs in a line to flip them, and finish with the most. Play the computer at three levels, pass one phone between two, or play a friend by sending moves back and forth as links.",
+  "icon": "⚫",
+  "bg": "linear-gradient(135deg, #2e9b62, #0e2a1c)",
+  "cat": "board",
+  "tags": [
+   "Play a friend",
+   "Strategy"
+  ],
+  "fresh": 20,
+  "friends": true
+ },
  {
   "slug": "pick-and-mix",
   "name": "Pick & Mix",
@@ -440,7 +456,7 @@ window.HUB_GAMES = [
   "about": "Three in a row beats the computer, at three difficulty levels.",
   "icon": "⭕",
   "bg": "linear-gradient(135deg, #3b82f6, #2563eb)",
-  "cat": "arcade",
+  "cat": "board",
   "tags": [
    "3 Difficulties"
   ]
@@ -452,7 +468,7 @@ window.HUB_GAMES = [
   "about": "Drop counters to get four in a row before the computer does.",
   "icon": "🔴",
   "bg": "linear-gradient(135deg, #ef4444, #eab308)",
-  "cat": "arcade",
+  "cat": "board",
   "tags": [
    "3 Difficulties"
   ]
@@ -484,5 +500,5 @@ window.HUB_GAMES = [
 ];
 window.HUB_CATEGORIES = [
     { id: 'word', name: 'Word' }, { id: 'logic', name: 'Logic' }, { id: 'puzzle', name: 'Puzzle' },
-    { id: 'cards', name: 'Cards' }, { id: 'arcade', name: 'Arcade' }
+    { id: 'cards', name: 'Cards' }, { id: 'board', name: 'Board' }, { id: 'arcade', name: 'Arcade' }
 ];

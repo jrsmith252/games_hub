@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Flip Side — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --felt: #1f7a4d; --felt2: #17603c; --line: rgba(0,0,0,0.28); --deep: #0e2a1c; --accent: #f2c94c; --ink: #f4f7f2; --soft: #a9c4b4; --card: #143a28; --you: #f2c94c; }
+        html, body.fs { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: radial-gradient(circle at 50% 20%, #1d4a33, #0b2016 70%); color: var(--ink); }
+        body.fs { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; user-select: none; -webkit-user-select: none; }
+        button { font: inherit; color: inherit; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top)); background: rgba(0,0,0,0.35); border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; min-width: 0; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); }
+        .sub { font-size: 0.75rem; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .right-btns { display: flex; gap: 6px; }
+        main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+        .view { display: none; flex: 1; min-height: 0; flex-direction: column; }
+        .view.on { display: flex; }
+
+        /* ---------- menu ---------- */
+        #menu { overflow-y: auto; padding: 14px 16px 24px; }
+        .menu-in { width: 100%; max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+        .card { background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px; }
+        .card h2 { font-family: 'Fraunces', serif; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+        .card p { color: var(--soft); font-size: 0.86rem; margin: 2px 0 10px; }
+        .seg { display: flex; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 3px; gap: 3px; margin-bottom: 8px; }
+        .seg button { flex: 1; min-height: 40px; border: 0; border-radius: 9px; background: transparent; font-weight: 700; color: var(--soft); cursor: pointer; line-height: 1.1; }
+        .seg button small { display: block; font-size: 0.68rem; font-weight: 600; opacity: 0.8; }
+        .seg button.on { background: #fff; color: #10301f; }
+        .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; border: 0; border-radius: 14px; background: var(--accent); color: #2a2200; font-weight: 800; font-size: 1rem; cursor: pointer; text-decoration: none; }
+        .btn.ghost { background: rgba(255,255,255,0.1); color: var(--ink); font-weight: 700; }
+        .btn + .btn { margin-top: 8px; }
+        .duels { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .duel { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.06); border-radius: 12px; padding: 8px 10px; cursor: pointer; border: 0; text-align: left; width: 100%; }
+        .duel .who { flex: 1; min-width: 0; }
+        .duel b { display: block; font-size: 0.95rem; }
+        .duel span { font-size: 0.8rem; color: var(--soft); }
+        .duel.mine span { color: var(--accent); font-weight: 700; }
+        .duel .x { width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.25); color: var(--soft); cursor: pointer; flex: none; }
+        .mini { width: 34px; height: 34px; border-radius: 6px; background: var(--felt); flex: none; display: grid; grid-template-columns: repeat(8, 1fr); padding: 2px; gap: 0; }
+        .mini i { border-radius: 50%; margin: 0.3px; }
+
+        /* ---------- game ---------- */
+        #game { align-items: center; padding: 8px 10px 4px; gap: 8px; }
+        .players { display: flex; gap: 8px; width: 100%; max-width: 480px; flex: none; }
+        .pl { flex: 1; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); border-radius: 14px; padding: 6px 10px; border: 2px solid transparent; min-width: 0; transition: border-color 0.2s, background 0.2s; }
+        .pl.turn { border-color: var(--accent); background: rgba(242,201,76,0.12); }
+        .pl .disc { width: 26px; height: 26px; flex: none; }
+        .pl .nm { flex: 1; min-width: 0; font-weight: 700; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pl .nm small { display: block; font-size: 0.7rem; color: var(--soft); font-weight: 600; }
+        .pl .n { font-size: 1.4rem; font-weight: 800; }
+        .boardwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+        .frame { position: relative; padding: 14px; background: #5b3a1e; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 0 2px #7a512b; }
+        .lab { position: absolute; font-size: 10px; font-weight: 700; color: rgba(255,240,210,0.7); display: flex; pointer-events: none; }
+        .lab.cols { left: 14px; right: 14px; top: 0; height: 14px; }
+        .lab.rows { top: 14px; bottom: 14px; left: 0; width: 14px; flex-direction: column; }
+        .lab span { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .board { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); background: var(--felt); border: 2px solid var(--deep); touch-action: manipulation; }
+        .sq { position: relative; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; cursor: default; background: none; padding: 0; }
+        .sq.can { cursor: pointer; }
+        .sq.can::after { content: ''; width: 26%; height: 26%; border-radius: 50%; background: rgba(0,0,0,0.28); box-shadow: 0 0 0 2px rgba(255,255,255,0.15); }
+        .sq.can:hover::after { background: rgba(255,255,255,0.35); }
+        .board.nohints .sq.can::after { display: none; }
+        .disc { width: 84%; height: 84%; border-radius: 50%; position: relative; }
+        .disc.k { background: radial-gradient(circle at 35% 30%, #555, #111 60%); box-shadow: 0 2px 3px rgba(0,0,0,0.6), inset 0 -2px 2px rgba(255,255,255,0.08); }
+        .disc.w { background: radial-gradient(circle at 35% 30%, #fff, #d9dcd6 65%); box-shadow: 0 2px 3px rgba(0,0,0,0.5), inset 0 -2px 2px rgba(0,0,0,0.08); }
+        .disc.flip { animation: flip 0.32s ease-in-out; }
+        @keyframes flip { 0% { transform: scaleX(1); } 50% { transform: scaleX(0.05) scaleY(1.06); } 100% { transform: scaleX(1); } }
+        .disc.drop { animation: drop 0.22s ease-out; }
+        @keyframes drop { 0% { transform: scale(1.35); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
+        .disc.last::after { content: ''; position: absolute; left: 50%; top: 50%; width: 22%; height: 22%; transform: translate(-50%, -50%); border-radius: 50%; background: #e5484d; }
+        .status { flex: none; min-height: 1.4em; font-weight: 700; text-align: center; font-size: 0.95rem; }
+        .status small { display: block; font-weight: 500; color: var(--soft); font-size: 0.8rem; }
+        .bar { flex: none; display: flex; gap: 8px; padding: 6px 10px; padding-bottom: max(6px, calc(env(safe-area-inset-bottom) - 12px)); width: 100%; max-width: 520px; margin: 0 auto; }
+        .ctrl { flex: 1; min-height: 48px; border-radius: 14px; border: 2px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .ctrl:disabled { opacity: 0.4; cursor: default; }
+        .ctrl.send { background: var(--accent); color: #2a2200; border-color: var(--accent); flex: 2; animation: nudge 1.6s ease-in-out infinite; }
+        @keyframes nudge { 50% { transform: scale(1.04); } }
+        .ctrl.send.quiet { animation: none; background: rgba(242,201,76,0.2); color: var(--ink); }
+
+        .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(10px); background: #0b1f15; border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 10px 16px; border-radius: 18px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 2000; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1500; padding: 16px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #133524; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 22px 20px 18px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.45rem; text-align: center; margin-bottom: 8px; color: var(--accent); }
+        .modal p { line-height: 1.45; margin: 6px 0; }
+        .modal ol { padding-left: 20px; display: grid; gap: 8px; margin: 8px 0; line-height: 1.45; }
+        .modal-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; background: transparent; font-size: 1.2rem; cursor: pointer; color: var(--soft); }
+        .modal .btn { margin-top: 10px; }
+        .field { width: 100%; min-height: 48px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font: inherit; font-size: 1rem; padding: 10px 12px; margin-top: 6px; }
+        .field:focus { outline: none; border-color: var(--accent); }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; margin: 4px 0 10px; }
+        .stats div { background: rgba(0,0,0,0.25); border-radius: 10px; padding: 8px 2px; font-weight: 800; font-size: 1.1rem; }
+        .stats small { display: block; font-size: 0.66rem; font-weight: 600; color: var(--soft); }
+        .modal h3 { font-size: 0.75rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--soft); margin: 12px 0 4px; text-align: center; }
+        .linkbox { width: 100%; font-size: 0.75rem; background: rgba(0,0,0,0.3); color: var(--soft); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px; margin-top: 8px; resize: none; }
+        .confetti { position: fixed; top: -10px; width: 8px; height: 12px; z-index: 3000; pointer-events: none; border-radius: 2px; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+    <script src="../../shared/duel.js"></script>
+</head>
+<body class="fs">
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" id="backBtn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title">Flip Side</div><div class="sub" id="sub">Reversi</div></div>
+        <div class="right-btns">
+            <button class="icon-btn" id="statsBtn" aria-label="Statistics"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></button>
+            <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+        </div>
+    </header>
+    <main>
+        <!-- start: choose how to play -->
+        <section class="view" id="menu">
+            <div class="menu-in">
+                <div class="card" id="friendCard">
+                    <h2>👋 Play a friend</h2>
+                    <p>Take turns by sending a link: you move, send it in WhatsApp or Messages, they move and send it back. No sign-up.</p>
+                    <button class="btn" id="newDuelBtn">Start a game with a friend</button>
+                    <div class="duels" id="duels"></div>
+                </div>
+                <div class="card">
+                    <h2>🤖 Play the computer</h2>
+                    <div class="seg" id="levelSeg" role="group" aria-label="How good the computer is"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div>
+                    <div class="seg" id="colourSeg" role="group" aria-label="Your colour"><button data-v="1">Black<small>you go first</small></button><button data-v="2">White<small>computer first</small></button></div>
+                    <button class="btn" id="cpuBtn">Play</button>
+                    <button class="btn ghost" id="resumeBtn" style="display:none">Carry on with your last game</button>
+                </div>
+                <div class="card">
+                    <h2>📱 Pass and play</h2>
+                    <p>Two players, one phone. Hand it over after each move.</p>
+                    <button class="btn ghost" id="passBtn">Play</button>
+                </div>
+            </div>
+        </section>
+        <!-- the board -->
+        <section class="view" id="game">
+            <div class="players">
+                <div class="pl" id="pl1"><span class="disc k"></span><span class="nm" id="nm1">Black</span><span class="n" id="n1">2</span></div>
+                <div class="pl" id="pl2"><span class="disc w"></span><span class="nm" id="nm2">White</span><span class="n" id="n2">2</span></div>
+            </div>
+            <div class="boardwrap" id="wrap"><div class="frame" id="frame"><div class="lab cols" id="labCols"></div><div class="lab rows" id="labRows"></div><div class="board" id="board" role="grid" aria-label="Board"></div></div></div>
+            <div class="status" id="status" aria-live="polite"></div>
+        </section>
+    </main>
+    <div class="bar" id="bar" style="display:none">
+        <button class="ctrl" id="menuBtn"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Games</button>
+        <button class="ctrl" id="undoBtn"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
+        <button class="ctrl" id="hintBtn" aria-pressed="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg>Hints</button>
+        <button class="ctrl send" id="sendBtn" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg><span id="sendTxt">Send move</span></button>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li>Black goes first. Put a disc down so that one or more of the other colour are <b>trapped in a straight line</b> between it and one of yours (across, down or diagonal).</li>
+                <li>Every trapped disc <b>flips</b> to your colour.</li>
+                <li>The dots show where you can go. If you can't go anywhere, your turn is skipped.</li>
+                <li>When neither player can move, whoever has <b>more discs</b> wins.</li>
+            </ol>
+            <p style="color:var(--soft)"><b>Tip:</b> corners can never be flipped, so they're gold. Be wary of the squares right next to an empty corner.</p>
+            <h3>Playing a friend</h3>
+            <p style="color:var(--soft)">Start a game, make your move and tap <b>Send move</b>. Your friend opens the link, plays and sends one back. Open their link to see their move. You can have games going with lots of friends at once.</p>
+            <button class="btn" data-close>Got it</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="statsTitle">Statistics</h2>
+            <div id="statsBody"></div>
+            <button class="btn ghost" data-close>Close</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="nameModal" role="dialog" aria-modal="true" aria-labelledby="nameTitle" data-sticky>
+        <div class="modal">
+            <h2 id="nameTitle">Play a friend</h2>
+            <p id="nameText"></p>
+            <label for="nameField" style="font-weight:700;font-size:0.9rem">Your name (so your friend knows who it's from)</label>
+            <input class="field" id="nameField" maxlength="20" autocomplete="given-name" placeholder="Your name">
+            <div id="nameColour"></div>
+            <button class="btn" id="nameGo">Start</button>
+            <button class="btn ghost" id="nameCancel">Cancel</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="sentModal" role="dialog" aria-modal="true" aria-labelledby="sentTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="sentTitle">Send this link</h2>
+            <p>Copy it into a message to your friend. When they reply with their move, open their link.</p>
+            <textarea class="linkbox" id="linkBox" rows="3" readonly></textarea>
+            <button class="btn" id="copyBtn">Copy link</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="endModal" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="endTitle"></h2>
+            <p id="endText" style="text-align:center"></p>
+            <div id="endButtons"></div>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.FlipSide, S = window.HubStorage, D = window.HubDuel.forGame('flipside');
+        function $(id) { return document.getElementById(id); }
+        function toast(m, ms) { var t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 2000); }
+        function announce(m) { $('announce').textContent = m; }
+        function open(id) { $(id).classList.add('active'); }
+        function closeAll() { Array.prototype.forEach.call(document.querySelectorAll('.modal-overlay'), function (m) { m.classList.remove('active'); }); }
+        document.addEventListener('click', function (e) { if (e.target.closest('[data-close]') || (e.target.classList && e.target.classList.contains('modal-overlay') && !e.target.hasAttribute('data-sticky'))) closeAll(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
+        function json(k, d) { try { var v = JSON.parse(S.getString(k, 'null')); return v === null ? d : v; } catch (e) { return d; } }
+        function setJSON(k, v) { S.setString(k, JSON.stringify(v)); }
+        var COL = { 1: 'Black', 2: 'White' };
+
+        // ---------- settings ----------
+        var level = S.getString('flipside_level', 'medium'), myColour = +S.getString('flipside_colour', '1') === 2 ? 2 : 1;
+        var hints = S.getString('flipside_hints', 'on') !== 'off';
+
+        // ---------- the game on screen ----------
+        // mode: 'cpu' | 'pass' | 'friend'. For friend games, rec is the saved game and side is which colour this phone plays.
+        var mode = null, s = null, history = [], rec = null, thinking = false, lastMove = -1;
+        function names() {
+            if (mode === 'cpu') return { 1: myColour === 1 ? 'You' : 'Computer', 2: myColour === 2 ? 'You' : 'Computer' };
+            if (mode === 'friend') return { 1: rec.side === 1 ? 'You' : (rec.a || 'Your friend'), 2: rec.side === 2 ? 'You' : (rec.b || 'Your friend') };
+            return { 1: 'Black', 2: 'White' };
+        }
+        function opponentName() { return mode === 'friend' ? (rec.side === 1 ? rec.b : rec.a) || 'your friend' : 'the computer'; }
+
+        // ---------- board ----------
+        function buildBoard() {
+            var b = $('board'); b.innerHTML = '';
+            for (var i = 0; i < 64; i++) { var q = document.createElement('button'); q.className = 'sq'; q.dataset.i = i; q.setAttribute('role', 'gridcell'); b.appendChild(q); }
+            $('labCols').innerHTML = 'ABCDEFGH'.split('').map(function (c) { return '<span>' + c + '</span>'; }).join('');
+            $('labRows').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<span>' + c + '</span>'; }).join('');
+            fit();
+        }
+        function fit() {
+            var w = $('wrap'), size = Math.floor(Math.min(w.clientWidth - 8, w.clientHeight - 8, 560)) - 28;
+            size = Math.max(200, size - size % 8);
+            $('board').style.width = size + 'px'; $('board').style.height = size + 'px';
+        }
+        function render(flipped, placed) {
+            var mine = myTurn(), can = mine ? E.legal(s.b, s.turn) : [], canSet = {};
+            can.forEach(function (i) { canSet[i] = 1; });
+            var cells = $('board').children;
+            for (var i = 0; i < 64; i++) {
+                var q = cells[i], v = s.b[i], d = q.firstChild;
+                q.classList.toggle('can', !!canSet[i]);
+                q.setAttribute('aria-label', E.name(i) + ': ' + (v ? COL[v] : canSet[i] ? 'you can play here' : 'empty'));
+                q.tabIndex = canSet[i] ? 0 : -1;
+                if (!v) { if (d) d.remove(); continue; }
+                if (!d) { d = document.createElement('span'); q.appendChild(d); }
+                var want = 'disc ' + (v === 1 ? 'k' : 'w') + (i === lastMove ? ' last' : '');
+                if (flipped && flipped.indexOf(i) >= 0) {
+                    // turn over half way through, so it looks like a real flip
+                    (function (dd, w2, delay) { dd.classList.remove('flip'); setTimeout(function () { void dd.offsetWidth; dd.classList.add('flip'); setTimeout(function () { dd.className = w2 + ' flip'; }, 150); }, delay); })(d, want, flipDelay(placed, i));
+                } else d.className = want + (i === placed ? ' drop' : '');
+            }
+            $('board').classList.toggle('nohints', !hints);
+            var n = E.count(s.b), nm = names();
+            $('n1').textContent = n[1]; $('n2').textContent = n[2];
+            $('nm1').innerHTML = esc(nm[1]) + '<small>Black</small>'; $('nm2').innerHTML = esc(nm[2]) + '<small>White</small>';
+            $('pl1').classList.toggle('turn', !E.over(s) && s.turn === 1); $('pl2').classList.toggle('turn', !E.over(s) && s.turn === 2);
+            status(); buttons();
+        }
+        function flipDelay(at, i) { if (at < 0) return 0; var dr = Math.abs((at >> 3) - (i >> 3)), dc = Math.abs((at & 7) - (i & 7)); return Math.max(dr, dc) * 60; }
+        function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        function myTurn() {
+            if (!s || E.over(s) || thinking) return false;
+            if (mode === 'cpu') return s.turn === myColour;
+            if (mode === 'friend') return s.turn === rec.side;
+            return true;
+        }
+        function status() {
+            var el = $('status'), n = E.count(s.b);
+            if (E.over(s)) { var w = E.winner(s); el.innerHTML = (w ? esc(winnerText(w)) : 'A draw!') + '<small>' + n[1] + ' – ' + n[2] + '</small>'; return; }
+            if (mode === 'cpu') { el.innerHTML = thinking ? 'The computer is thinking…' : 'Your move<small>' + (hints ? 'The dots show where you can go' : '') + '</small>'; return; }
+            if (mode === 'pass') { el.innerHTML = COL[s.turn] + ' to play'; return; }
+            if (s.turn === rec.side) el.innerHTML = 'Your move' + (!s.moves.length ? '<small>You go first</small>' : '<small>' + esc(opponentName()) + ' played ' + lastText() + '</small>');
+            else el.innerHTML = unsent() ? 'Now send your move to ' + esc(opponentName()) + '<small>Tap Send move below</small>' : 'Waiting for ' + esc(opponentName()) + '<small>Open their link when they reply</small>';
+        }
+        function lastText() { for (var k = s.moves.length - 1; k >= 0; k--) if (s.moves[k] >= 0) return E.name(s.moves[k]); return ''; }
+        function winnerText(w) {
+            if (mode === 'cpu') return w === myColour ? 'You win!' : 'The computer wins';
+            if (mode === 'friend') return w === rec.side ? 'You win!' : esc(opponentName()) + ' wins';
+            return COL[w] + ' wins!';
+        }
+        // friend games: moves made on this phone that haven't been sent yet
+        function unsent() { return mode === 'friend' && (s.moves.length > (rec.sent || 0) || (!rec.shared && !E.over(s) && s.turn !== rec.side)); }
+        function buttons() {
+            var friend = mode === 'friend';
+            $('undoBtn').style.display = friend && !unsent() ? 'none' : '';
+            $('undoBtn').disabled = friend ? !canUndoFriend() : !history.length || thinking;
+            $('hintBtn').setAttribute('aria-pressed', hints);
+            var sb = $('sendBtn');
+            if (friend && (unsent() || (!E.over(s) && s.turn !== rec.side) || E.over(s))) {
+                sb.style.display = '';
+                sb.classList.toggle('quiet', !unsent());
+                $('sendTxt').textContent = unsent() ? (E.over(s) ? 'Send the result' : 'Send move') : E.over(s) ? 'Rematch' : 'Send again';
+            } else sb.style.display = 'none';
+            $('hintBtn').style.display = friend && sb.style.display === '' ? 'none' : '';
+        }
+        // you can take back your own unsent move in a friend game
+        function canUndoFriend() { return s.moves.length > (rec.sent || 0); }
+
+        // ---------- moves ----------
+        function move(i) {
+            if (!myTurn()) return;
+            var before = E.clone(s), f = E.play(s, i);
+            if (f === null) return;
+            history.push({ s: before, last: lastMove }); lastMove = i;
+            sound(f.length);
+            var passedNote = autoPass();
+            render(f, i); save();
+            announce(COL[before.turn] + ' played ' + E.name(i) + ', flipping ' + f.length + '.' + (passedNote ? ' ' + passedNote : ''));
+            if (passedNote) toast(passedNote, 2600);
+            if (E.over(s)) { setTimeout(finish, 600); return; }
+            if (mode === 'cpu' && s.turn !== myColour) computerTurn();
+        }
+        // if the next player can't move, their turn is skipped automatically
+        function autoPass() {
+            if (E.over(s) || !E.mustPass(s)) return '';
+            var who = s.turn; E.play(s, -1);
+            if (mode === 'cpu') return who === myColour ? 'You have no moves, so the computer goes again.' : 'The computer has no moves. Your turn again!';
+            if (mode === 'friend') return who === rec.side ? 'You have no moves, so it\'s ' + opponentName() + '\'s turn again.' : opponentName() + ' has no moves. Your turn again!';
+            return COL[who] + ' has no moves, so ' + COL[3 - who] + ' goes again.';
+        }
+        function computerTurn() {
+            thinking = true; render();
+            setTimeout(function () {
+                var m = E.bestMove(s, level);
+                thinking = false;
+                var before = E.clone(s), f = E.play(s, m);
+                if (f === null) { render(); return; }
+                lastMove = m; history.push({ s: before, last: -2, cpu: true });
+                sound(f.length);
+                var note = autoPass();
+                render(f, m); save();
+                announce('The computer played ' + E.name(m) + '.');
+                if (note) toast(note, 2600);
+                if (E.over(s)) { setTimeout(finish, 600); return; }
+                if (s.turn !== myColour) computerTurn();
+            }, 450 + Math.random() * 300);
+        }
+        function undo() {
+            if (mode === 'friend') {
+                if (!canUndoFriend()) return;
+                // back to just before your first unsent move
+                s = E.replay(s.moves.slice(0, rec.sent || 0)); lastMove = lastPlaced(); history = [];
+                saveFriend(); render(); return;
+            }
+            if (!history.length || thinking) return;
+            // against the computer, undo back to your own last move
+            var h = history.pop(); while (mode === 'cpu' && h.cpu && history.length) h = history.pop();
+            s = h.s; lastMove = lastPlaced(); render(); save();
+            if (mode === 'cpu' && s.turn !== myColour && !E.over(s)) computerTurn();
+        }
+        function lastPlaced() { for (var k = s.moves.length - 1; k >= 0; k--) if (s.moves[k] >= 0) return s.moves[k]; return -1; }
+        $('board').addEventListener('click', function (e) { var q = e.target.closest('.sq'); if (!q) return; if (q.classList.contains('can')) move(+q.dataset.i); else if (myTurn() && !s.b[+q.dataset.i]) { toast('That move wouldn\'t trap any discs'); } });
+        $('board').addEventListener('keydown', function (e) {
+            var q = e.target.closest('.sq'); if (!q) return; var i = +q.dataset.i, d = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -8, ArrowDown: 8 }[e.key];
+            if (d) { e.preventDefault(); var n = i + d; if (n >= 0 && n < 64 && !(d === 1 && i % 8 === 7) && !(d === -1 && i % 8 === 0)) { var t = $('board').children[n]; t.tabIndex = 0; t.focus(); } }
+        });
+
+        // ---------- sound: a soft click, a little louder the more you flip ----------
+        var ac = null;
+        function sound(n) {
+            if (S.getString('flipside_sound', 'on') === 'off') return;
+            try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); var t = ac.currentTime;
+                for (var k = 0; k < Math.min(n + 1, 6); k++) { var o = ac.createOscillator(), g = ac.createGain(); o.type = 'triangle'; o.frequency.value = 520 + k * 70; g.gain.setValueAtTime(0.0001, t + k * 0.06); g.gain.exponentialRampToValueAtTime(0.08, t + k * 0.06 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + k * 0.06 + 0.09); o.connect(g); g.connect(ac.destination); o.start(t + k * 0.06); o.stop(t + k * 0.06 + 0.1); }
+            } catch (e) { /* no sound */ }
+        }
+
+        // ---------- the end ----------
+        function finish() {
+            var w = E.winner(s), n = E.count(s.b), st = stats();
+            var counted = mode === 'friend' ? rec.counted : json('flipside_game', {}).counted;
+            if (!counted && mode !== 'pass') {
+                var bucket = mode === 'cpu' ? st[level] : st.friends, me = mode === 'cpu' ? myColour : rec.side;
+                if (w === 0) bucket.d++; else if (w === me) bucket.w++; else bucket.l++;
+                setJSON('flipside_stats', st);
+                if (mode === 'friend') { rec.counted = true; D.save(rec); } else { var g = json('flipside_game', {}); g.counted = true; setJSON('flipside_game', g); }
+            }
+            var won = mode === 'pass' ? true : w === (mode === 'cpu' ? myColour : rec.side);
+            $('endTitle').textContent = w ? winnerText(w) : 'A draw!';
+            $('endText').innerHTML = '<b>' + n[1] + '</b> black · <b>' + n[2] + '</b> white';
+            var btns = '';
+            if (mode === 'friend') btns = (unsent() ? '<button class="btn" id="endSend">Send the result to ' + esc(opponentName()) + '</button>' : '') + '<button class="btn ' + (unsent() ? 'ghost' : '') + '" id="endRematch">Rematch ' + esc(opponentName()) + '</button><button class="btn ghost" id="endMenu">Back to games</button>';
+            else btns = '<button class="btn" id="endAgain">Play again</button><button class="btn ghost" id="endMenu">Back to games</button>';
+            $('endButtons').innerHTML = btns;
+            open('endModal');
+            if (won && w) confetti();
+            if ($('endSend')) $('endSend').addEventListener('click', function () { closeAll(); send(); });
+            if ($('endRematch')) $('endRematch').addEventListener('click', rematch);
+            if ($('endAgain')) $('endAgain').addEventListener('click', function () { closeAll(); startLocal(mode); });
+            $('endMenu').addEventListener('click', function () { closeAll(); showMenu(); });
+        }
+        function stats() {
+            var o = json('flipside_stats', {});
+            ['easy', 'medium', 'hard', 'friends'].forEach(function (k) { o[k] = o[k] || {}; ['w', 'l', 'd'].forEach(function (f) { o[k][f] = o[k][f] | 0; }); });
+            return o;
+        }
+        function confetti() {
+            try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* ignore */ }
+            var cols = ['#f2c94c', '#fff', '#111', '#2e9b62'];
+            for (var i = 0; i < 40; i++) { var c = document.createElement('span'); c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = cols[i % cols.length]; document.body.appendChild(c); if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }], { duration: 1500 + Math.random() * 900, delay: Math.random() * 300, fill: 'forwards' });
+                a.onfinish = (function (x) { return function () { x.remove(); }; })(c); }
+        }
+
+        // ---------- saving ----------
+        function save() {
+            if (mode === 'friend') { saveFriend(); return; }
+            var g = json('flipside_game', {});
+            setJSON('flipside_game', { mode: mode, moves: s.moves, level: level, colour: myColour, counted: g.counted && g.moves && g.moves.length <= s.moves.length ? g.counted : false });
+        }
+        function saveFriend() { rec.moves = D.encodeMoves(s.moves); rec.done = E.over(s); D.save(rec); }
+
+        // ---------- play the computer / pass and play ----------
+        function startLocal(m, resume) {
+            mode = m; history = []; thinking = false;
+            var g = json('flipside_game', null);
+            if (resume && g && g.mode === m && Array.isArray(g.moves)) { s = E.replay(g.moves) || E.start(); level = g.level || level; myColour = g.colour || myColour; }
+            else { s = E.start(); setJSON('flipside_game', { mode: m, moves: [], level: level, colour: myColour, counted: false }); }
+            lastMove = lastPlaced();
+            showGame();
+            $('sub').textContent = m === 'cpu' ? 'Against the computer · ' + level[0].toUpperCase() + level.slice(1) : 'Pass and play';
+            render();
+            if (m === 'cpu' && s.turn !== myColour && !E.over(s)) computerTurn();
+            if (E.over(s)) setTimeout(finish, 300);
+        }
+
+        // ---------- play a friend ----------
+        function openFriend(r, note) {
+            mode = 'friend'; rec = r; history = []; thinking = false;
+            s = E.replay(D.decodeMoves(rec.moves) || []) || E.start();
+            lastMove = lastPlaced();
+            showGame();
+            $('sub').textContent = 'Against ' + opponentName();
+            render();
+            if (note) toast(note, 2800);
+            if (E.over(s) && !rec.counted) setTimeout(finish, 600);
+        }
+        function newDuel() {
+            $('nameTitle').textContent = 'Play a friend';
+            $('nameText').textContent = 'You\'ll get a link to send them. Pick your colour:';
+            $('nameField').value = D.myName();
+            var side = 1;
+            $('nameColour').innerHTML = '<div class="seg" style="margin-top:10px"><button data-v="1" class="on">Black<small>you go first</small></button><button data-v="2">White<small>they go first</small></button></div>';
+            $('nameColour').onclick = function (e) { var b = e.target.closest('button[data-v]'); if (!b) return; side = +b.dataset.v; Array.prototype.forEach.call(this.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); };
+            $('nameGo').textContent = 'Start';
+            $('nameGo').onclick = function () {
+                var nm = $('nameField').value.trim(); if (!nm) { $('nameField').focus(); toast('Add your name so your friend knows who it\'s from'); return; }
+                D.setMyName(nm); closeAll();
+                var r = D.newGame(side, nm); r.sent = 0;
+                openFriend(r);
+                if (side === 2) toast('They go first: send them the link', 2600);
+            };
+            open('nameModal'); setTimeout(function () { $('nameField').focus(); }, 50);
+        }
+        // someone sent you a link
+        function arrived(L) {
+            if (L.broken) { toast('That game link looks broken. Ask your friend to send it again.', 3500); showMenu(); return; }
+            var s2 = E.replay(L.moves);
+            if (!s2) { toast('That game link looks broken. Ask your friend to send it again.', 3500); showMenu(); return; }
+            var r = D.get(L.id);
+            if (r) {
+                var have = D.decodeMoves(r.moves) || [];
+                // only move forward: an older link (or one you sent yourself) doesn't undo anything
+                var newer = L.moves.length > have.length && have.every(function (m, k) { return L.moves[k] === m; });
+                if (newer) { r.moves = L.m; r.sent = L.moves.length; r.shared = true; }
+                if (L.a && r.side !== 1) r.a = L.a; if (L.b && r.side !== 2) r.b = L.b;
+                D.save(r);
+                var opp = r.side === 1 ? r.b : r.a;
+                openFriend(r, newer ? (E.over(s2) ? 'The game is over!' : (opp || 'Your friend') + ' has played. Your move!') : L.moves.length < have.length ? 'That was an older link. Here\'s the latest.' : '');
+                return;
+            }
+            // a new game: you're whoever's turn it is
+            if (E.over(s2)) { toast('That game has already finished.', 3000); showMenu(); return; }
+            var side = s2.turn, from = side === 1 ? L.b : L.a;
+            $('nameTitle').textContent = (from || 'A friend') + ' wants to play!';
+            $('nameText').textContent = 'You\'re ' + COL[side] + '. ' + (L.moves.length ? (from ? from + ' has' : 'They have') + ' made the first move, so it\'s your turn.' : 'You go first.');
+            $('nameField').value = D.myName(); $('nameColour').innerHTML = ''; $('nameColour').onclick = null;
+            $('nameGo').textContent = 'Play';
+            $('nameGo').onclick = function () {
+                var nm = $('nameField').value.trim(); if (!nm) { $('nameField').focus(); toast('Add your name so ' + (from || 'they') + ' know who\'s replying'); return; }
+                D.setMyName(nm); closeAll();
+                var r2 = { id: L.id, side: side, a: side === 1 ? nm : L.a, b: side === 2 ? nm : L.b, moves: L.m, sent: L.moves.length, shared: true, done: false };
+                D.save(r2); openFriend(r2);
+            };
+            open('nameModal');
+        }
+        function send() {
+            if (mode !== 'friend') return;
+            if (E.over(s) && !unsent()) { rematch(); return; }
+            var url = D.link(rec), n = E.count(s.b), opp = opponentName(), me = D.myName() || 'Your friend';
+            var text = E.over(s) ? 'Game over in Flip Side: ' + (E.winner(s) === rec.side ? 'I won' : E.winner(s) ? 'you won' : 'a draw') + ', ' + n[rec.side] + '–' + n[3 - rec.side] + '.'
+                : !s.moves.length ? me + ' wants to play Flip Side with you. You go first!'
+                : (s.moves.length <= 1 ? me + ' wants to play Flip Side with you! ' : '') + 'I played ' + lastText() + '. Your move!';
+            D.share('Flip Side', text, url).then(function (how) {
+                if (how === 'shared' || how === 'copied') {
+                    rec.sent = s.moves.length; rec.shared = true; D.save(rec); render();
+                    if (how === 'copied') toast('Link copied. Paste it into a message to ' + opp + '.', 3000);
+                } else if (how === 'failed') { $('linkBox').value = text + '\n' + url; open('sentModal'); rec.sent = s.moves.length; rec.shared = true; D.save(rec); render(); }
+            });
+        }
+        $('copyBtn').addEventListener('click', function () { $('linkBox').select(); try { document.execCommand('copy'); toast('Copied'); } catch (e) { toast('Select the text and copy it'); } });
+        function rematch() {
+            closeAll();
+            // swap colours: whoever was Black is White this time
+            var side = 3 - rec.side, r = D.newGame(side, D.myName());
+            if (side === 1) r.b = opponentName(); else r.a = opponentName();
+            r.sent = 0; D.save(r);
+            openFriend(r, side === 2 ? 'Rematch! They go first this time: send them the link.' : 'Rematch! You go first.');
+        }
+
+        // ---------- menu ----------
+        function showMenu() {
+            mode = null; closeAll();
+            $('menu').classList.add('on'); $('game').classList.remove('on'); $('bar').style.display = 'none';
+            $('sub').textContent = 'Reversi';
+            seg('levelSeg', level); seg('colourSeg', String(myColour));
+            var g = json('flipside_game', null), gs = g && Array.isArray(g.moves) && g.moves.length ? E.replay(g.moves) : null;
+            $('resumeBtn').style.display = gs && !E.over(gs) ? '' : 'none';
+            if (gs && !E.over(gs)) $('resumeBtn').textContent = 'Carry on with your last ' + (g.mode === 'pass' ? 'pass-and-play game' : 'game (' + g.level + ')');
+            drawDuels();
+        }
+        function showGame() { $('menu').classList.remove('on'); $('game').classList.add('on'); $('bar').style.display = ''; if (!$('board').children.length) buildBoard(); else fit(); }
+        function seg(id, v) { Array.prototype.forEach.call($(id).querySelectorAll('button'), function (b) { b.classList.toggle('on', b.dataset.v === v); b.setAttribute('aria-pressed', b.dataset.v === v); }); }
+        function drawDuels() {
+            var all = D.all(), ids = Object.keys(all).sort(function (x, y) {
+                var a = all[x], b = all[y], ta = turnOf(a), tb = turnOf(b);
+                return (tb.mine - ta.mine) || (b.updated - a.updated);
+            });
+            $('duels').innerHTML = ids.map(function (id) {
+                var r = all[id], t = turnOf(r), opp = (r.side === 1 ? r.b : r.a) || 'Not sent yet';
+                return '<div class="duel' + (t.mine ? ' mine' : '') + '" role="button" tabindex="0" data-id="' + id + '">' + miniBoard(t.s) + '<span class="who"><b>vs ' + esc(opp) + '</b><span>' + esc(t.text) + '</span></span><button class="x" data-del="' + id + '" aria-label="Remove this game">✕</button></div>';
+            }).join('');
+        }
+        function turnOf(r) {
+            var mv = D.decodeMoves(r.moves) || [], st = E.replay(mv) || E.start(), n = E.count(st.b), opp = (r.side === 1 ? r.b : r.a) || 'your friend';
+            if (E.over(st)) { var w = E.winner(st); return { s: st, mine: 0, text: (w === r.side ? 'You won ' : w ? 'You lost ' : 'Drawn ') + n[r.side] + '–' + n[3 - r.side] }; }
+            if (mv.length > (r.sent || 0) || (!r.shared && st.turn !== r.side)) return { s: st, mine: 1, text: 'Not sent yet: tap to send' };
+            if (st.turn === r.side) return { s: st, mine: 1, text: 'Your move · ' + n[r.side] + '–' + n[3 - r.side] };
+            return { s: st, mine: 0, text: 'Waiting for ' + opp + ' · ' + n[r.side] + '–' + n[3 - r.side] };
+        }
+        function miniBoard(st) { return '<span class="mini" aria-hidden="true">' + st.b.map(function (v) { return '<i style="background:' + (v === 1 ? '#111' : v === 2 ? '#eee' : 'transparent') + '"></i>'; }).join('') + '</span>'; }
+        $('duels').addEventListener('click', function (e) {
+            var del = e.target.closest('[data-del]');
+            if (del) { e.stopPropagation(); if (window.confirm && !window.__noConfirm && !window.confirm('Remove this game?')) return; D.remove(del.dataset.del); drawDuels(); return; }
+            var row = e.target.closest('.duel'); if (row) openFriend(D.get(row.dataset.id));
+        });
+        $('duels').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var row = e.target.closest('.duel'); if (row) openFriend(D.get(row.dataset.id)); } });
+        $('levelSeg').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; level = b.dataset.v; S.setString('flipside_level', level); seg('levelSeg', level); });
+        $('colourSeg').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; myColour = +b.dataset.v; S.setString('flipside_colour', String(myColour)); seg('colourSeg', String(myColour)); });
+        $('cpuBtn').addEventListener('click', function () { startLocal('cpu'); });
+        $('passBtn').addEventListener('click', function () { startLocal('pass'); });
+        $('resumeBtn').addEventListener('click', function () { var g = json('flipside_game', {}); startLocal(g.mode || 'cpu', true); });
+        $('newDuelBtn').addEventListener('click', newDuel);
+        $('nameCancel').addEventListener('click', function () { closeAll(); if (!mode) showMenu(); });
+        $('menuBtn').addEventListener('click', showMenu);
+        $('undoBtn').addEventListener('click', undo);
+        $('hintBtn').addEventListener('click', function () { hints = !hints; S.setString('flipside_hints', hints ? 'on' : 'off'); render(); toast(hints ? 'Showing where you can go' : 'Move hints off'); });
+        $('sendBtn').addEventListener('click', send);
+        $('helpBtn').addEventListener('click', function () { open('helpModal'); });
+        $('statsBtn').addEventListener('click', function () {
+            var o = stats(), row = function (k) { return '<div class="stats"><div>' + o[k].w + '<small>Won</small></div><div>' + o[k].l + '<small>Lost</small></div><div>' + o[k].d + '<small>Drawn</small></div></div>'; };
+            $('statsBody').innerHTML = '<h3>Against friends</h3>' + row('friends') + ['easy', 'medium', 'hard'].map(function (k) { return '<h3>Computer · ' + k[0].toUpperCase() + k.slice(1) + '</h3>' + row(k); }).join('');
+            open('statsModal');
+        });
+        var rt = null;
+        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (mode) fit(); }, 100); });
+        try { new ResizeObserver(function () { if (mode) fit(); }).observe($('wrap')); } catch (e) { /* ignore */ }
+        if (window.HubNoSwipeBack) window.HubNoSwipeBack(document.querySelector('main'), { onBlocked: function () { toast('Tap ‹ at the top left to leave the game', 2200); } });
+        // coming back to the page (say, after sharing) refreshes the friend list
+        document.addEventListener('visibilitychange', function () { if (!document.hidden && !mode) drawDuels(); });
+
+        // ---------- start ----------
+        var L = D.fromLink();
+        if (L) { D.clearLink(); showMenu(); arrived(L); }
+        else showMenu();
+        if (!S.getFlag('flipside_seen') && !L) { S.setFlag('flipside_seen', true); open('helpModal'); }
+        window.__fs = function () { return { s: s, mode: mode, rec: rec, thinking: thinking }; };
+        window.__move = move;
+    })();
+    </script>
+</body>
+</html>
