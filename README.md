@@ -25,7 +25,9 @@ Edit any file, then bump `CACHE_VERSION` in `sw.js` so installed copies refresh.
 ## Adding a game
 
 1. Create `games/<name>/index.html` using an existing game's `<head>` (it loads the shared CSS/JS).
-2. Add a card to `index.html` and the page to `PRECACHE` in `sw.js`.
+2. Add an entry to `catalogue.js` (name, one-line blurb, a longer `about` for its details card, icon, colours, category, tags; give it the highest `fresh` number so it shows as New) and add its folder to `GAMES` in `sw.js` (plus any extra files to `PRECACHE`). The dashboard's Home, Library and Daily tabs are all drawn from `catalogue.js`.
+
+The dashboard keeps favourites (`hub_favourites`) and what you've played (`hub_plays`, recorded by `shared/hub.js` on every game page) on the device only.
 3. Use `HubStorage` for saves, never `localStorage` directly.
 
 ## Games
