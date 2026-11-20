@@ -62,6 +62,8 @@
         .tray { position: relative; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; flex: none; width: 100%; touch-action: none; min-height: 20px; }
         .tray .slot { position: relative; flex: none; }
         .tray .dom { transition: none; }
+        .pill { flex: none; border: 2px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-weight: 700; font-size: 0.85rem; border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+        .pill[hidden] { display: none; }
         .tip { font-size: 0.8rem; color: var(--ink-soft); text-align: center; flex: none; min-height: 1.2em; }
 
         .bar { flex: none; display: flex; gap: 8px; padding: 6px 10px; padding-bottom: max(8px, env(safe-area-inset-bottom)); max-width: 560px; width: 100%; margin: 0 auto; }
@@ -128,6 +130,7 @@
                 <div class="board" id="board" aria-label="Puzzle board"></div>
                 <div class="tip" id="tip"></div>
                 <div class="tray" id="tray" aria-label="Dominoes to place"></div>
+                <button class="pill" id="giveUpBtn"></button>
             </div>
         </div>
     </main>
@@ -177,6 +180,7 @@
     </div>
 
     <script src="engine.js"></script>
+    <script src="puzzles.js"></script>
     <script>
     (function () {
         'use strict';
@@ -226,38 +230,71 @@
             waiting[id] = cb; worker.postMessage(msg);
             setTimeout(function () { if (waiting[id]) { delete waiting[id]; cb(fallback()); } }, 12000);
         }
-        function puzzleId() { return mode === 'daily' ? 'd' + today + '-' + level : 'p' + getJSON('spoton_pseed_' + level, 0) + '-' + level; }
+        // Puzzles come from a numbered bank, made and checked in advance (puzzles.js). Daily: one per level per day,
+        // the same for everyone. Practice: a random number you haven't played yet.
+        var BANK = window.SPOTON_BANK || { easy: [], medium: [], hard: [] };
+        // the daily puzzle cycles through the first 100 of each level, so adding puzzles later never changes a day's puzzle
+        var DAILY_POOL = 100;
+        function dailyNum(lv) { var n = Math.min(DAILY_POOL, BANK[lv].length); return n ? ((today - 1) * 37) % n + 1 : 1; }
+        function practiceNum() { var n = getJSON('spoton_pnum_' + level, 0); return n >= 1 && n <= BANK[level].length ? n : pickPractice(); }
+        function played(lv) { var a = getJSON('spoton_pplayed_' + lv, []); return Array.isArray(a) ? a : []; }
+        function markPlayed(lv, n) { var a = played(lv); if (a.indexOf(n) < 0) { a.push(n); setJSON('spoton_pplayed_' + lv, a); } }
+        function pickPractice() {
+            var total = BANK[level].length, seen = played(level), left = [];
+            for (var i = 1; i <= total; i++) if (seen.indexOf(i) < 0 && i !== dailyNum(level)) left.push(i);
+            // played them all: start the round again
+            if (!left.length) { setJSON('spoton_pplayed_' + level, []); for (i = 1; i <= total; i++) left.push(i); }
+            var n = left[Math.floor(Math.random() * left.length)]; setJSON('spoton_pnum_' + level, n); return n;
+        }
+        var num = 1;
+        function puzzleId() { return mode === 'daily' ? 'bd' + today + '-' + level : 'bp-' + level + '-' + num; }
         function load() {
             closeAll();
-            var id = puzzleId(), cache = getJSON('spoton_cache', {});
-            if (mode === 'practice' && !getJSON('spoton_pseed_' + level, 0)) { setJSON('spoton_pseed_' + level, newSeed()); id = puzzleId(); }
-            var key = id + '@' + E.VERSION;
-            if (cache[key]) { start(id, cache[key]); return; }
-            $('making').classList.add('on'); $('board').innerHTML = ''; $('tray').innerHTML = ''; $('tip').textContent = '';
-            var my = id;
-            var day = mode === 'daily' ? today : 0, seed = getJSON('spoton_pseed_' + level, 1);
-            ask({ type: 'make', day: day, seed: seed, level: level }, function (r) {
-                if (puzzleId() !== my) return;
-                $('making').classList.remove('on');
-                if (!r.puzzle) { toast('Couldn\'t make that puzzle, trying another'); if (mode === 'practice') { setJSON('spoton_pseed_' + level, newSeed()); load(); } return; }
-                // keep only a handful of puzzles cached
-                var c = getJSON('spoton_cache', {}), keys = Object.keys(c); if (keys.length > 8) keys.slice(0, keys.length - 8).forEach(function (k) { delete c[k]; });
-                c[key] = r.puzzle; setJSON('spoton_cache', c);
-                start(my, r.puzzle);
-            }, function () { return { puzzle: day ? E.daily(day, level) : E.make(seed, level) }; });
+            num = mode === 'daily' ? dailyNum(level) : practiceNum();
+            var code = BANK[level][num - 1];
+            if (!code) { $('tip').textContent = 'Puzzles are still loading. Try again in a moment.'; return; }
+            $('making').classList.remove('on');
+            start(puzzleId(), E.decode(code), code);
         }
-        function newSeed() { return 1 + Math.floor(Math.random() * 2e9); }
-        function start(id, puzzle) {
-            P = puzzle; pid = id; sel = -1; history = [];
+        var code0 = '', gaveUp = false;
+        function start(id, puzzle, code) {
+            P = puzzle; pid = id; code0 = code; sel = -1; history = []; gaveUp = false;
             var prog = getJSON('spoton_progress', {})[id];
             var dayRec = mode === 'daily' ? dailyRecord(level) : null;
             if (prog && Array.isArray(prog.placed) && prog.placed.length === P.dominoes.length) { placed = prog.placed; trayRot = prog.trayRot || P.dominoes.map(function () { return 0; }); hints = prog.hints | 0; elapsed = prog.elapsed || 0; }
             else { placed = P.dominoes.map(function () { return null; }); trayRot = P.dominoes.map(function () { return 0; }); hints = 0; elapsed = 0; }
             done = false;
-            if (dayRec) { done = true; elapsed = dayRec.time; hints = dayRec.hints; if (dayRec.placed) placed = dayRec.placed; }
             colourRegions();
+            if (dayRec) {
+                done = true; elapsed = dayRec.time; hints = dayRec.hints;
+                if (dayRec.placed && dayRec.code === code) placed = dayRec.placed; else showAnswer();
+            }
             layout(); render();
             if (done) $('tip').textContent = 'Solved in ' + fmt(elapsed) + (hints ? ' with ' + hints + ' hint' + (hints === 1 ? '' : 's') : ' with no hints') + '. Come back tomorrow for new puzzles.';
+        }
+        // fill the board with the answer (after giving up, or to show a day already done)
+        function showAnswer(after) {
+            var my = pid;
+            ask({ type: 'solve', puzzle: P, fixed: [] }, function (r) {
+                if (my !== pid || !r.tiles) return;
+                var used = {};
+                placed = P.dominoes.map(function () { return null; });
+                r.tiles.forEach(function (t) {
+                    for (var d = 0; d < P.dominoes.length; d++) {
+                        if (used[d]) continue; var v = P.dominoes[d], a = -1;
+                        if (v[0] === t.v[0] && v[1] === t.v[1]) a = t.a; else if (v[0] === t.v[1] && v[1] === t.v[0]) a = t.b; else continue;
+                        var b = a === t.a ? t.b : t.a; used[d] = 1; placed[d] = { a: a, r: [1, P.W, -1, -P.W].indexOf(b - a) }; break;
+                    }
+                });
+                render(); if (after) after();
+            }, function () { var s2 = E.countSolutions(P, 1, 4000000, []); return { tiles: s2.count ? s2.tiles[0] : null }; });
+        }
+        function giveUp() {
+            if (!P || done || mode !== 'practice') return;
+            done = true; gaveUp = true; sel = -1; clearProgress(); markPlayed(level, num);
+            var o = stats(); o.practice[level].gaveup = (o.practice[level].gaveup || 0) + 1; setJSON('spoton_stats', o);
+            showAnswer(function () { $('tip').textContent = 'Here\'s the answer to ' + LNAME[level] + ' #' + num + '.'; });
+            render();
         }
         function saveProgress() {
             if (!P || done) return;
@@ -382,6 +419,7 @@
             });
             var left = placed.filter(function (p) { return !p; }).length;
             if (!done) $('tip').textContent = sel >= 0 ? 'Tap it again to turn it, or tap a square to put it there' : left ? (full ? '' : left + ' domino' + (left === 1 ? '' : 'es') + ' to place · ' + met + ' of ' + rules + ' rules met') : broken ? 'Not quite: a rule isn\'t met yet' : '';
+            var gb = $('giveUpBtn'); gb.hidden = mode !== 'practice'; gb.textContent = done ? 'Next ' + LNAME[level] + ' puzzle →' : 'Give up and show the answer';
             $('undoBtn').disabled = !history.length || done;
             $('clearBtn').disabled = done || !placed.some(function (p) { return p; });
             $('hintBtn').disabled = done;
@@ -389,7 +427,7 @@
             $('dailyTab').classList.toggle('on', mode === 'daily'); $('practiceTab').classList.toggle('on', mode === 'practice');
             sub();
         }
-        function sub() { if (!P) return; $('sub').textContent = (mode === 'daily' ? 'Daily #' + today : 'Practice') + ' · ' + LNAME[level] + ' · ' + fmt(elapsed); }
+        function sub() { if (!P) return; $('sub').textContent = (mode === 'daily' ? 'Daily #' + today + ' · ' + LNAME[level] : 'Practice · ' + LNAME[level] + ' #' + num) + ' · ' + fmt(elapsed); }
 
         // ---------- changing the board ----------
         function snapshot() { return { placed: placed.map(function (p) { return p ? { a: p.a, r: p.r } : null; }), trayRot: trayRot.slice() }; }
@@ -524,7 +562,7 @@
         // ---------- winning ----------
         function dailyRecord(lv) { var rec = getJSON('spoton_daily', {}); return rec.day === today && rec.levels && rec.levels[lv] ? rec.levels[lv] : null; }
         function stats() {
-            var o = getJSON('spoton_stats', {}); ['daily', 'practice'].forEach(function (m) { o[m] = o[m] || {}; LEVELS.forEach(function (lv) { var s = o[m][lv] = o[m][lv] || {}; ['solved', 'streak', 'best', 'fastest', 'last', 'nohint'].forEach(function (k) { if (typeof s[k] !== 'number') s[k] = 0; }); }); });
+            var o = getJSON('spoton_stats', {}); ['daily', 'practice'].forEach(function (m) { o[m] = o[m] || {}; LEVELS.forEach(function (lv) { var s = o[m][lv] = o[m][lv] || {}; ['solved', 'streak', 'best', 'fastest', 'last', 'nohint', 'gaveup'].forEach(function (k) { if (typeof s[k] !== 'number') s[k] = 0; }); }); });
             return o;
         }
         function checkWin() {
@@ -535,17 +573,18 @@
             done = true; clearProgress();
             var o = stats(), st = o[mode][level];
             st.solved++; if (!hints) st.nohint++;
+            if (mode === 'practice') markPlayed(level, num);
             if (!st.fastest || elapsed < st.fastest) st.fastest = elapsed;
             if (mode === 'daily') {
                 st.streak = st.last === today - 1 ? st.streak + 1 : st.last === today ? st.streak : 1; st.last = today; st.best = Math.max(st.best, st.streak);
                 var rec = getJSON('spoton_daily', {}); if (rec.day !== today) rec = { day: today, levels: {} };
-                rec.levels[level] = { time: elapsed, hints: hints, placed: placed }; setJSON('spoton_daily', rec);
+                rec.levels[level] = { time: elapsed, hints: hints, placed: placed, code: code0 }; setJSON('spoton_daily', rec);
             }
             setJSON('spoton_stats', o);
             render();
             confetti(); try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) { /* ignore */ }
             $('winTitle').textContent = 'Spot on!';
-            $('winText').textContent = LNAME[level] + ' solved in ' + fmt(elapsed) + (hints ? ' with ' + hints + ' hint' + (hints === 1 ? '' : 's') + '.' : ', no hints.');
+            $('winText').textContent = LNAME[level] + (mode === 'practice' ? ' #' + num : '') + ' solved in ' + fmt(elapsed) + (hints ? ' with ' + hints + ' hint' + (hints === 1 ? '' : 's') + '.' : ', no hints.');
             var next = mode === 'daily' ? LEVELS.filter(function (lv) { return !dailyRecord(lv); })[0] : null;
             $('winButtons').innerHTML = (mode === 'daily' ? '<button class="btn" id="shareBtn">Share</button>' + (next ? '<button class="btn secondary" id="nextBtn">Play today\'s ' + LNAME[next] + '</button>' : '<button class="btn secondary" id="toPractice">Play practice puzzles</button>')
                 : '<button class="btn" id="morePractice">Another ' + LNAME[level] + ' puzzle</button>');
@@ -574,19 +613,20 @@
         // ---------- menus ----------
         function setMode(m) { saveProgress(); mode = m; S.setString('spoton_mode', m); load(); }
         function setLevel(lv) { saveProgress(); level = lv; S.setString('spoton_level', lv); load(); }
-        function newPractice() { if (P && !done && placed.some(function (p) { return p; })) clearProgress(); setJSON('spoton_pseed_' + level, newSeed()); load(); }
+        function newPractice() { if (P && !done) clearProgress(); pickPractice(); load(); }
         $('dailyTab').addEventListener('click', function () { if (mode !== 'daily') setMode('daily'); });
         $('practiceTab').addEventListener('click', function () { if (mode !== 'practice') setMode('practice'); else if (done) newPractice(); });
         Array.prototype.forEach.call(document.querySelectorAll('.levels button'), function (bt) { bt.addEventListener('click', function () { if (bt.dataset.level !== level) setLevel(bt.dataset.level); }); });
         $('undoBtn').addEventListener('click', undo);
         $('hintBtn').addEventListener('click', hint);
         $('clearBtn').addEventListener('click', clearBoard);
+        $('giveUpBtn').addEventListener('click', function () { if (done) newPractice(); else giveUp(); });
         $('menuBtn').addEventListener('click', function () { $('mistakeToggle').checked = showBad; open('helpModal'); });
         $('mistakeToggle').addEventListener('change', function () { showBad = this.checked; S.setString('spoton_mistakes', showBad ? 'true' : 'false'); render(); });
         $('statsBtn').addEventListener('click', function () {
             var o = stats();
             $('statsBody').innerHTML = '<h3>Daily</h3>' + LEVELS.map(function (lv) { var s = o.daily[lv]; return '<p style="font-weight:700;margin-top:6px">' + LNAME[lv] + '</p><div class="stats"><div>' + s.solved + '<small>Solved</small></div><div>' + s.streak + '<small>Streak</small></div><div>' + s.best + '<small>Best streak</small></div><div>' + (s.fastest ? fmt(s.fastest) : '–') + '<small>Fastest</small></div></div>'; }).join('')
-                + '<h3>Practice</h3><div class="stats">' + LEVELS.map(function (lv) { var s = o.practice[lv]; return '<div>' + s.solved + '<small>' + LNAME[lv] + '</small></div>'; }).join('') + '<div>' + LEVELS.reduce(function (a, lv) { return a + o.practice[lv].nohint; }, 0) + '<small>No hints</small></div></div>';
+                + '<h3>Practice</h3><div class="stats">' + LEVELS.map(function (lv) { var s = o.practice[lv]; return '<div>' + s.solved + '<small>' + LNAME[lv] + '</small></div>'; }).join('') + '<div>' + LEVELS.reduce(function (a, lv) { return a + o.practice[lv].nohint; }, 0) + '<small>No hints</small></div></div><p style="text-align:center;font-size:0.85rem;color:var(--ink-soft)">Solved without giving up, by level · given up ' + LEVELS.reduce(function (a, lv) { return a + o.practice[lv].gaveup; }, 0) + '</p>';
             open('statsModal');
         });
         // the rules key in How to play
