@@ -8,210 +8,115 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg-deep: #0a0f1a;
-            --bg-card: #141b2d;
-            --bg-card-hover: #1a2340;
-            --text-primary: #f0f4fc;
-            --text-secondary: #8892a8;
-            --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.3);
-            --border: rgba(255, 255, 255, 0.06);
+            --bg-deep: #0a0f1a; --bg-card: #141b2d; --bg-raised: #1a2340; --text-primary: #f0f4fc; --text-secondary: #8892a8;
+            --accent: #6366f1; --accent-soft: rgba(99, 102, 241, 0.18); --border: rgba(255, 255, 255, 0.07); --heart: #ff5c8a; --ok: #4caf7a;
+            --nav-h: 64px;
         }
-        body {
-            font-family: 'DM Sans', -apple-system, sans-serif;
-            background: var(--bg-deep);
-            color: var(--text-primary);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-        .app {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 0 20px;
-            padding-bottom: 40px;
-        }
-        .header {
-            padding: 40px 0 30px;
-            text-align: center;
-        }
-        .header h1 {
-            font-family: 'Fraunces', Georgia, serif;
-            font-size: 2rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .header p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            margin-top: 6px;
-        }
-        .library-section { margin-bottom: 32px; }
-        .section-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-        }
-        .game-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .game-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            color: inherit;
-        }
-        .game-card:hover {
-            background: var(--bg-card-hover);
-            border-color: rgba(255, 255, 255, 0.1);
-            transform: translateY(-1px);
-        }
-        .game-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            flex-shrink: 0;
-        }
-        .game-info { flex: 1; min-width: 0; }
-        .game-info h3 {
-            font-family: 'Fraunces', serif;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-        .game-info p {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-        .game-meta {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 4px;
-        }
-        .tag {
-            font-size: 0.65rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.06);
-            color: var(--text-secondary);
-        }
-        .play-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .game-card:hover .play-btn {
-            transform: scale(1.05);
-            box-shadow: 0 4px 20px var(--accent-glow);
-        }
-        .play-btn svg {
-            width: 16px;
-            height: 16px;
-            fill: white;
-            margin-left: 2px;
-        }
-        .icon-depot { background: linear-gradient(135deg, #f59e0b, #ef4444); }
-        .icon-tripeaks { background: linear-gradient(135deg, #2d7391, #133746); }
-        .icon-freecell { background: linear-gradient(135deg, #6a4b99, #2d1f47); }
-        .icon-pyramid { background: linear-gradient(135deg, #9c7a35, #4a3812); }
-        .icon-spider { background: linear-gradient(135deg, #8c4646, #3f1d1d); }
-        .icon-spot-on { background: linear-gradient(135deg, #3a66b8, #23304a); }
-        .icon-pick-and-mix { background: linear-gradient(135deg, #ff7ab8, #7a1f5c); }
-        .icon-solitaire { background: linear-gradient(135deg, #2e8b57, #0f3d2a); }
-        .icon-movingin { background: linear-gradient(135deg, #f2b33d, #23395b); }
-        .icon-bubbledoubles { background: linear-gradient(135deg, #3fa7f5, #1b2443); }
-        .icon-fizzdrop { background: linear-gradient(135deg, #ffcf5c, #5a2d82); }
-        .icon-gobetween { background: linear-gradient(135deg, #e9b949, #2c3e2d); }
-        .icon-kindred { background: linear-gradient(135deg, #7fd1c7, #163a4f); }
-        .icon-fourfold { background: linear-gradient(135deg, #3b6fd8, #4e9a57); }
-        .icon-crackword { background: linear-gradient(135deg, #4e9a57, #d1ad32); }
-        .icon-wayout { background: linear-gradient(135deg, #3b82f6, #e5484d); }
-        .icon-balance { background: linear-gradient(135deg, #2f9e44, #1c6dd0); }
-        .icon-kingdoms { background: linear-gradient(135deg, #4a3872, #e0b44c); }
-        .icon-case { background: linear-gradient(135deg, #e3c27d, #b45309); }
-        .icon-puzzle { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .icon-memory { background: linear-gradient(135deg, #ec4899, #db2777); }
-        .icon-2048 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        .icon-lights { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
-        .icon-word { background: linear-gradient(135deg, #10b981, #059669); }
-        .icon-mine { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .icon-snake { background: linear-gradient(135deg, #22c55e, #16a34a); }
-        .icon-tetris { background: linear-gradient(135deg, #06b6d4, #0891b2); }
-        .icon-simon { background: linear-gradient(135deg, #f97316, #ea580c); }
-        .icon-tictac { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-        .icon-sudoku { background: linear-gradient(135deg, #6366f1, #4f46e5); }
-        .icon-breakout { background: linear-gradient(135deg, #a855f7, #9333ea); }
-        .icon-hangman { background: linear-gradient(135deg, #64748b, #475569); }
-        .icon-connect { background: linear-gradient(135deg, #ef4444, #eab308); }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(10, 15, 26, 0.95);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border);
-            padding: 12px 20px 24px;
-            display: flex;
-            justify-content: center;
-            gap: 48px;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.7rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .nav-item.active { color: var(--accent); }
-        .nav-item svg {
-            width: 24px;
-            height: 24px;
-            stroke: currentColor;
-            fill: none;
-            stroke-width: 1.5;
-        }
-        .daily-note { color: var(--text-secondary); font-size: 0.82rem; margin: -4px 0 10px; }
-        .daily-status { font-weight: 600; }
-        .game-card.daily-done .daily-status { color: #4caf7a; }
-        .game-card.daily-done .play-btn { background: #4caf7a; }
-        .footer { text-align: center; color: var(--text-secondary); font-size: 0.78rem; padding: 8px 0 24px; }
-        .footer a { color: var(--text-secondary); }
-    </style>
+        html { -webkit-text-size-adjust: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--bg-deep); color: var(--text-primary); min-height: 100vh; line-height: 1.5; }
+        button { font: inherit; color: inherit; }
+        .app { max-width: 640px; margin: 0 auto; padding: 0 16px calc(var(--nav-h) + 24px + env(safe-area-inset-bottom)); }
 
+        /* ---------- top ---------- */
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: max(18px, env(safe-area-inset-top)) 0 10px; }
+        .top h1 { font-family: 'Fraunces', Georgia, serif; font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .top p { color: var(--text-secondary); font-size: 0.82rem; }
+        .round-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
+        .round-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+
+        .view { display: none; }
+        .view.on { display: block; animation: fadein 0.18s ease-out; }
+        @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        .sec { margin: 18px 0 6px; }
+        .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+        .sec-head h2 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+        .sec-head h2 .h { color: var(--heart); }
+        .link { background: none; border: 0; color: var(--accent); font-weight: 600; font-size: 0.85rem; cursor: pointer; padding: 4px 0; }
+        .hint { color: var(--text-secondary); font-size: 0.82rem; margin: -4px 0 10px; }
+
+        /* ---------- tiles ---------- */
+        .row { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; padding: 2px 16px 8px; margin: 0 -16px; scrollbar-width: none; }
+        .row::-webkit-scrollbar { display: none; }
+        .tile { position: relative; flex: none; width: 92px; text-align: center; background: none; border: 0; cursor: pointer; scroll-snap-align: start; text-decoration: none; color: inherit; -webkit-tap-highlight-color: transparent; }
+        .tile .ic { width: 92px; height: 92px; border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 2.4rem; box-shadow: 0 6px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18); transition: transform 0.15s; }
+        .tile:active .ic { transform: scale(0.94); }
+        .tile .nm { display: block; margin-top: 6px; font-size: 0.8rem; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .tile .meta { display: block; font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tile.big { width: 116px; } .tile.big .ic { width: 116px; height: 116px; border-radius: 28px; font-size: 3rem; }
+        .badge { position: absolute; top: -4px; right: -4px; background: #f5b301; color: #2a1d00; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 999px; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+        .fav { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(10,15,26,0.7); color: var(--heart); font-size: 0.72rem; display: flex; align-items: center; justify-content: center; }
+        .tile.big .fav { display: none; }
+
+        .empty { background: var(--bg-card); border: 1px dashed rgba(255,255,255,0.15); border-radius: 16px; padding: 16px; display: flex; gap: 14px; align-items: center; }
+        .empty .big-heart { font-size: 2rem; color: var(--heart); }
+        .empty p { font-size: 0.88rem; color: var(--text-secondary); }
+        .empty b { color: var(--text-primary); }
+
+        /* ---------- daily cards ---------- */
+        .dcard { display: flex; align-items: center; gap: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; text-decoration: none; color: inherit; }
+        .dcard .ic { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex: none; }
+        .dcard .tx { flex: 1; min-width: 0; }
+        .dcard h3 { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 600; }
+        .dcard .st { font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; }
+        .dcard.done .st { color: var(--ok); }
+        .dcard .go { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; flex: none; }
+        .dcard.done .go { background: var(--ok); }
+        .dcard .go svg { width: 16px; height: 16px; fill: #fff; margin-left: 2px; }
+        .dsum { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(99,102,241,0.05)); border: 1px solid rgba(99,102,241,0.3); border-radius: 16px; padding: 14px; margin: 6px 0 14px; }
+        .dsum .ring { width: 54px; height: 54px; flex: none; }
+        .dsum b { display: block; font-size: 1.05rem; }
+        .dsum span { color: var(--text-secondary); font-size: 0.85rem; }
+
+        /* ---------- library ---------- */
+        .search { position: relative; margin: 8px 0 10px; }
+        .search input { width: 100%; min-height: 46px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); font: inherit; padding: 10px 40px 10px 42px; }
+        .search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+        .search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: var(--text-secondary); fill: none; stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+        .search .clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border: 0; background: none; color: var(--text-secondary); font-size: 1.1rem; cursor: pointer; display: none; }
+        .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px 4px; margin: 0 -16px; scrollbar-width: none; }
+        .chips::-webkit-scrollbar { display: none; }
+        .chip { flex: none; min-height: 36px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
+        .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .libbar { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 12px; font-size: 0.82rem; color: var(--text-secondary); }
+        .libbar select { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; font: inherit; font-size: 0.82rem; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 10px; }
+        @media (min-width: 500px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+        .grid .tile { width: auto; }
+        .grid .tile .ic { width: 100%; height: auto; aspect-ratio: 1; max-width: 100px; margin: 0 auto; font-size: 2.3rem; }
+        .noresult { text-align: center; color: var(--text-secondary); padding: 30px 10px; }
+
+        /* ---------- details sheet ---------- */
+        .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; display: none; }
+        .sheet-bg.on { display: block; }
+        .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 210; max-width: 640px; margin: 0 auto; background: var(--bg-raised); border-radius: 22px 22px 0 0; padding: 10px 20px calc(20px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform 0.25s ease-out; max-height: 88vh; overflow-y: auto; }
+        .sheet.on { transform: none; }
+        .sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.2); margin: 0 auto 14px; }
+        .sheet .hd { display: flex; gap: 16px; align-items: center; }
+        .sheet .ic { width: 84px; height: 84px; border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 2.4rem; flex: none; box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+        .sheet h2 { font-family: 'Fraunces', serif; font-size: 1.45rem; line-height: 1.15; }
+        .sheet .cat { color: var(--text-secondary); font-size: 0.85rem; margin-top: 2px; }
+        .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .tag { font-size: 0.66rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 7px; border-radius: 5px; background: rgba(255,255,255,0.07); color: var(--text-secondary); }
+        .sheet .about { margin: 14px 0 10px; font-size: 0.95rem; }
+        .sheet .mine { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; }
+        .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; margin-top: 10px; border: 0; border-radius: 14px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer; text-decoration: none; }
+        .btn.ghost { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+        .btn.ghost.faved { color: var(--heart); }
+
+        /* ---------- tab bar ---------- */
+        .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100; background: rgba(10, 15, 26, 0.94); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+        .tabbar .in { max-width: 640px; margin: 0 auto; display: flex; height: var(--nav-h); }
+        .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; background: none; color: var(--text-secondary); font-size: 0.72rem; font-weight: 600; cursor: pointer; position: relative; }
+        .tab svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .tab.on { color: #fff; }
+        .tab.on svg { stroke: var(--accent); }
+        .tab .dot { position: absolute; top: 10px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: var(--heart); display: none; }
+        .footer { text-align: center; color: var(--text-secondary); font-size: 0.78rem; padding: 28px 0 8px; }
+        .footer a { color: var(--text-secondary); }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { .view.on { animation: none; } .sheet { transition: none; } }
+    </style>
     <meta name="theme-color" content="#0a0f1a">
     <meta name="hub-root" content="./">
     <meta name="mobile-web-app-capable" content="yes">
@@ -222,577 +127,267 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="shared/base.css">
     <script src="shared/hub.js"></script>
+    <script src="catalogue.js"></script>
 </head>
 <body>
     <div class="app">
-        <header class="header">
-            <h1>Game Hub</h1>
-            <p>33 games · No ads · Just fun</p>
+        <header class="top">
+            <div><h1>Game Hub</h1><p id="count">No ads · Just fun</p></div>
+            <button class="round-btn" id="searchBtn" aria-label="Search games"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg></button>
         </header>
 
-        <section class="library-section" id="dailySection">
-            <div class="section-label">Daily Challenges</div>
-            <p class="daily-note" id="dailyNote">A new puzzle every day, the same for everyone.</p>
-            <div class="game-grid">
-                <a href="games/spot-on/index.html?mode=daily" class="game-card" data-daily="spoton">
-                    <div class="game-icon icon-spot-on">🎲</div>
-                    <div class="game-info">
-                        <h3>Spot On</h3>
-                        <p class="daily-status">Easy, Medium and Hard</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">3 a day</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/go-between/index.html?mode=daily" class="game-card" data-daily="gobetween">
-                    <div class="game-icon icon-gobetween">🔗</div>
-                    <div class="game-info">
-                        <h3>Go-Between</h3>
-                        <p class="daily-status">Today's mystery word</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">1 a day</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
+        <!-- Home: your games first, then things to discover -->
+        <section class="view" id="view-home" aria-label="Home">
+            <div class="sec">
+                <div class="sec-head"><h2><span class="h">♥</span> Your favourites</h2><button class="link" id="favAll">See all</button></div>
+                <div id="favRow"></div>
+            </div>
+            <div class="sec" id="recentSec">
+                <div class="sec-head"><h2>Jump back in</h2></div>
+                <div class="row" id="recentRow"></div>
+            </div>
+            <div class="sec">
+                <div class="sec-head"><h2>Today's challenges</h2><button class="link" data-goto="daily">Daily</button></div>
+                <div id="homeDaily"></div>
+            </div>
+            <div class="sec">
+                <div class="sec-head"><h2>New</h2><button class="link" data-sort="new">See all</button></div>
+                <div class="row" id="newRow"></div>
+            </div>
+            <div class="sec" id="suggestSec">
+                <div class="sec-head"><h2 id="suggestTitle">You might like</h2></div>
+                <div class="row" id="suggestRow"></div>
+            </div>
+            <div class="sec" id="untriedSec">
+                <div class="sec-head"><h2>Not tried yet</h2><button class="link" data-goto="library">Library</button></div>
+                <div class="row" id="untriedRow"></div>
             </div>
         </section>
 
-        <section class="library-section">
-            <div class="section-label">New</div>
-            <div class="game-grid">
-                <a href="games/pick-and-mix/index.html" class="game-card">
-                    <div class="game-icon icon-pick-and-mix">🍬</div>
-                    <div class="game-info">
-                        <h3>Pick &amp; Mix</h3>
-                        <p>Swap sweets, match three, 100 levels</p>
-                        <div class="game-meta"><span class="tag">Match 3</span><span class="tag">Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/spot-on/index.html" class="game-card">
-                    <div class="game-icon icon-spot-on">🎲</div>
-                    <div class="game-info">
-                        <h3>Spot On</h3>
-                        <p>Lay dominoes to fit every rule</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Daily</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/spider/index.html" class="game-card">
-                    <div class="game-icon icon-spider">🕷️</div>
-                    <div class="game-info">
-                        <h3>Spider</h3>
-                        <p>Build King-to-Ace runs, 1, 2 or 4 suits</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Classic</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/pyramid/index.html" class="game-card">
-                    <div class="game-icon icon-pyramid">🔺</div>
-                    <div class="game-info">
-                        <h3>Pyramid</h3>
-                        <p>Pair cards that add up to 13</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Numbers</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/freecell/index.html" class="game-card">
-                    <div class="game-icon icon-freecell">🗂️</div>
-                    <div class="game-info">
-                        <h3>FreeCell</h3>
-                        <p>Every card face up, four cells to help</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Skill</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/tripeaks/index.html" class="game-card">
-                    <div class="game-icon icon-tripeaks">⛰️</div>
-                    <div class="game-info">
-                        <h3>TriPeaks</h3>
-                        <p>Clear three peaks one card higher or lower</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Chains</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/solitaire/index.html" class="game-card">
-                    <div class="game-icon icon-solitaire">🃏</div>
-                    <div class="game-info">
-                        <h3>Solitaire</h3>
-                        <p>Classic patience, Draw 1 or Draw 3</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Classic</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/moving-in/index.html" class="game-card">
-                    <div class="game-icon icon-movingin">🏠</div>
-                    <div class="game-info">
-                        <h3>Moving In</h3>
-                        <p>Fit the rooms back into the floor plan</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/go-between/index.html" class="game-card">
-                    <div class="game-icon icon-gobetween">🔗</div>
-                    <div class="game-info">
-                        <h3>Go-Between</h3>
-                        <p>Find the word that links each pair</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Daily</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/bubble-doubles/index.html" class="game-card">
-                    <div class="game-icon icon-bubbledoubles">🎯</div>
-                    <div class="game-info">
-                        <h3>Bubble Doubles</h3>
-                        <p>Shoot numbers to merge and double them</p>
-                        <div class="game-meta"><span class="tag">Numbers</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/fizz-drop/index.html" class="game-card">
-                    <div class="game-icon icon-fizzdrop">🫙</div>
-                    <div class="game-info">
-                        <h3>Fizz Drop</h3>
-                        <p>Drop bubbles, merge pairs, don’t overflow</p>
-                        <div class="game-meta"><span class="tag">Numbers</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/kindred/index.html" class="game-card">
-                    <div class="game-icon icon-kindred">🫧</div>
-                    <div class="game-info">
-                        <h3>Kindred</h3>
-                        <p>Merge word bubbles into groups of four</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/fourfold/index.html" class="game-card">
-                    <div class="game-icon icon-fourfold">🔡</div>
-                    <div class="game-info">
-                        <h3>Fourfold</h3>
-                        <p>Crack four words at once in nine tries</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/crackword/index.html" class="game-card">
-                    <div class="game-icon icon-crackword">🔠</div>
-                    <div class="game-info">
-                        <h3>Crackword</h3>
-                        <p>Guess the hidden word in six tries</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/way-out/index.html" class="game-card">
-                    <div class="game-icon icon-wayout">🧱</div>
-                    <div class="game-info">
-                        <h3>Way Out</h3>
-                        <p>Slide each block out of its door</p>
-                        <div class="game-meta"><span class="tag">Puzzle</span><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/balance/index.html" class="game-card">
-                    <div class="game-icon icon-balance">🍃</div>
-                    <div class="game-info">
-                        <h3>Leaf &amp; Drop</h3>
-                        <p>Even out the leaves and drops</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/kingdoms/index.html" class="game-card">
-                    <div class="game-icon icon-kingdoms">👑</div>
-                    <div class="game-info">
-                        <h3>Kingdoms</h3>
-                        <p>One crown per row, column and kingdom</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/deduce/index.html" class="game-card">
-                    <div class="game-icon icon-case">🔎</div>
-                    <div class="game-info">
-                        <h3>Deduce: Logic Grids</h3>
-                        <p>Crack each case by pure deduction</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Endless Cases</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/depot-dash/index.html" class="game-card">
-                    <div class="game-icon icon-depot">🚌</div>
-                    <div class="game-info">
-                        <h3>Depot Dash</h3>
-                        <p>Clear the depot, fill the buses</p>
-                        <div class="game-meta"><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
+        <!-- Library: everything, searchable -->
+        <section class="view" id="view-library" aria-label="Library">
+            <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg><input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off"><button class="clear" id="qClear" aria-label="Clear search">✕</button></div>
+            <div class="chips" id="chips" role="group" aria-label="Show"></div>
+            <div class="libbar"><span id="libCount" aria-live="polite"></span><label>Sort <select id="sort"><option value="az">A to Z</option><option value="recent">Recently played</option><option value="most">Most played</option><option value="new">Newest</option></select></label></div>
+            <div class="grid" id="grid"></div>
+        </section>
+
+        <!-- Daily -->
+        <section class="view" id="view-daily" aria-label="Daily challenges">
+            <div class="sec">
+                <div class="dsum" id="dsum"></div>
+                <div id="dailyList"></div>
+                <p class="hint" style="margin-top:6px">New puzzles every day at midnight, the same for everyone. Share your results with friends from inside each game.</p>
             </div>
         </section>
 
-        <section class="library-section">
-            <div class="section-label">Puzzle Games</div>
-            <div class="game-grid">
-                <a href="games/pick-and-mix/index.html" class="game-card">
-                    <div class="game-icon icon-pick-and-mix">🍬</div>
-                    <div class="game-info">
-                        <h3>Pick &amp; Mix</h3>
-                        <p>Swap sweets, match three, 100 levels</p>
-                        <div class="game-meta"><span class="tag">Match 3</span><span class="tag">Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/way-out/index.html" class="game-card">
-                    <div class="game-icon icon-wayout">🧱</div>
-                    <div class="game-info">
-                        <h3>Way Out</h3>
-                        <p>Slide each block out of its door</p>
-                        <div class="game-meta"><span class="tag">Puzzle</span><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/depot-dash/index.html" class="game-card">
-                    <div class="game-icon icon-depot">🚌</div>
-                    <div class="game-info">
-                        <h3>Depot Dash</h3>
-                        <p>Clear the depot, fill the buses</p>
-                        <div class="game-meta"><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/sliding-puzzle/index.html" class="game-card">
-                    <div class="game-icon icon-puzzle">🧩</div>
-                    <div class="game-info">
-                        <h3>Sliding Puzzle</h3>
-                        <p>Classic tile-sliding challenge</p>
-                        <div class="game-meta"><span class="tag">3 Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/moving-in/index.html" class="game-card">
-                    <div class="game-icon icon-movingin">🏠</div>
-                    <div class="game-info">
-                        <h3>Moving In</h3>
-                        <p>Fit the rooms back into the floor plan</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/bubble-doubles/index.html" class="game-card">
-                    <div class="game-icon icon-bubbledoubles">🎯</div>
-                    <div class="game-info">
-                        <h3>Bubble Doubles</h3>
-                        <p>Shoot numbers to merge and double them</p>
-                        <div class="game-meta"><span class="tag">Numbers</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/fizz-drop/index.html" class="game-card">
-                    <div class="game-icon icon-fizzdrop">🫙</div>
-                    <div class="game-info">
-                        <h3>Fizz Drop</h3>
-                        <p>Drop bubbles, merge pairs, don’t overflow</p>
-                        <div class="game-meta"><span class="tag">Numbers</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/twenty48/index.html" class="game-card">
-                    <div class="game-icon icon-2048">🔢</div>
-                    <div class="game-info">
-                        <h3>2048</h3>
-                        <p>Slide and merge tiles</p>
-                        <div class="game-meta"><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/lights-out/index.html" class="game-card">
-                    <div class="game-icon icon-lights">💡</div>
-                    <div class="game-info">
-                        <h3>Light Switch</h3>
-                        <p>Toggle all lights off</p>
-                        <div class="game-meta"><span class="tag">3 Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/sudoku/index.html" class="game-card">
-                    <div class="game-icon icon-sudoku">9️⃣</div>
-                    <div class="game-info">
-                        <h3>Sudoku</h3>
-                        <p>Number placement puzzle</p>
-                        <div class="game-meta"><span class="tag">3 Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/tetris/index.html" class="game-card">
-                    <div class="game-icon icon-tetris">🧱</div>
-                    <div class="game-info">
-                        <h3>Block Drop</h3>
-                        <p>Classic falling blocks</p>
-                        <div class="game-meta"><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-            </div>
-        </section>
-
-        <section class="library-section">
-            <div class="section-label">Memory & Logic</div>
-            <div class="game-grid">
-                <a href="games/spot-on/index.html" class="game-card">
-                    <div class="game-icon icon-spot-on">🎲</div>
-                    <div class="game-info">
-                        <h3>Spot On</h3>
-                        <p>Lay dominoes to fit every rule</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Daily</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/balance/index.html" class="game-card">
-                    <div class="game-icon icon-balance">🍃</div>
-                    <div class="game-info">
-                        <h3>Leaf &amp; Drop</h3>
-                        <p>Even out the leaves and drops</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/kingdoms/index.html" class="game-card">
-                    <div class="game-icon icon-kingdoms">👑</div>
-                    <div class="game-info">
-                        <h3>Kingdoms</h3>
-                        <p>One crown per row, column and kingdom</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Endless Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/deduce/index.html" class="game-card">
-                    <div class="game-icon icon-case">🔎</div>
-                    <div class="game-info">
-                        <h3>Deduce: Logic Grids</h3>
-                        <p>Crack each case by pure deduction</p>
-                        <div class="game-meta"><span class="tag">Logic</span><span class="tag">Endless Cases</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/memory-match/index.html" class="game-card">
-                    <div class="game-icon icon-memory">🎴</div>
-                    <div class="game-info">
-                        <h3>Memory Match</h3>
-                        <p>Flip cards, find pairs</p>
-                        <div class="game-meta"><span class="tag">3 Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/simon/index.html" class="game-card">
-                    <div class="game-icon icon-simon">🎨</div>
-                    <div class="game-info">
-                        <h3>Color Sequence</h3>
-                        <p>Repeat the color pattern</p>
-                        <div class="game-meta"><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/minesweeper/index.html" class="game-card">
-                    <div class="game-icon icon-mine">💣</div>
-                    <div class="game-info">
-                        <h3>Mine Finder</h3>
-                        <p>Clear the field, avoid the mines</p>
-                        <div class="game-meta"><span class="tag">3 Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-            </div>
-        </section>
-
-        <section class="library-section">
-            <div class="section-label">Word Games</div>
-            <div class="game-grid">
-                <a href="games/go-between/index.html" class="game-card">
-                    <div class="game-icon icon-gobetween">🔗</div>
-                    <div class="game-info">
-                        <h3>Go-Between</h3>
-                        <p>Find the word that links each pair</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Daily</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/kindred/index.html" class="game-card">
-                    <div class="game-icon icon-kindred">🫧</div>
-                    <div class="game-info">
-                        <h3>Kindred</h3>
-                        <p>Merge word bubbles into groups of four</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/fourfold/index.html" class="game-card">
-                    <div class="game-icon icon-fourfold">🔡</div>
-                    <div class="game-info">
-                        <h3>Fourfold</h3>
-                        <p>Crack four words at once in nine tries</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/crackword/index.html" class="game-card">
-                    <div class="game-icon icon-crackword">🔠</div>
-                    <div class="game-info">
-                        <h3>Crackword</h3>
-                        <p>Guess the hidden word in six tries</p>
-                        <div class="game-meta"><span class="tag">Words</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/word-search/index.html" class="game-card">
-                    <div class="game-icon icon-word">🔤</div>
-                    <div class="game-info">
-                        <h3>Word Search</h3>
-                        <p>Find hidden words</p>
-                        <div class="game-meta"><span class="tag">6 Themes</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/hangman/index.html" class="game-card">
-                    <div class="game-icon icon-hangman">📝</div>
-                    <div class="game-info">
-                        <h3>Hangman</h3>
-                        <p>Guess the word</p>
-                        <div class="game-meta"><span class="tag">5 Categories</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-            </div>
-        </section>
-
-        <section class="library-section">
-            <div class="section-label">Card Games</div>
-            <div class="game-grid">
-                <a href="games/solitaire/index.html" class="game-card">
-                    <div class="game-icon icon-solitaire">🃏</div>
-                    <div class="game-info">
-                        <h3>Solitaire</h3>
-                        <p>Classic patience, Draw 1 or Draw 3</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Classic</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/tripeaks/index.html" class="game-card">
-                    <div class="game-icon icon-tripeaks">⛰️</div>
-                    <div class="game-info">
-                        <h3>TriPeaks</h3>
-                        <p>Clear three peaks one card higher or lower</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Chains</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/freecell/index.html" class="game-card">
-                    <div class="game-icon icon-freecell">🗂️</div>
-                    <div class="game-info">
-                        <h3>FreeCell</h3>
-                        <p>Every card face up, four cells to help</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Skill</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/pyramid/index.html" class="game-card">
-                    <div class="game-icon icon-pyramid">🔺</div>
-                    <div class="game-info">
-                        <h3>Pyramid</h3>
-                        <p>Pair cards that add up to 13</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Numbers</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/spider/index.html" class="game-card">
-                    <div class="game-icon icon-spider">🕷️</div>
-                    <div class="game-info">
-                        <h3>Spider</h3>
-                        <p>Build King-to-Ace runs, 1, 2 or 4 suits</p>
-                        <div class="game-meta"><span class="tag">Cards</span><span class="tag">Classic</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-            </div>
-        </section>
-
-        <section class="library-section">
-            <div class="section-label">Strategy & Arcade</div>
-            <div class="game-grid">
-                <a href="games/tic-tac-toe/index.html" class="game-card">
-                    <div class="game-icon icon-tictac">⭕</div>
-                    <div class="game-info">
-                        <h3>Tic Tac Toe</h3>
-                        <p>Classic X's and O's vs AI</p>
-                        <div class="game-meta"><span class="tag">3 Difficulties</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/connect-four/index.html" class="game-card">
-                    <div class="game-icon icon-connect">🔴</div>
-                    <div class="game-info">
-                        <h3>Four in a Row</h3>
-                        <p>Get four in a row vs AI</p>
-                        <div class="game-meta"><span class="tag">3 Difficulties</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/snake/index.html" class="game-card">
-                    <div class="game-icon icon-snake">🐍</div>
-                    <div class="game-info">
-                        <h3>Snake</h3>
-                        <p>Eat food, grow longer</p>
-                        <div class="game-meta"><span class="tag">Classic</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-                <a href="games/breakout/index.html" class="game-card">
-                    <div class="game-icon icon-breakout">🎾</div>
-                    <div class="game-info">
-                        <h3>Brick Breaker</h3>
-                        <p>Break all the bricks</p>
-                        <div class="game-meta"><span class="tag">Levels</span></div>
-                    </div>
-                    <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
-                </a>
-            </div>
-        </section>
-
-        <footer class="footer">
-            <a href="privacy.html">Privacy</a> · Saved on this device only · v1.34.1
-        </footer>
+        <footer class="footer"><a href="privacy.html">Privacy</a> · Saved on this device only · v1.35.0</footer>
     </div>
+
+    <nav class="tabbar" aria-label="Sections"><div class="in" role="tablist">
+        <button class="tab" role="tab" data-tab="home" id="tab-home"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>Home</button>
+        <button class="tab" role="tab" data-tab="library" id="tab-library"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>Library</button>
+        <button class="tab" role="tab" data-tab="daily" id="tab-daily"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Daily<span class="dot" id="dailyDot"></span></button>
+    </div></nav>
+
+    <div class="sheet-bg" id="sheetBg"></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shName"><div class="grab"></div><div id="shBody"></div></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
     <script>
-    // Daily Challenges: show how today's puzzles are going
     (function () {
-        var S = window.HubStorage;
-        function json(k) { try { return JSON.parse(S.getString(k, 'null')); } catch (e) { return null; } }
-        function update() {
+        'use strict';
+        var S = window.HubStorage, GAMES = window.HUB_GAMES || [], CATS = window.HUB_CATEGORIES || [];
+        var CATNAME = {}; CATS.forEach(function (c) { CATNAME[c.id] = c.name; });
+        var BY = {}; GAMES.forEach(function (g) { BY[g.slug] = g; });
+        function $(id) { return document.getElementById(id); }
+        function json(k, d) { try { var v = JSON.parse(S.getString(k, 'null')); return v === null || v === undefined ? d : v; } catch (e) { return d; } }
+        function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+        function url(g) { return 'games/' + g.slug + '/index.html'; }
+        $('count').textContent = GAMES.length + ' games · No ads · Just fun';
+
+        // ---------- what you've played, and your favourites ----------
+        function plays() { var p = json('hub_plays', {}); return p && typeof p === 'object' ? p : {}; }
+        function favs() { var f = json('hub_favourites', []); return Array.isArray(f) ? f.filter(function (s) { return BY[s]; }) : []; }
+        function isFav(slug) { return favs().indexOf(slug) >= 0; }
+        function toggleFav(slug) {
+            var f = favs(), i = f.indexOf(slug);
+            if (i >= 0) f.splice(i, 1); else f.push(slug);
+            S.setString('hub_favourites', JSON.stringify(f));
+            announce(BY[slug].name + (i >= 0 ? ' removed from' : ' added to') + ' favourites');
+            renderAll();
+            return i < 0;
+        }
+        // a game counts as tried if it's been opened since play tracking began, or it has saved progress
+        function progressOf(g) {
+            if (!g.progress) return 0;
+            var o = json(g.progress[0], null); var n = o && +o[g.progress[1]]; return n > 0 ? n : 0;
+        }
+        function tried(g) { var p = plays()[g.slug]; return !!(p && p.n) || progressOf(g) > 1; }
+        function ago(t) {
+            if (!t) return '';
+            var d = new Date(), today = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(), day = 86400000;
+            if (t >= today) return 'Today'; if (t >= today - day) return 'Yesterday';
+            var n = Math.ceil((today - t) / day); return n < 7 ? n + ' days ago' : n < 14 ? 'Last week' : Math.floor(n / 7) + ' weeks ago';
+        }
+        function where(g) { var n = progressOf(g); return n > 1 ? g.progress[2] + ' ' + n : ''; }
+        function announce(m) { $('announce').textContent = m; }
+
+        // ---------- tiles ----------
+        // play: tapping goes straight into the game; otherwise it opens the details card
+        function tile(g, opts) {
+            opts = opts || {};
+            var meta = opts.meta !== undefined ? opts.meta : CATNAME[g.cat];
+            var tag = opts.play ? 'a href="' + url(g) + '"' : 'button type="button"';
+            return '<' + tag + ' class="tile' + (opts.big ? ' big' : '') + '" data-slug="' + g.slug + '" aria-label="' + esc(g.name) + (opts.play ? ', play' : ', details') + '">' +
+                '<span class="ic" style="background:' + g.bg + '" aria-hidden="true">' + g.icon + '</span>' +
+                (opts.badge ? '<span class="badge">' + opts.badge + '</span>' : '') + (opts.heart && isFav(g.slug) ? '<span class="fav" aria-hidden="true">♥</span>' : '') +
+                '<span class="nm">' + esc(g.name) + '</span>' + (meta ? '<span class="meta">' + esc(meta) + '</span>' : '') + '</' + (opts.play ? 'a' : 'button') + '>';
+        }
+        var NEWEST = GAMES.filter(function (g) { return g.fresh; }).sort(function (a, b) { return b.fresh - a.fresh; });
+        var NEWSET = {}; NEWEST.slice(0, 6).forEach(function (g) { NEWSET[g.slug] = 1; });
+
+        // ---------- Home ----------
+        function renderHome() {
+            var f = favs(), P = plays();
+            $('favAll').style.display = f.length ? '' : 'none';
+            $('favRow').className = f.length ? 'row' : '';
+            $('favRow').innerHTML = f.length ? f.map(function (s) { var g = BY[s]; return tile(g, { big: true, play: true, meta: where(g) || CATNAME[g.cat] }); }).join('')
+                : '<div class="empty"><span class="big-heart" aria-hidden="true">♡</span><p><b>Keep your favourites here.</b> Open any game\'s details from the Library and tap <b>♥ Favourite</b>. They\'ll sit right here, one tap away.</p></div>';
+            // recently played, most recent first (favourites included: this row is about picking up where you left off)
+            var recent = GAMES.filter(function (g) { return P[g.slug] && P[g.slug].last; }).sort(function (a, b) { return P[b.slug].last - P[a.slug].last; }).slice(0, 10);
+            $('recentSec').style.display = recent.length ? '' : 'none';
+            $('recentRow').innerHTML = recent.map(function (g) { return tile(g, { play: true, meta: where(g) || ago(P[g.slug].last) }); }).join('');
+            $('newRow').innerHTML = NEWEST.slice(0, 8).map(function (g) { return tile(g, { badge: NEWSET[g.slug] && !tried(g) ? 'NEW' : '', heart: true }); }).join('');
+            // suggestions: more from the category you play most (or favourite), that you play least
+            var score = {}; GAMES.forEach(function (g) { var n = (P[g.slug] && P[g.slug].n) || 0; score[g.cat] = (score[g.cat] || 0) + n + (isFav(g.slug) ? 5 : 0); });
+            var top = Object.keys(score).sort(function (a, b) { return score[b] - score[a]; })[0];
+            var sugg = top && score[top] > 0 ? GAMES.filter(function (g) { return g.cat === top && !isFav(g.slug); }).sort(function (a, b) { return ((P[a.slug] && P[a.slug].n) || 0) - ((P[b.slug] && P[b.slug].n) || 0); }).slice(0, 8) : [];
+            $('suggestSec').style.display = sugg.length ? '' : 'none';
+            $('suggestTitle').textContent = 'More ' + (CATNAME[top] || '').toLowerCase() + ' games';
+            $('suggestRow').innerHTML = sugg.map(function (g) { return tile(g, { heart: true, meta: tried(g) ? CATNAME[g.cat] : 'Not tried yet' }); }).join('');
+            // not tried yet: a different handful each day
+            var day = Math.floor(Date.now() / 86400000), untried = GAMES.filter(function (g) { return !tried(g); });
+            untried.sort(function (a, b) { return hash(a.slug + day) - hash(b.slug + day); });
+            $('untriedSec').style.display = untried.length ? '' : 'none';
+            $('untriedRow').innerHTML = untried.slice(0, 10).map(function (g) { return tile(g, { heart: true }); }).join('');
+            $('homeDaily').innerHTML = dailyCards();
+        }
+        function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+        // ---------- Library ----------
+        var filter = S.getString('hub_libFilter', 'all'), sortBy = S.getString('hub_libSort', 'az');
+        function chipsHTML() {
+            var list = [['all', 'All'], ['fav', '♥ Favourites']].concat(CATS.map(function (c) { return [c.id, c.name]; })).concat([['daily', 'Daily']]);
+            return list.map(function (c) { return '<button class="chip' + (c[0] === filter ? ' on' : '') + '" data-f="' + c[0] + '" aria-pressed="' + (c[0] === filter) + '">' + c[1] + '</button>'; }).join('');
+        }
+        function renderLibrary() {
+            $('chips').innerHTML = chipsHTML(); $('sort').value = sortBy;
+            var q = $('q').value.trim().toLowerCase(), P = plays();
+            $('qClear').style.display = q ? 'block' : 'none';
+            var list = GAMES.filter(function (g) {
+                if (filter === 'fav' && !isFav(g.slug)) return false;
+                if (filter === 'daily' && !g.daily) return false;
+                if (CATNAME[filter] && g.cat !== filter) return false;
+                if (q) { var hay = (g.name + ' ' + g.blurb + ' ' + g.about + ' ' + g.tags.join(' ') + ' ' + CATNAME[g.cat]).toLowerCase(); if (q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
+                return true;
+            });
+            var last = function (g) { return (P[g.slug] && P[g.slug].last) || 0; }, n = function (g) { return (P[g.slug] && P[g.slug].n) || 0; };
+            list.sort(sortBy === 'recent' ? function (a, b) { return last(b) - last(a) || a.name.localeCompare(b.name); }
+                : sortBy === 'most' ? function (a, b) { return n(b) - n(a) || a.name.localeCompare(b.name); }
+                : sortBy === 'new' ? function (a, b) { return (b.fresh || 0) - (a.fresh || 0) || a.name.localeCompare(b.name); }
+                : function (a, b) { return a.name.localeCompare(b.name); });
+            $('libCount').textContent = list.length + ' game' + (list.length === 1 ? '' : 's');
+            $('grid').innerHTML = list.length ? list.map(function (g) { return tile(g, { heart: true, badge: NEWSET[g.slug] && !tried(g) ? 'NEW' : '' }); }).join('')
+                : '<p class="noresult" style="grid-column:1/-1">' + (filter === 'fav' && !q ? 'No favourites yet. Open a game\'s details and tap ♥ Favourite.' : 'No games match that. Try another word, or show All.') + '</p>';
+        }
+        $('chips').addEventListener('click', function (e) { var c = e.target.closest('.chip'); if (!c) return; filter = c.dataset.f; S.setString('hub_libFilter', filter); renderLibrary(); });
+        $('sort').addEventListener('change', function () { sortBy = this.value; S.setString('hub_libSort', sortBy); renderLibrary(); });
+        $('q').addEventListener('input', renderLibrary);
+        $('qClear').addEventListener('click', function () { $('q').value = ''; renderLibrary(); $('q').focus(); });
+
+        // ---------- Daily ----------
+        function dailyState() {
             var d = new Date(), ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
             var dayNo = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 10, 19)) / 86400000) + 1;
-            var total = 0, doneCount = 0;
-            // Spot On: three levels a day
-            var so = json('spoton_daily'), lv = so && so.day === dayNo && so.levels ? so.levels : {};
-            var names = [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']], n = 0;
-            var soText = names.map(function (x) { if (lv[x[0]]) n++; return x[1] + (lv[x[0]] ? ' ✓' : ''); }).join(' · ');
-            setCard('spoton', n === 3 ? 'All three done today ✓' : n ? soText : 'Easy, Medium and Hard to play', n === 3);
-            total += 3; doneCount += n;
-            // Go-Between: one a day
-            var gb = json('gobetween_dstats'), gbDone = gb && gb.last === ds, r = gb && gb.lastResult;
-            setCard('gobetween', gbDone ? (r ? (r.pass ? 'Solved today ' + '★★★☆☆☆'.slice(3 - r.stars, 6 - r.stars) : 'Missed today. New one tomorrow') : 'Done today ✓') : 'Today\'s mystery word to find', gbDone);
-            total += 1; doneCount += gbDone ? 1 : 0;
-            var note = document.getElementById('dailyNote');
-            if (note) note.textContent = doneCount === total ? 'All of today\'s challenges done. New ones tomorrow.' : doneCount ? doneCount + ' of ' + total + ' done today. A new set every day, the same for everyone.' : 'A new set every day, the same for everyone.';
+            var out = {};
+            var so = json('spoton_daily', null), lv = so && so.day === dayNo && so.levels ? so.levels : {}, n = 0;
+            var soText = [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(function (x) { if (lv[x[0]]) n++; return x[1] + (lv[x[0]] ? ' ✓' : ''); }).join(' · ');
+            out['spot-on'] = { text: n === 3 ? 'All three done today ✓' : n ? soText : 'Easy, Medium and Hard to play', done: n, total: 3 };
+            var gb = json('gobetween_dstats', null), gbDone = !!(gb && gb.last === ds), r = gb && gb.lastResult;
+            out['go-between'] = { text: gbDone ? (r ? (r.pass ? 'Solved today ' + '★★★☆☆☆'.slice(3 - r.stars, 6 - r.stars) : 'Missed today. New one tomorrow') : 'Done today ✓') : 'Today\'s mystery word to find', done: gbDone ? 1 : 0, total: 1 };
+            return out;
         }
-        function setCard(key, text, done) {
-            var a = document.querySelector('[data-daily="' + key + '"]'); if (!a) return;
-            a.querySelector('.daily-status').textContent = text; a.classList.toggle('daily-done', !!done);
+        function dailyCards() {
+            var st = dailyState();
+            return GAMES.filter(function (g) { return g.daily; }).map(function (g) {
+                var s = st[g.slug] || { text: 'Today\'s puzzle', done: 0, total: 1 }, all = s.done >= s.total;
+                return '<a class="dcard' + (all ? ' done' : '') + '" href="' + g.daily + '"><span class="ic" style="background:' + g.bg + '">' + g.icon + '</span><span class="tx"><h3>' + esc(g.name) + '</h3><span class="st">' + esc(s.text) + '</span></span><span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></span></a>';
+            }).join('');
         }
-        update();
-        // coming back from a game (including the back/forward cache) refreshes the panel
-        window.addEventListener('pageshow', update);
-        document.addEventListener('visibilitychange', function () { if (!document.hidden) update(); });
+        function renderDaily() {
+            var st = dailyState(), done = 0, total = 0;
+            Object.keys(st).forEach(function (k) { done += st[k].done; total += st[k].total; });
+            var frac = total ? done / total : 0, C = 2 * Math.PI * 22;
+            $('dsum').innerHTML = '<svg class="ring" viewBox="0 0 54 54"><circle cx="27" cy="27" r="22" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/><circle cx="27" cy="27" r="22" fill="none" stroke="' + (frac === 1 ? '#4caf7a' : '#6366f1') + '" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + (C * frac) + ' ' + C + '" transform="rotate(-90 27 27)"/><text x="27" y="32" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">' + done + '/' + total + '</text></svg>' +
+                '<div><b>' + (done === total ? 'All done for today!' : done ? 'Keep going' : 'Today\'s challenges') + '</b><span>' + (done === total ? 'New puzzles tomorrow.' : (total - done) + ' still to play today.') + '</span></div>';
+            $('dailyList').innerHTML = dailyCards();
+            $('dailyDot').style.display = done < total ? 'block' : 'none';
+        }
+
+        // ---------- details card ----------
+        var sheetSlug = null, lastFocus = null;
+        function openSheet(slug) {
+            var g = BY[slug]; if (!g) return;
+            sheetSlug = slug; lastFocus = document.activeElement;
+            var p = plays()[slug], w = where(g), fav = isFav(slug);
+            var mine = p && p.n ? 'Played ' + p.n + ' time' + (p.n === 1 ? '' : 's') + ' · last ' + ago(p.last).toLowerCase() + (w ? ' · up to ' + w : '') : w ? 'You\'re up to ' + w : 'You haven\'t played this one yet.';
+            $('shBody').innerHTML = '<div class="hd"><span class="ic" style="background:' + g.bg + '">' + g.icon + '</span><div><h2 id="shName">' + esc(g.name) + '</h2><div class="cat">' + CATNAME[g.cat] + ' game' + (NEWSET[slug] ? ' · New' : '') + '</div><div class="tags">' + g.tags.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div></div></div>' +
+                '<p class="about">' + esc(g.about) + '</p><p class="mine">' + esc(mine) + '</p>' +
+                (g.daily ? '<a class="btn" href="' + g.daily + '">Play today\'s challenge</a><a class="btn ghost" href="' + url(g) + '">Play</a>' : '<a class="btn" href="' + url(g) + '">Play</a>') +
+                '<button class="btn ghost' + (fav ? ' faved' : '') + '" id="favBtn" aria-pressed="' + fav + '">' + (fav ? '♥ In your favourites' : '♡ Favourite') + '</button>';
+            $('sheetBg').classList.add('on'); $('sheet').classList.add('on');
+            setTimeout(function () { var b = $('shBody').querySelector('.btn'); if (b) b.focus({ preventScroll: true }); }, 50);
+            $('favBtn').addEventListener('click', function () { var on = toggleFav(slug); this.classList.toggle('faved', on); this.setAttribute('aria-pressed', on); this.textContent = on ? '♥ In your favourites' : '♡ Favourite'; });
+        }
+        function closeSheet() { $('sheet').classList.remove('on'); $('sheetBg').classList.remove('on'); sheetSlug = null; if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true }); }
+        $('sheetBg').addEventListener('click', closeSheet);
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && sheetSlug) closeSheet(); });
+        // swipe the card down to close it
+        (function () { var y0 = null, sh = $('sheet'); sh.addEventListener('touchstart', function (e) { if (sh.scrollTop <= 0) y0 = e.touches[0].clientY; }, { passive: true });
+            sh.addEventListener('touchmove', function (e) { if (y0 === null) return; var dy = e.touches[0].clientY - y0; if (dy > 0) sh.style.transform = 'translateY(' + dy + 'px)'; }, { passive: true });
+            sh.addEventListener('touchend', function (e) { if (y0 === null) return; var dy = e.changedTouches[0].clientY - y0; y0 = null; sh.style.transform = ''; if (dy > 90) closeSheet(); }); })();
+        // tiles that aren't links open the details card; holding a play tile opens it too
+        document.addEventListener('click', function (e) { var t = e.target.closest('button.tile'); if (t) openSheet(t.dataset.slug); });
+        (function () { var timer = null, fired = false;
+            document.addEventListener('pointerdown', function (e) { var t = e.target.closest('a.tile'); if (!t) return; fired = false; timer = setTimeout(function () { fired = true; openSheet(t.dataset.slug); try { if (navigator.vibrate) navigator.vibrate(15); } catch (er) { /* ignore */ } }, 500); });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { document.addEventListener(ev, function () { clearTimeout(timer); }); });
+            document.addEventListener('click', function (e) { if (fired && e.target.closest('a.tile')) { e.preventDefault(); fired = false; } }, true);
+            document.addEventListener('contextmenu', function (e) { if (e.target.closest('a.tile')) e.preventDefault(); }); })();
+
+        // ---------- tabs ----------
+        var tab = S.getString('hub_tab', 'home');
+        function show(t) {
+            if (['home', 'library', 'daily'].indexOf(t) < 0) t = 'home';
+            tab = t; S.setString('hub_tab', t);
+            ['home', 'library', 'daily'].forEach(function (k) { $('view-' + k).classList.toggle('on', k === t); $('tab-' + k).classList.toggle('on', k === t); $('tab-' + k).setAttribute('aria-selected', k === t); });
+            window.scrollTo(0, 0);
+        }
+        Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) { b.addEventListener('click', function () { if (tab === b.dataset.tab) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; } show(b.dataset.tab); }); });
+        document.addEventListener('click', function (e) {
+            var g = e.target.closest('[data-goto]'); if (g) { show(g.dataset.goto); return; }
+            var srt = e.target.closest('[data-sort]'); if (srt) { sortBy = srt.dataset.sort; filter = 'all'; S.setString('hub_libSort', sortBy); S.setString('hub_libFilter', 'all'); renderLibrary(); show('library'); }
+        });
+        $('favAll').addEventListener('click', function () { filter = 'fav'; S.setString('hub_libFilter', 'fav'); renderLibrary(); show('library'); });
+        $('searchBtn').addEventListener('click', function () { show('library'); setTimeout(function () { $('q').focus(); }, 30); });
+
+        function renderAll() { renderHome(); renderLibrary(); renderDaily(); }
+        renderAll();
+        show(location.hash === '#library' ? 'library' : location.hash === '#daily' ? 'daily' : tab);
+        // coming back from a game refreshes everything (favourites, played, daily ticks)
+        window.addEventListener('pageshow', function (e) { if (e.persisted) renderAll(); });
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) renderAll(); });
+        window.__hub = { openSheet: openSheet, show: show, toggleFav: toggleFav };
     })();
     </script>
 </body>

@@ -116,6 +116,18 @@
         } catch (e) { /* ignore */ }
     };
 
+    // ---- Remember which games you play (for the dashboard's "Jump back in" and suggestions) ----
+    // hub_plays: { slug: { n: times opened, last: time last opened } }. Stays on this device, like everything else.
+    try {
+        var m = location.pathname.match(/\/games\/([\w-]+)\//);
+        if (m) {
+            var plays = JSON.parse(HubStorage.getString('hub_plays', '{}')) || {};
+            var rec = plays[m[1]] && typeof plays[m[1]] === 'object' ? plays[m[1]] : { n: 0, last: 0 };
+            rec.n = (rec.n | 0) + 1; rec.last = Date.now(); plays[m[1]] = rec;
+            HubStorage.setString('hub_plays', JSON.stringify(plays));
+        }
+    } catch (e) { /* ignore */ }
+
     // ---- Register service worker (PWA / offline). Safe no-op where unsupported or on file:// ----
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
         window.addEventListener('load', function () {
