@@ -1,11 +1,11 @@
 /* Game Hub service worker: precache everything so the whole app works offline.
    Pages and assets are fetched network-first, so updates show up straight away when online.
    Bump CACHE_VERSION (and the version in the hub footer) when releasing. */
-const CACHE_VERSION = 'v1.33.1';
+const CACHE_VERSION = 'v1.34.0';
 const CACHE = 'game-hub-' + CACHE_VERSION;
 
 const GAMES = [
-  'balance', 'breakout', 'bubble-doubles', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fizz-drop', 'fourfold', 'freecell', 'go-between', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'moving-in', 'pyramid', 'simon', 'solitaire', 'spider', 'spot-on', 'tripeaks',
+  'balance', 'breakout', 'bubble-doubles', 'connect-four', 'crackword', 'deduce', 'depot-dash', 'fizz-drop', 'fourfold', 'freecell', 'go-between', 'hangman', 'kindred', 'kingdoms', 'lights-out', 'memory-match', 'minesweeper', 'moving-in', 'pick-and-mix', 'pyramid', 'simon', 'solitaire', 'spider', 'spot-on', 'tripeaks',
   'sliding-puzzle', 'snake', 'sudoku', 'tetris', 'tic-tac-toe', 'twenty48', 'way-out', 'word-search'
 ];
 
@@ -42,6 +42,8 @@ const PRECACHE = [
   'games/spider/engine.js',
   'games/spider/worker.js',
   'games/spider/deals.js',
+  'games/pick-and-mix/engine.js',
+  'games/pick-and-mix/levels.js',
   'games/spot-on/engine.js',
   'games/spot-on/worker.js',
   'games/spot-on/puzzles.js',
