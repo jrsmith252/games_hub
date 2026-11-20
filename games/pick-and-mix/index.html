@@ -49,7 +49,7 @@
         .crate.c2::after { content: ''; position: absolute; inset: 18%; border: 3px solid #7c4a1e; border-radius: 3px; transform: rotate(45deg); }
         .crate.hit { animation: crateHit 0.25s; }
         @keyframes crateHit { 50% { transform: scale(0.88) rotate(-4deg); } }
-        .sweet { position: absolute; left: 0; top: 0; z-index: 10; transition: transform 0.2s ease-in; will-change: transform; }
+        .sweet { position: absolute; left: 0; top: 0; z-index: 10; transition: transform 0.16s ease-in-out; will-change: transform; }
         .sweet svg { width: 100%; height: 100%; display: block; overflow: visible; }
         .sweet.sel svg { animation: wiggle 0.6s infinite; filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 2px #fff); }
         .sweet.nudge svg { animation: wiggle 0.5s 3; }
@@ -62,6 +62,13 @@
         @keyframes beam { 0% { opacity: 1; } 100% { opacity: 0; } }
         .ring { position: absolute; z-index: 25; pointer-events: none; border-radius: 50%; border: 6px solid rgba(255,255,255,0.9); animation: ring 0.4s ease-out forwards; }
         @keyframes ring { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+        .bit { position: absolute; z-index: 35; width: 9px; height: 9px; border-radius: 3px; pointer-events: none; }
+        .pts { position: absolute; z-index: 36; transform: translate(-50%, -50%); font-weight: 800; font-size: 1.05rem; color: #fff; -webkit-text-stroke: 1.2px var(--deep); pointer-events: none; animation: pts 0.9s ease-out forwards; white-space: nowrap; }
+        @keyframes pts { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); } 20% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -160%) scale(1); } }
+        .board.falling .sweet { transition: transform 0.24s cubic-bezier(0.34, 1.5, 0.64, 1); }
+        .boardwrap.shake .board { animation: shake 0.32s; }
+        @keyframes shake { 20% { transform: translate(-5px, 2px); } 40% { transform: translate(5px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(3px, -1px); } }
+        .rushbar { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 45; background: rgba(59,18,48,0.75); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; pointer-events: none; }
         .praise { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 40; font-family: 'Fraunces', serif; font-weight: 800; font-size: 2.2rem; color: #fff; -webkit-text-stroke: 2px var(--deep); text-shadow: 0 4px 0 var(--deep); pointer-events: none; animation: praise 1s ease-out forwards; white-space: nowrap; }
         @keyframes praise { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -70%) scale(1); } }
 
@@ -122,6 +129,7 @@
         <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
         <div class="title-block"><div class="game-title">Pick &amp; Mix</div><div class="sub" id="sub"></div></div>
         <div class="right-btns">
+            <button class="icon-btn" id="soundBtn" aria-label="Sound on" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/><path class="cross" d="M16 9l6 6M22 9l-6 6" style="display:none"/></svg></button>
             <button class="icon-btn" id="levelsBtn" aria-label="Choose a level"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></button>
             <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
         </div>
@@ -326,7 +334,7 @@
         }
         function renderHud(sn) {
             sn = sn || E.snap(s);
-            $('moves').textContent = s.movesLeft; $('movesBox').classList.toggle('low', s.movesLeft <= 3 && !s.won);
+            $('moves').textContent = rushLeft !== null ? rushLeft : s.movesLeft; $('movesBox').classList.toggle('low', s.movesLeft <= 3 && !s.won);
             var tmp = { score: sn.score, collected: sn.collected, cherriesDone: sn.cherriesDone, jelly: sn.jelly, crate: sn.crate };
             $('goals').innerHTML = s.goals.map(function (g) {
                 if (g.type === 'score') return '';
@@ -345,35 +353,87 @@
         }
         function renderAll() { drawSnap(E.snap(s), false); }
 
+        // ---------- sound: little synthesised blips, no files ----------
+        var soundOn = S.getString('pickmix_sound', 'on') !== 'off', ac = null;
+        function audio() { if (!soundOn) return null; try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; } return ac; }
+        function tone(freq, dur, type, vol, slide, delay) {
+            var a = audio(); if (!a) return;
+            var t0 = a.currentTime + (delay || 0), o = a.createOscillator(), g = a.createGain();
+            o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * slide), t0 + dur);
+            g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+            o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+        }
+        function noise(dur, vol, hp) {
+            var a = audio(); if (!a) return;
+            var n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+            for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+            var src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); src.buffer = buf; f.type = 'highpass'; f.frequency.value = hp || 800; g.gain.value = vol || 0.15;
+            src.connect(f); f.connect(g); g.connect(a.destination); src.start();
+        }
+        // the notes climb as a cascade goes on
+        var SCALE = [523, 587, 659, 784, 880, 1047, 1175, 1319, 1568, 1760];
+        var sfx = {
+            swap: function () { tone(330, 0.09, 'triangle', 0.08, 1.6); },
+            nope: function () { tone(160, 0.14, 'triangle', 0.1, 0.7); },
+            pop: function (cascade, n) { var f = SCALE[Math.min(SCALE.length - 1, cascade - 1)]; tone(f, 0.12, 'sine', 0.13); if (n > 3) tone(f * 1.5, 0.12, 'sine', 0.08, 1, 0.05); },
+            made: function () { [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, 0.1, 'triangle', 0.07, 1, i * 0.045); }); },
+            blast: function (big) { noise(big ? 0.45 : 0.25, big ? 0.22 : 0.14, big ? 300 : 900); tone(big ? 110 : 220, big ? 0.4 : 0.22, 'sawtooth', 0.05, 0.4); },
+            crate: function () { tone(140, 0.08, 'square', 0.06, 0.6); noise(0.08, 0.08, 1500); },
+            cherry: function () { [1047, 1319, 1568].forEach(function (f, i) { tone(f, 0.18, 'sine', 0.1, 1, i * 0.07); }); },
+            win: function () { [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tone(f, 0.22, 'triangle', 0.11, 1, i * 0.11); }); },
+            lose: function () { [392, 330, 262].forEach(function (f, i) { tone(f, 0.3, 'triangle', 0.09, 0.97, i * 0.18); }); }
+        };
+        function syncSound() { var b = $('soundBtn'); b.setAttribute('aria-pressed', soundOn ? 'true' : 'false'); b.setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); b.querySelector('.wave').style.display = soundOn ? '' : 'none'; b.querySelector('.cross').style.display = soundOn ? 'none' : ''; }
+
         // ---------- animating a move ----------
         var PRAISE = ['', '', '', 'Tasty!', 'Sweet!', 'Delicious!', 'Scrumptious!', 'Sugar rush!'];
-        async function animate(steps) {
-            busy = true;
+        var BIT = ['#ff5a6e', '#ff9a2e', '#ffd93b', '#5fd36a', '#4aa8ff', '#b67bff'];
+        var fast = false;   // tap during the finale to skip to the end
+        var rushing = false, rushLeft = null;
+        function pause(ms) { return fast ? Promise.resolve() : wait(rushing ? ms * 0.5 : ms); }
+        async function animate(steps, opts) {
+            busy = true; opts = opts || {};
+            var lastScore = null;
             for (var k = 0; k < steps.length; k++) {
                 var st = steps[k];
-                if (st.kind === 'swap') { drawSnap(st.snap, true); await wait(200); }
+                if (fast && st.kind !== 'swap') { if (k === steps.length - 1 || steps[k + 1].kind === 'rush') { drawSnap(st.snap, false); } continue; }
+                if (st.kind === 'swap') { sfx.swap(); drawSnap(st.snap, true); await pause(170); lastScore = st.snap.score; }
+                else if (st.kind === 'rush') {
+                    $('rushbar').textContent = 'Sugar rush! ' + st.movesLeft + ' spare move' + (st.movesLeft === 1 ? '' : 's') + ' left · tap to skip';
+                    rushLeft = st.movesLeft; drawSnap(st.snap, true); st.made.forEach(function (id) { if (els[id]) { els[id].classList.remove('grow'); void els[id].offsetWidth; els[id].classList.add('grow'); } }); $('moves').textContent = st.movesLeft;
+                    sfx.made(); await pause(260);
+                }
                 else if (st.kind === 'clear') {
+                    var big = st.blasts.some(function (b) { return b.sp >= 3; }) || st.blasts.length >= 2;
                     st.blasts.forEach(blast);
+                    if (st.blasts.length) { sfx.blast(big); if (big) shake(); }
+                    if (st.crates && st.crates.length) sfx.crate();
                     (st.crates || []).forEach(function (q) { var c = document.querySelector('.crate[data-cr="' + q + '"]'); if (c) { c.classList.remove('hit'); void c.offsetWidth; c.classList.add('hit'); } });
+                    sfx.pop(st.cascade, st.cleared.length);
+                    burst(st.cleared);
                     st.cleared.forEach(function (c) { var el = els[c.id]; if (el) { el.classList.add('pop'); el.style.transform += ' scale(1.35)'; } });
-                    if (st.cascade >= 3) praise(PRAISE[Math.min(st.cascade, PRAISE.length - 1)]);
-                    await wait(230);
+                    if (lastScore !== null && st.snap.score > lastScore) points(st.cleared, st.snap.score - lastScore);
+                    lastScore = st.snap.score;
+                    if (st.cascade >= 3 && !opts.rush) praise(PRAISE[Math.min(st.cascade, PRAISE.length - 1)]);
+                    await pause(st.cascade > 2 ? 170 : 200);
                     st.cleared.forEach(function (c) { if (els[c.id]) { els[c.id].remove(); delete els[c.id]; } });
                     drawSnap(st.snap, true);
-                    if (st.made.length) await wait(120);
+                    if (st.made.length) { sfx.made(); await pause(110); }
                 }
                 else if (st.kind === 'fall') {
                     st.dropped.forEach(function (d) { var el = els[d.id]; if (el) { el.style.transform += ' translateY(' + cs + 'px)'; el.classList.add('pop'); } });
-                    if (st.dropped.length) { toast('Cherry collected!'); await wait(220); st.dropped.forEach(function (d) { if (els[d.id]) { els[d.id].remove(); delete els[d.id]; } }); }
+                    if (st.dropped.length) { sfx.cherry(); praise('Cherry!'); await pause(200); st.dropped.forEach(function (d) { if (els[d.id]) { els[d.id].remove(); delete els[d.id]; } }); }
+                    $('board').classList.add('falling');
                     drawSnap(st.snap, true, st.spawned);
-                    await wait(260);
+                    await pause(st.spawned.length ? 230 : 160);
+                    $('board').classList.remove('falling');
+                    lastScore = st.snap.score;
                 }
-                else if (st.kind === 'shuffle') { toast('No moves left: shuffling'); await wait(400); drawSnap(st.snap, true); await wait(400); }
+                else if (st.kind === 'shuffle') { toast('No moves left: shuffling'); await pause(400); drawSnap(st.snap, true); await pause(400); }
             }
             busy = false;
             renderHud();
-            saveGame();
-            afterMove();
+            if (!opts.rush) { saveGame(); afterMove(); }
         }
         function blast(b) {
             var p = xy(b.i), board = $('board'), el = document.createElement('div');
@@ -381,8 +441,32 @@
             else if (b.sp === 2) { el.className = 'beam'; place(el, p[0] - cs * 0.2, 0, cs * 1.4, cs * L.R); }
             else { el.className = 'ring'; var r = b.sp === 3 ? 3 : 4; place(el, p[0] + cs / 2 - r * cs / 2, p[1] + cs / 2 - r * cs / 2, r * cs, r * cs); }
             board.appendChild(el); setTimeout(function () { el.remove(); }, 500);
-            try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) { /* ignore */ }
+            try { if (navigator.vibrate) navigator.vibrate(b.sp >= 3 ? 30 : 15); } catch (e) { /* ignore */ }
         }
+        // cleared sweets break into little coloured bits
+        function burst(cleared) {
+            if (reduced) return;
+            var board = $('board'), per = cleared.length > 20 ? 2 : cleared.length > 10 ? 3 : 5;
+            cleared.forEach(function (c) {
+                var p = xy(c.i), col = c.t >= 0 && c.t < 6 ? BIT[c.t] : c.t === E.RAINBOW ? BIT[Math.floor(Math.random() * 6)] : '#fff';
+                for (var k = 0; k < per; k++) {
+                    var b = document.createElement('span'); b.className = 'bit'; b.style.background = col; b.style.left = (p[0] + cs / 2 - 4) + 'px'; b.style.top = (p[1] + cs / 2 - 4) + 'px';
+                    board.appendChild(b);
+                    var ang = Math.random() * Math.PI * 2, dist = cs * (0.5 + Math.random() * 0.8);
+                    if (!b.animate) { b.remove(); continue; }
+                    var an = b.animate([{ transform: 'translate(0,0) scale(1) rotate(0)', opacity: 1 }, { transform: 'translate(' + Math.cos(ang) * dist + 'px,' + (Math.sin(ang) * dist + cs * 0.4) + 'px) scale(0.3) rotate(' + (Math.random() * 540) + 'deg)', opacity: 0 }], { duration: 420 + Math.random() * 200, easing: 'cubic-bezier(.2,.7,.4,1)' });
+                    an.onfinish = (function (x) { return function () { x.remove(); }; })(b);
+                }
+            });
+        }
+        // the points a match was worth float up from it
+        function points(cleared, n) {
+            var x = 0, y = 0; cleared.forEach(function (c) { var p = xy(c.i); x += p[0]; y += p[1]; });
+            x = x / cleared.length + cs / 2; y = y / cleared.length + cs / 2;
+            var el = document.createElement('div'); el.className = 'pts'; el.textContent = '+' + n.toLocaleString(); el.style.left = x + 'px'; el.style.top = y + 'px';
+            $('board').appendChild(el); setTimeout(function () { el.remove(); }, 900);
+        }
+        function shake() { if (reduced) return; var w = $('wrap'); w.classList.remove('shake'); void w.offsetWidth; w.classList.add('shake'); }
         function praise(text) { var el = document.createElement('div'); el.className = 'praise'; el.textContent = text; $('board').appendChild(el); setTimeout(function () { el.remove(); }, 1000); }
 
         // ---------- after a move: win, lose or carry on ----------
@@ -395,16 +479,25 @@
         }
         async function win() {
             setJSON('pickmix_game', null);
-            praise('Level complete!');
-            await wait(650);
-            var bonus = 0; if (s.movesLeft > 0) { bonus = E.finishBonus(s); s.movesLeft = 0; renderHud(); }
+            praise('Level complete!'); sfx.win();
+            await wait(700);
+            var bonus = 0;
+            if (s.movesLeft > 0) {
+                // the sugar rush: spare moves turn sweets striped, and off they all go
+                var before0 = s.score, rush = E.sugarRush(s);
+                var rb = document.createElement('div'); rb.className = 'rushbar'; rb.id = 'rushbar'; $('board').appendChild(rb);
+                fast = false; rushing = true; praise('Sugar rush!');
+                await animate(rush, { rush: true });
+                fast = false; rushing = false; rushLeft = null; rb.remove(); bonus = s.score - before0; renderHud();
+                await wait(300);
+            }
             var earned = s.score >= L.stars[2] ? 3 : s.score >= L.stars[1] ? 2 : 1, stars = Math.min(earned, capFor(boosts));
             var before = prog.stars[levelNo] || 0;
             prog.stars[levelNo] = Math.max(before, stars);
             if (levelNo === prog.unlocked && levelNo < LEVELS.length) prog.unlocked++;
             saveProg();
             $('winStars').innerHTML = [0, 1, 2].map(function (k) { return '<span class="' + (k < stars ? 'got' : '') + '" style="animation-delay:' + (k * 0.25) + 's">★</span>'; }).join('');
-            $('winText').innerHTML = 'Score <b>' + s.score.toLocaleString() + '</b>' + (bonus ? ' (including ' + bonus.toLocaleString() + ' for moves to spare)' : '') + '.' +
+            $('winText').innerHTML = 'Score <b>' + s.score.toLocaleString() + '</b>' + (bonus ? ' (including ' + bonus.toLocaleString() + ' from the sugar rush)' : '') + '.' +
                 (earned > stars ? '<br><small>Your score earned ' + earned + ' stars; boosters capped it at ' + stars + '. Play again without them for more.</small>' : stars < 3 ? '<br><small>Score ' + L.stars[stars].toLocaleString() + ' for ' + (stars + 1) + ' stars.</small>' : '');
             $('nextBtn').style.display = levelNo < LEVELS.length ? '' : 'none';
             confetti(); try { if (navigator.vibrate) navigator.vibrate([30, 40, 30]); } catch (e) { /* ignore */ }
@@ -412,6 +505,7 @@
             announce('Level ' + levelNo + ' complete with ' + stars + ' stars.');
         }
         function lose() {
+            sfx.lose();
             var left = s.goals.map(function (g) { var n = E.goalLeft(s, g); return n ? (g.type === 'score' ? n.toLocaleString() + ' more points' : g.type === 'jelly' ? n + ' jelly left' : g.type === 'crate' ? n + ' crate' + (n === 1 ? '' : 's') + ' left' : g.type === 'cherry' ? n + ' cherr' + (n === 1 ? 'y' : 'ies') + ' to go' : n + ' ' + NAMES[g.c] + ' to go') : ''; }).filter(Boolean);
             $('loseText').textContent = 'So close: ' + left.join(', ') + '.';
             $('moreBtn').textContent = '5 more moves (booster' + (capFor(boosts + 1) < 3 ? ', most stars ' + capFor(boosts + 1) : '') + ')';
@@ -438,7 +532,7 @@
                 busy = true;
                 var ea = els[s.id[a]], eb = els[s.id[b]];
                 if (ea && eb) { setPos(ea, b); setPos(eb, a); await wait(180); setPos(ea, a); setPos(eb, b); await wait(180); }
-                busy = false; try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) { /* ignore */ }
+                busy = false; sfx.nope(); try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) { /* ignore */ }
                 idleHint();
                 return;
             }
@@ -451,6 +545,9 @@
             await animate(steps);
         }
         var down = null;
+        $('board').addEventListener('pointerdown', function () { if (busy && s && s.won) fast = true; }, true);
+        $('soundBtn').addEventListener('click', function () { soundOn = !soundOn; S.setString('pickmix_sound', soundOn ? 'on' : 'off'); syncSound(); if (soundOn) sfx.made(); });
+        syncSound();
         $('board').addEventListener('pointerdown', function (e) {
             if (busy || anyOpen() || !s || s.won || s.lost) return;
             var i = cellAt(e.clientX, e.clientY); if (i < 0) return;
