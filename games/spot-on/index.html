@@ -166,6 +166,7 @@
         <div class="modal">
             <button class="modal-x" data-close aria-label="Close">✕</button>
             <h2 id="statsTitle">Statistics</h2>
+            <div class="seg" role="group" aria-label="Which statistics"><button id="statsDaily">Daily</button><button id="statsPractice">Practice</button></div>
             <div id="statsBody"></div>
             <button class="btn secondary" data-close>Close</button>
         </div>
@@ -256,9 +257,9 @@
             $('making').classList.remove('on');
             start(puzzleId(), E.decode(code), code);
         }
-        var code0 = '', gaveUp = false;
+        var code0 = '';
         function start(id, puzzle, code) {
-            P = puzzle; pid = id; code0 = code; sel = -1; history = []; gaveUp = false;
+            P = puzzle; pid = id; code0 = code; sel = -1; history = [];
             var prog = getJSON('spoton_progress', {})[id];
             var dayRec = mode === 'daily' ? dailyRecord(level) : null;
             if (prog && Array.isArray(prog.placed) && prog.placed.length === P.dominoes.length) { placed = prog.placed; trayRot = prog.trayRot || P.dominoes.map(function () { return 0; }); hints = prog.hints | 0; elapsed = prog.elapsed || 0; }
@@ -289,12 +290,14 @@
                 render(); if (after) after();
             }, function () { var s2 = E.countSolutions(P, 1, 4000000, []); return { tiles: s2.count ? s2.tiles[0] : null }; });
         }
-        function giveUp() {
+        // quit a practice puzzle: no answer shown, straight on to another one you haven't played
+        function quitPuzzle() {
             if (!P || done || mode !== 'practice') return;
-            done = true; gaveUp = true; sel = -1; clearProgress(); markPlayed(level, num);
-            var o = stats(); o.practice[level].gaveup = (o.practice[level].gaveup || 0) + 1; setJSON('spoton_stats', o);
-            showAnswer(function () { $('tip').textContent = 'Here\'s the answer to ' + LNAME[level] + ' #' + num + '.'; });
-            render();
+            var was = num;
+            clearProgress(); markPlayed(level, num);
+            var o = stats(); o.practice[level].quit++; setJSON('spoton_stats', o);
+            pickPractice(); load();
+            toast('Skipped ' + LNAME[level] + ' #' + was);
         }
         function saveProgress() {
             if (!P || done) return;
@@ -419,7 +422,7 @@
             });
             var left = placed.filter(function (p) { return !p; }).length;
             if (!done) $('tip').textContent = sel >= 0 ? 'Tap it again to turn it, or tap a square to put it there' : left ? (full ? '' : left + ' domino' + (left === 1 ? '' : 'es') + ' to place · ' + met + ' of ' + rules + ' rules met') : broken ? 'Not quite: a rule isn\'t met yet' : '';
-            var gb = $('giveUpBtn'); gb.hidden = mode !== 'practice'; gb.textContent = done ? 'Next ' + LNAME[level] + ' puzzle →' : 'Give up and show the answer';
+            var gb = $('giveUpBtn'); gb.hidden = mode !== 'practice'; gb.textContent = done ? 'Next ' + LNAME[level] + ' puzzle →' : 'Quit and try another';
             $('undoBtn').disabled = !history.length || done;
             $('clearBtn').disabled = done || !placed.some(function (p) { return p; });
             $('hintBtn').disabled = done;
@@ -562,7 +565,7 @@
         // ---------- winning ----------
         function dailyRecord(lv) { var rec = getJSON('spoton_daily', {}); return rec.day === today && rec.levels && rec.levels[lv] ? rec.levels[lv] : null; }
         function stats() {
-            var o = getJSON('spoton_stats', {}); ['daily', 'practice'].forEach(function (m) { o[m] = o[m] || {}; LEVELS.forEach(function (lv) { var s = o[m][lv] = o[m][lv] || {}; ['solved', 'streak', 'best', 'fastest', 'last', 'nohint', 'gaveup'].forEach(function (k) { if (typeof s[k] !== 'number') s[k] = 0; }); }); });
+            var o = getJSON('spoton_stats', {}); ['daily', 'practice'].forEach(function (m) { o[m] = o[m] || {}; LEVELS.forEach(function (lv) { var s = o[m][lv] = o[m][lv] || {}; ['solved', 'streak', 'best', 'fastest', 'last', 'nohint', 'gaveup', 'quit'].forEach(function (k) { if (typeof s[k] !== 'number') s[k] = 0; }); if (s.gaveup) { s.quit += s.gaveup; s.gaveup = 0; } }); });
             return o;
         }
         function checkWin() {
@@ -620,15 +623,24 @@
         $('undoBtn').addEventListener('click', undo);
         $('hintBtn').addEventListener('click', hint);
         $('clearBtn').addEventListener('click', clearBoard);
-        $('giveUpBtn').addEventListener('click', function () { if (done) newPractice(); else giveUp(); });
+        $('giveUpBtn').addEventListener('click', function () { if (done) newPractice(); else quitPuzzle(); });
         $('menuBtn').addEventListener('click', function () { $('mistakeToggle').checked = showBad; open('helpModal'); });
         $('mistakeToggle').addEventListener('change', function () { showBad = this.checked; S.setString('spoton_mistakes', showBad ? 'true' : 'false'); render(); });
-        $('statsBtn').addEventListener('click', function () {
+        var statsView = 'daily';
+        function cell(v, label) { return '<div>' + v + '<small>' + label + '</small></div>'; }
+        function drawStats() {
             var o = stats();
-            $('statsBody').innerHTML = '<h3>Daily</h3>' + LEVELS.map(function (lv) { var s = o.daily[lv]; return '<p style="font-weight:700;margin-top:6px">' + LNAME[lv] + '</p><div class="stats"><div>' + s.solved + '<small>Solved</small></div><div>' + s.streak + '<small>Streak</small></div><div>' + s.best + '<small>Best streak</small></div><div>' + (s.fastest ? fmt(s.fastest) : '–') + '<small>Fastest</small></div></div>'; }).join('')
-                + '<h3>Practice</h3><div class="stats">' + LEVELS.map(function (lv) { var s = o.practice[lv]; return '<div>' + s.solved + '<small>' + LNAME[lv] + '</small></div>'; }).join('') + '<div>' + LEVELS.reduce(function (a, lv) { return a + o.practice[lv].nohint; }, 0) + '<small>No hints</small></div></div><p style="text-align:center;font-size:0.85rem;color:var(--ink-soft)">Solved without giving up, by level · given up ' + LEVELS.reduce(function (a, lv) { return a + o.practice[lv].gaveup; }, 0) + '</p>';
-            open('statsModal');
-        });
+            $('statsDaily').classList.toggle('on', statsView === 'daily'); $('statsPractice').classList.toggle('on', statsView === 'practice');
+            $('statsBody').innerHTML = LEVELS.map(function (lv) {
+                var s = o[statsView][lv], row;
+                if (statsView === 'daily') row = cell(s.solved, 'Solved') + cell(s.streak, 'Streak') + cell(s.best, 'Best streak') + cell(s.fastest ? fmt(s.fastest) : '–', 'Fastest');
+                else { var tried = s.solved + s.quit; row = cell(s.solved, 'Solved') + cell(tried ? Math.round(100 * s.solved / tried) + '%' : '–', 'Success') + cell(s.nohint, 'No hints') + cell(s.fastest ? fmt(s.fastest) : '–', 'Fastest'); }
+                return '<h3>' + LNAME[lv] + '</h3><div class="stats">' + row + '</div>';
+            }).join('') + (statsView === 'practice' ? '<p style="text-align:center;font-size:0.8rem;color:var(--ink-soft);margin-top:8px">Success counts puzzles solved out of those solved or quit.</p>' : '');
+        }
+        $('statsDaily').addEventListener('click', function () { statsView = 'daily'; drawStats(); });
+        $('statsPractice').addEventListener('click', function () { statsView = 'practice'; drawStats(); });
+        $('statsBtn').addEventListener('click', function () { statsView = mode; drawStats(); open('statsModal'); });
         // the rules key in How to play
         $('rulesKey').innerHTML = [[{ type: 'sum', n: 7 }, 'Exactly this total: 3 and 4, or 6 and 1, makes 7'], [{ type: 'eq' }, 'All the same number'], [{ type: 'ne' }, 'All different numbers'], [{ type: 'lt', n: 4 }, 'Total less than this'], [{ type: 'gt', n: 9 }, 'Total more than this']]
             .map(function (x, i) { return '<div class="badge" style="--bc:' + DARK[i * 2 % DARK.length] + '"><i></i><b>' + ruleText(x[0]) + '</b></div><div>' + x[1] + '</div>'; }).join('');
