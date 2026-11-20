@@ -28,7 +28,7 @@
         .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .levels { margin-top: 6px; }
         .levels button.done::after { content: ' ✓'; color: var(--ok); }
-        .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; position: relative; padding-top: 6px; }
+        .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 10px; position: relative; padding-top: 6px; }
         .making { font-weight: 700; color: var(--ink-soft); display: none; }
         .making.on { display: block; }
 
@@ -66,7 +66,7 @@
         .pill[hidden] { display: none; }
         .tip { font-size: 0.8rem; color: var(--ink-soft); text-align: center; flex: none; min-height: 1.2em; }
 
-        .bar { flex: none; display: flex; gap: 8px; padding: 6px 10px; padding-bottom: max(8px, env(safe-area-inset-bottom)); max-width: 560px; width: 100%; margin: 0 auto; }
+        .bar { flex: none; display: flex; gap: 8px; padding: 6px 10px; padding-bottom: max(6px, calc(env(safe-area-inset-bottom) - 12px)); max-width: 560px; width: 100%; margin: 0 auto; }
         .ctrl { flex: 1; min-height: 46px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); font: inherit; font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
         .ctrl svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
         .ctrl:disabled { opacity: 0.4; cursor: default; }
@@ -270,7 +270,7 @@
                 done = true; elapsed = dayRec.time; hints = dayRec.hints;
                 if (dayRec.placed && dayRec.code === code) placed = dayRec.placed; else showAnswer();
             }
-            layout(); render();
+            fit();
             if (done) $('tip').textContent = 'Solved in ' + fmt(elapsed) + (hints ? ' with ' + hints + ' hint' + (hints === 1 ? '' : 's') : ' with no hints') + '. Come back tomorrow for new puzzles.';
         }
         // fill the board with the answer (after giving up, or to show a day already done)
@@ -341,7 +341,21 @@
                 var slot = 2 * ts + 6, perRow = Math.max(1, Math.floor((W + 8) / (slot + 8))), rows = Math.ceil(n / perRow);
                 if (cs * P.W <= W - 8 && cs * P.H + rows * (ts + 14) + vert + 26 <= H) break;
             }
-            $('board').style.width = cs * P.W + 'px'; $('board').style.height = cs * P.H + 'px';
+            sizeBoard();
+        }
+        function sizeBoard() { $('board').style.width = cs * P.W + 'px'; $('board').style.height = cs * P.H + 'px'; $('board').style.marginBottom = Math.round(cs * 0.18) + 'px'; }
+        // draw, then measure what's really on screen (board, tip, tray, Quit button) and shrink until it all fits
+        function fit() {
+            if (!P) return;
+            layout();
+            render();
+            var stage = $('stage'), guard = 0;
+            function used() {
+                var kids = Array.prototype.filter.call(stage.children, function (k) { return k.offsetParent !== null && k.offsetHeight > 0; });
+                var cssS = getComputedStyle(stage), gap = parseFloat(cssS.rowGap) || 0, pad = parseFloat(cssS.paddingTop) || 0;
+                return kids.reduce(function (a, k) { return a + k.offsetHeight; }, 0) + gap * Math.max(0, kids.length - 1) + pad;
+            }
+            while (used() > stage.clientHeight - 2 && cs > 22 && guard++ < 40) { cs -= 2; ts = Math.min(42, Math.round(cs * 0.8)); sizeBoard(); render(); }
         }
         function domHTML(d, vertical, flip) {
             var v = P.dominoes[d], a = flip ? v[1] : v[0], b = flip ? v[0] : v[1];
@@ -511,7 +525,7 @@
         document.addEventListener('pointercancel', function () { if (drag && drag.float) drag.float.remove(); drag = null; render(); });
         function tap(d, from) {
             if (from === 'board') { turnPlaced(d); return; }
-            if (sel === d) { trayRot[d] = (trayRot[d] + 1) % 4; saveProgress(); layout(); render(); return; }
+            if (sel === d) { trayRot[d] = (trayRot[d] + 1) % 4; saveProgress(); fit(); return; }
             sel = d; render();
         }
         $('board').addEventListener('click', function (e) {
@@ -646,7 +660,7 @@
             .map(function (x, i) { return '<div class="badge" style="--bc:' + DARK[i * 2 % DARK.length] + '"><i></i><b>' + ruleText(x[0]) + '</b></div><div>' + x[1] + '</div>'; }).join('');
 
         var rt = null;
-        function refit() { clearTimeout(rt); rt = setTimeout(function () { if (!P || drag) return; layout(); render(); }, 120); }
+        function refit() { clearTimeout(rt); rt = setTimeout(function () { if (!P || drag) return; fit(); }, 120); }
         window.addEventListener('resize', refit);
         try { new ResizeObserver(refit).observe($('stage')); } catch (e) { /* ignore */ }
         document.addEventListener('visibilitychange', function () { if (document.hidden) saveProgress(); else { var d = Math.max(1, E.dayNumber()); if (d !== today) { today = d; if (mode === 'daily') load(); } } });
