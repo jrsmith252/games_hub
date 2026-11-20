@@ -40,7 +40,7 @@
         .scoreline { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
 
         .boardwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
-        .board { position: relative; touch-action: none; }
+        .board { position: relative; touch-action: none; overflow: hidden; border-radius: 8px; }  /* new sweets drop in from above, out of sight */
         .sq { position: absolute; border-radius: 7px; }
         .sq.a { background: var(--cell1); } .sq.b { background: var(--cell2); }
         .jelly { position: absolute; border-radius: 7px; background: rgba(255, 70, 160, 0.62); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.75), 0 0 0 1px rgba(200,30,120,0.5); transition: opacity 0.25s; }
