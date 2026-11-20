@@ -305,7 +305,32 @@
     }
     function goalsMet(s) { return s.goals.every(function (g) { return goalLeft(s, g) === 0; }); }
     function checkEnd(s) { if (goalsMet(s)) s.won = true; else if (s.movesLeft <= 0) s.lost = true; }
-    // finishing early: every move left over is worth a bonus
+    // finishing early: the sugar rush. A few spare moves at a time turn plain sweets striped, and everything special
+    // on the board goes off, cascades and all, until the spare moves are used up.
+    function sugarRush(s) {
+        var steps = [], N = s.R * s.C, guard = 0, cascade = 2;
+        function fire() {
+            for (var g = 0; g < 40; g++) {
+                var sps = []; for (var i = 0; i < N; i++) if (s.sp[i] && s.t[i] !== CHERRY) sps.push(i);
+                var groups = findGroups(s);
+                if (!sps.length && !groups.length) return;
+                clearStep(s, steps, groups, groups.length ? [] : sps, null, cascade++); fall(s, steps);
+            }
+        }
+        while (s.movesLeft > 0 && guard++ < 60) {
+            var n = Math.min(s.movesLeft, 4), cands = [];
+            for (var i = 0; i < N; i++) if (movable(s, i) && !s.sp[i] && s.t[i] < 6) cands.push(i);
+            if (!cands.length) break;
+            var made = [];
+            for (var k = 0; k < n && cands.length; k++) { var at = cands.splice(Math.floor(s.rand() * cands.length), 1)[0]; s.sp[at] = s.rand() < 0.5 ? 1 : 2; made.push(s.id[at]); }
+            s.movesLeft -= n;
+            steps.push({ kind: 'rush', snap: snap(s), made: made, movesLeft: s.movesLeft });
+            fire();
+        }
+        s.movesLeft = 0; fire();
+        return steps;
+    }
+    // finishing early: every move left over is worth a bonus (the old flat version, kept for reference)
     function finishBonus(s) { var b = s.movesLeft * 250; s.score += b; return b; }
 
     function snap(s) { return { t: s.t.slice(), sp: s.sp.slice(), id: s.id.slice(), jelly: s.jelly.slice(), crate: s.crate.slice(), score: s.score, collected: s.collected.slice(), cherriesDone: s.cherriesDone }; }
@@ -343,13 +368,13 @@
     function botGame(level, seed) {
         var s = newGame(level, seed), guard = 0;
         while (!s.won && !s.lost && guard++ < 200) { var m = botMove(s, seed + guard * 31); if (!m) break; play(s, m[0], m[1]); }
-        if (s.won) finishBonus(s);
+        if (s.won) sugarRush(s);
         return { won: s.won, score: s.score, movesUsed: s.moves, s: s };
     }
 
-    var api = { VERSION: 1, RAINBOW: RAINBOW, CHERRY: CHERRY, newGame: newGame, clone: clone, play: play, smash: smash, shuffleNow: shuffleNow, addMoves: addMoves,
+    var api = { VERSION: 2, RAINBOW: RAINBOW, CHERRY: CHERRY, newGame: newGame, clone: clone, play: play, smash: smash, shuffleNow: shuffleNow, addMoves: addMoves,
         allMoves: allMoves, hasMove: hasMove, swapWorks: swapWorks, neighbours: neighbours, movable: movable, goalLeft: goalLeft, goalsMet: goalsMet,
-        finishBonus: finishBonus, save: save, revive: revive, findGroups: findGroups, botMove: botMove, botGame: botGame, snap: snap };
+        finishBonus: finishBonus, sugarRush: sugarRush, save: save, revive: revive, findGroups: findGroups, botMove: botMove, botGame: botGame, snap: snap };
     root.PickMix = api;
     if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : globalThis);
