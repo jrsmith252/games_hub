@@ -214,6 +214,9 @@
 
         // ---------- the puzzle being played ----------
         var mode = S.getString('spoton_mode', 'daily') === 'practice' ? 'practice' : 'daily';
+        // the hub's Daily Challenges links open straight into the daily puzzles, at the first level not yet done
+        var openDaily = false;
+        try { var qm = new URLSearchParams(location.search).get('mode'); if (qm === 'daily' || qm === 'practice') { mode = qm; S.setString('spoton_mode', qm); openDaily = qm === 'daily'; } } catch (e) { /* ignore */ }
         var level = S.getString('spoton_level', 'easy'); if (LEVELS.indexOf(level) < 0) level = 'easy';
         var showBad = S.getString('spoton_mistakes', 'true') !== 'false';
         var today = Math.max(1, E.dayNumber());
@@ -666,6 +669,7 @@
         document.addEventListener('visibilitychange', function () { if (document.hidden) saveProgress(); else { var d = Math.max(1, E.dayNumber()); if (d !== today) { today = d; if (mode === 'daily') load(); } } });
         if (window.HubNoSwipeBack) window.HubNoSwipeBack(document.querySelector('main'), { onBlocked: function () { toast('Tap ‹ at the top left to leave the game', 2200); } });
 
+        if (openDaily) { var firstOpen = LEVELS.filter(function (lv) { return !dailyRecord(lv); })[0]; if (firstOpen) level = firstOpen; }
         load();
         if (!S.getFlag('spoton_seen')) { S.setFlag('spoton_seen', true); $('mistakeToggle').checked = showBad; open('helpModal'); }
         window.__so = function () { return { P: P, placed: placed, done: done, hints: hints, mode: mode, level: level }; };
