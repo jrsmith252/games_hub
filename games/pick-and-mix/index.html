@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pick &amp; Mix — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg1: #ffd6e7; --bg2: #ffb3d1; --deep: #7a1f5c; --accent: #ffcf3f; --ink: #3b1230; --soft: #8a5a78; --card: #fff7fb;
+            --cell1: rgba(255,255,255,0.55); --cell2: rgba(255,255,255,0.38); --ok: #2e9b62; }
+        html, body.pm { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; color: var(--ink); background: linear-gradient(180deg, var(--bg1), var(--bg2)); }
+        body.pm { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; user-select: none; -webkit-user-select: none; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top)); background: var(--deep); color: #fff; border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; min-width: 0; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); }
+        .sub { font-size: 0.75rem; opacity: 0.85; }
+        .right-btns { display: flex; gap: 6px; }
+
+        main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 8px 8px 4px; gap: 8px; }
+        .hud { width: 100%; max-width: 520px; display: grid; grid-template-columns: auto 1fr; gap: 8px; flex: none; }
+        .moves { background: var(--card); border-radius: 14px; padding: 6px 12px; text-align: center; box-shadow: 0 2px 6px rgba(122,31,92,0.15); min-width: 68px; }
+        .moves b { display: block; font-size: 1.7rem; line-height: 1; color: var(--deep); }
+        .moves small { font-size: 0.68rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--soft); }
+        .moves.low b { color: #d23c3c; animation: beat 0.8s infinite; }
+        @keyframes beat { 50% { transform: scale(1.12); } }
+        .goals { background: var(--card); border-radius: 14px; padding: 6px 10px; box-shadow: 0 2px 6px rgba(122,31,92,0.15); display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+        .goal-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .goal { display: flex; align-items: center; gap: 4px; font-weight: 800; font-size: 1rem; }
+        .goal svg { width: 26px; height: 26px; }
+        .goal.done b { color: var(--ok); }
+        .goal.done b::after { content: ' ✓'; }
+        .scorebar { position: relative; height: 12px; background: #f3d6e6; border-radius: 6px; }
+        .scorebar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ff7ab8, #ffb13f); border-radius: 6px; transition: width 0.3s; }
+        .scorebar .mark { position: absolute; top: -6px; transform: translateX(-50%); font-size: 15px; color: #d9c6d1; line-height: 1; }
+        .scorebar .mark.got { color: #f5b301; text-shadow: 0 0 3px #fff; }
+        .scoreline { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
+
+        .boardwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+        .board { position: relative; touch-action: none; }
+        .sq { position: absolute; border-radius: 7px; }
+        .sq.a { background: var(--cell1); } .sq.b { background: var(--cell2); }
+        .jelly { position: absolute; border-radius: 7px; background: rgba(255, 70, 160, 0.62); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.75), 0 0 0 1px rgba(200,30,120,0.5); transition: opacity 0.25s; }
+        .jelly.j2 { background: rgba(190, 20, 115, 0.78); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.75), inset 0 0 0 6px rgba(255,120,190,0.8); }
+        .crate { position: absolute; border-radius: 6px; background: repeating-linear-gradient(0deg, #b9793c 0 22%, #a3652d 22% 25%); box-shadow: inset 0 0 0 3px #7c4a1e; z-index: 4; transition: transform 0.15s; }
+        .crate.c2::after { content: ''; position: absolute; inset: 18%; border: 3px solid #7c4a1e; border-radius: 3px; transform: rotate(45deg); }
+        .crate.hit { animation: crateHit 0.25s; }
+        @keyframes crateHit { 50% { transform: scale(0.88) rotate(-4deg); } }
+        .sweet { position: absolute; left: 0; top: 0; z-index: 10; transition: transform 0.2s ease-in; will-change: transform; }
+        .sweet svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        .sweet.sel svg { animation: wiggle 0.6s infinite; filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 2px #fff); }
+        .sweet.nudge svg { animation: wiggle 0.5s 3; }
+        @keyframes wiggle { 25% { transform: rotate(-9deg) scale(1.06); } 75% { transform: rotate(9deg) scale(1.06); } }
+        .sweet.pop { transition: transform 0.22s ease-out, opacity 0.22s; opacity: 0; }
+        .sweet.grow svg { animation: grow 0.35s ease-out; }
+        @keyframes grow { 0% { transform: scale(0.2); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+        .cursor { position: absolute; border: 3px solid #fff; border-radius: 9px; box-shadow: 0 0 0 2px var(--deep); pointer-events: none; z-index: 30; display: none; }
+        .beam { position: absolute; z-index: 25; pointer-events: none; background: radial-gradient(closest-side, rgba(255,255,255,0.95), rgba(255,255,255,0)); animation: beam 0.35s ease-out forwards; }
+        @keyframes beam { 0% { opacity: 1; } 100% { opacity: 0; } }
+        .ring { position: absolute; z-index: 25; pointer-events: none; border-radius: 50%; border: 6px solid rgba(255,255,255,0.9); animation: ring 0.4s ease-out forwards; }
+        @keyframes ring { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+        .praise { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 40; font-family: 'Fraunces', serif; font-weight: 800; font-size: 2.2rem; color: #fff; -webkit-text-stroke: 2px var(--deep); text-shadow: 0 4px 0 var(--deep); pointer-events: none; animation: praise 1s ease-out forwards; white-space: nowrap; }
+        @keyframes praise { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -70%) scale(1); } }
+
+        .bar { flex: none; display: flex; gap: 8px; padding: 6px 10px; padding-bottom: max(6px, calc(env(safe-area-inset-bottom) - 12px)); width: 100%; max-width: 520px; margin: 0 auto; }
+        .ctrl { flex: 1; min-height: 48px; border-radius: 14px; border: 2px solid rgba(122,31,92,0.25); background: var(--card); font: inherit; font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .ctrl.on { background: var(--deep); color: #fff; border-color: var(--deep); }
+        .ctrl:disabled { opacity: 0.45; cursor: default; }
+        .ctrl .ic { font-size: 1.2rem; }
+        .boostnote { font-size: 0.72rem; color: var(--soft); text-align: center; flex: none; min-height: 1em; }
+
+        .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(10px); background: #3b1230; color: #fff; padding: 10px 16px; border-radius: 18px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 2000; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(59,18,48,0.55); display: none; align-items: center; justify-content: center; z-index: 1500; padding: 16px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--card); border-radius: 20px; padding: 22px 20px 18px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; position: relative; text-align: center; }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.6rem; margin-bottom: 8px; color: var(--deep); }
+        .modal p { line-height: 1.45; margin: 6px 0; }
+        .modal ol { text-align: left; padding-left: 20px; display: grid; gap: 8px; margin: 8px 0; }
+        .modal-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; background: transparent; font-size: 1.2rem; cursor: pointer; color: var(--soft); }
+        .btn { display: block; width: 100%; min-height: 48px; margin-top: 10px; border: 0; border-radius: 14px; background: var(--deep); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+        .btn.secondary { background: #f3dce9; color: var(--ink); }
+        .bigstars { font-size: 2.6rem; letter-spacing: 6px; color: #e8d3df; margin: 6px 0; }
+        .bigstars span.got { color: #f5b301; text-shadow: 0 2px 0 #c98a00; display: inline-block; animation: grow 0.5s ease-out backwards; }
+        .levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+        .levels button { aspect-ratio: 1; border-radius: 12px; border: 0; background: #f3dce9; font: inherit; font-weight: 800; font-size: 1rem; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .levels button small { font-size: 0.6rem; color: #f5b301; letter-spacing: 1px; min-height: 0.8em; }
+        .levels button.cur { background: var(--deep); color: #fff; }
+        .levels button:disabled { opacity: 0.35; cursor: default; }
+        .key { display: grid; grid-template-columns: 44px 1fr; gap: 8px 10px; align-items: center; text-align: left; margin: 8px 0; font-size: 0.9rem; }
+        .key svg { width: 40px; height: 40px; }
+        .confetti { position: fixed; top: -10px; width: 8px; height: 12px; z-index: 3000; pointer-events: none; border-radius: 2px; }
+        @media (prefers-reduced-motion: reduce) { .sweet { transition-duration: 0.05s !important; } .praise, .beam, .ring { animation-duration: 0.01s !important; } }
+    </style>
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body class="pm">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <clipPath id="clip0" clipPathUnits="userSpaceOnUse"><path d="M20 35 C 8 26, 3 19, 3 12.5 A 8 8 0 0 1 20 9 A 8 8 0 0 1 37 12.5 C 37 19, 32 26, 20 35 Z"/></clipPath>
+            <clipPath id="clip1" clipPathUnits="userSpaceOnUse"><circle cx="20" cy="20" r="15.5"/></clipPath>
+            <clipPath id="clip2" clipPathUnits="userSpaceOnUse"><path d="M20 3 L24.7 14 L36.5 14.8 L27.4 22.4 L30.3 34 L20 27.6 L9.7 34 L12.6 22.4 L3.5 14.8 L15.3 14 Z"/></clipPath>
+            <clipPath id="clip3" clipPathUnits="userSpaceOnUse"><rect x="5" y="5" width="30" height="30" rx="7"/></clipPath>
+            <clipPath id="clip4" clipPathUnits="userSpaceOnUse"><path d="M20 3 C 26 12, 33 18, 33 25 A 13 13 0 0 1 7 25 C 7 18, 14 12, 20 3 Z"/></clipPath>
+            <clipPath id="clip5" clipPathUnits="userSpaceOnUse"><path d="M20 2.5 L36 20 L20 37.5 L4 20 Z"/></clipPath>
+        </defs>
+    </svg>
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title">Pick &amp; Mix</div><div class="sub" id="sub"></div></div>
+        <div class="right-btns">
+            <button class="icon-btn" id="levelsBtn" aria-label="Choose a level"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></button>
+            <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/></svg></button>
+        </div>
+    </header>
+    <main>
+        <div class="hud">
+            <div class="moves" id="movesBox"><b id="moves">0</b><small>Moves</small></div>
+            <div class="goals"><div class="goal-row" id="goals"></div><div class="scorebar" id="scorebar"><div class="fill" id="fill"></div></div><div class="scoreline"><span id="score">0</span><span id="target"></span></div></div>
+        </div>
+        <div class="boardwrap" id="wrap"><div class="board" id="board" tabindex="0" aria-label="Sweets board. Arrow keys move, Enter picks a sweet, then an arrow swaps it."></div></div>
+        <div class="boostnote" id="boostnote"></div>
+    </main>
+    <div class="bar">
+        <button class="ctrl" id="hammerBtn"><span class="ic">🔨</span>Hammer</button>
+        <button class="ctrl" id="shuffleBtn"><span class="ic">🔀</span>Shuffle</button>
+        <button class="ctrl" id="restartBtn"><span class="ic">↺</span>Restart</button>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="helpTitle">How to play</h2>
+            <ol>
+                <li><b>Swipe</b> a sweet into its neighbour (or tap one, then the other) to swap them. Line up <b>3 or more</b> the same and they're gone.</li>
+                <li>Reach the level's <b>goals</b> (top of the screen) before the moves run out.</li>
+                <li>Bigger matches make special sweets, and swapping two specials together sets off a bigger blast:</li>
+            </ol>
+            <div class="key" id="key"></div>
+            <ol start="4">
+                <li><b>Jelly</b>: match sweets on top of it to clear it (dark jelly takes two). <b>Crates</b>: match next to them, or blast them, to break them. <b>Cherries</b>: bring them down to the bottom.</li>
+                <li><b>Boosters</b> (Hammer, Shuffle, and 5 extra moves if you run out) are free, but they cost stars: 3 stars only without boosters, at most 2 with one or two, and 1 with more.</li>
+            </ol>
+            <button class="btn" data-close>Play</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+        <div class="modal">
+            <button class="modal-x" data-close aria-label="Close">✕</button>
+            <h2 id="levelTitle">Levels</h2>
+            <p id="levelSummary"></p>
+            <div class="levels" id="levelGrid"></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="startModal" role="dialog" aria-modal="true" aria-labelledby="startTitle" data-sticky>
+        <div class="modal">
+            <h2 id="startTitle"></h2>
+            <p id="startText"></p>
+            <div class="goal-row" id="startGoals" style="justify-content:center;margin:10px 0"></div>
+            <button class="btn" id="startGo">Play</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winTitle" data-sticky>
+        <div class="modal">
+            <h2 id="winTitle">Level complete!</h2>
+            <div class="bigstars" id="winStars"></div>
+            <p id="winText"></p>
+            <button class="btn" id="nextBtn">Next level</button>
+            <button class="btn secondary" id="replayBtn">Play again</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="loseModal" role="dialog" aria-modal="true" aria-labelledby="loseTitle" data-sticky>
+        <div class="modal">
+            <h2 id="loseTitle">Out of moves</h2>
+            <p id="loseText"></p>
+            <button class="btn" id="moreBtn">5 more moves (booster)</button>
+            <button class="btn secondary" id="retryBtn">Try again</button>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+    <script src="levels.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.PickMix, S = window.HubStorage, LEVELS = window.PICKMIX_LEVELS || [];
+        function $(id) { return document.getElementById(id); }
+        var COLOURS = [['#ff5a6e', '#c61f3a'], ['#ff9a2e', '#d4600a'], ['#ffd93b', '#c99a00'], ['#5fd36a', '#25953a'], ['#4aa8ff', '#1662c4'], ['#b67bff', '#7337cf']];
+        var NAMES = ['red hearts', 'orange drops', 'yellow stars', 'green cubes', 'blue drops', 'purple diamonds'];
+        NAMES = ['red hearts', 'orange rounds', 'yellow stars', 'green squares', 'blue drops', 'purple diamonds'];
+        var SHAPES = [
+            '<path d="M20 35 C 8 26, 3 19, 3 12.5 A 8 8 0 0 1 20 9 A 8 8 0 0 1 37 12.5 C 37 19, 32 26, 20 35 Z"/>',
+            '<circle cx="20" cy="20" r="15.5"/>',
+            '<path d="M20 3 L24.7 14 L36.5 14.8 L27.4 22.4 L30.3 34 L20 27.6 L9.7 34 L12.6 22.4 L3.5 14.8 L15.3 14 Z" stroke-linejoin="round"/>',
+            '<rect x="5" y="5" width="30" height="30" rx="7"/>',
+            '<path d="M20 3 C 26 12, 33 18, 33 25 A 13 13 0 0 1 7 25 C 7 18, 14 12, 20 3 Z"/>',
+            '<path d="M20 2.5 L36 20 L20 37.5 L4 20 Z"/>'
+        ];
+        // a sweet as SVG: its shape and colour, with stripes or a wrapper for specials
+        function sweetSVG(t, sp) {
+            if (t === E.CHERRY) return '<svg viewBox="0 0 40 40"><path d="M20 6 C 18 14, 14 18, 12 24 M20 6 C 22 14, 26 18, 29 23" stroke="#3f8a2a" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M20 6 q 8 -3 12 2 q -7 3 -12 -2" fill="#5fbf3a"/><circle cx="12" cy="27" r="8" fill="#e01b3c" stroke="#8f0c22" stroke-width="1.6"/><circle cx="28.5" cy="26" r="8" fill="#e01b3c" stroke="#8f0c22" stroke-width="1.6"/><circle cx="9.5" cy="24.5" r="2.2" fill="#fff" opacity="0.7"/><circle cx="26" cy="23.5" r="2.2" fill="#fff" opacity="0.7"/></svg>';
+            if (t === E.RAINBOW) {
+                var dots = ''; var cols = ['#ff5a6e', '#ffd93b', '#5fd36a', '#4aa8ff', '#b67bff', '#ff9a2e', '#fff'];
+                for (var k = 0; k < 14; k++) { var a = k * 2.4, rr = 4 + (k % 4) * 3; dots += '<rect x="' + (20 + Math.cos(a) * rr - 1.6).toFixed(1) + '" y="' + (20 + Math.sin(a) * rr - 0.8).toFixed(1) + '" width="3.4" height="1.7" rx="0.8" fill="' + cols[k % cols.length] + '" transform="rotate(' + (k * 47) + ' ' + (20 + Math.cos(a) * rr).toFixed(1) + ' ' + (20 + Math.sin(a) * rr).toFixed(1) + ')"/>'; }
+                return '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="#5a3320" stroke="#2f170b" stroke-width="2"/>' + dots + '<ellipse cx="14" cy="12" rx="5" ry="3" fill="#fff" opacity="0.25"/></svg>';
+            }
+            var c = COLOURS[t], body = SHAPES[t].replace(/\/>$/, ' fill="' + c[0] + '" stroke="' + c[1] + '" stroke-width="2"/>'), extra = '';
+            if (sp === 1) extra = '<g clip-path="url(#clip' + t + ')"><rect x="0" y="12" width="40" height="4" fill="#fff" opacity="0.85"/><rect x="0" y="24" width="40" height="4" fill="#fff" opacity="0.85"/></g>';
+            if (sp === 2) extra = '<g clip-path="url(#clip' + t + ')"><rect y="0" x="12" height="40" width="4" fill="#fff" opacity="0.85"/><rect y="0" x="24" height="40" width="4" fill="#fff" opacity="0.85"/></g>';
+            if (sp === 3) extra = '<path d="M1 14 L6 20 L1 26 Z M39 14 L34 20 L39 26 Z" fill="' + c[1] + '"/>' + SHAPES[t].replace(/\/>$/, ' fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="3 2.5" transform="translate(20 20) scale(0.78) translate(-20 -20)"/>');
+            return '<svg viewBox="0 0 40 40">' + (sp === 3 ? '<g transform="translate(20 20) scale(1.05) translate(-20 -20)">' : '') + body + extra + (sp === 3 ? '</g>' : '') + '<ellipse cx="14" cy="12.5" rx="5" ry="3" fill="#fff" opacity="0.45" transform="rotate(-25 14 12.5)"/></svg>';
+        }
+        function iconFor(g) {
+            if (g.type === 'colour') return sweetSVG(g.c, 0);
+            if (g.type === 'cherry') return sweetSVG(E.CHERRY, 0);
+            if (g.type === 'jelly') return '<svg viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="8" fill="#ff5caa" opacity="0.75" stroke="#fff" stroke-width="2"/></svg>';
+            if (g.type === 'crate') return '<svg viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="5" fill="#b9793c" stroke="#7c4a1e" stroke-width="3"/><path d="M8 14H32M8 26H32" stroke="#7c4a1e" stroke-width="2"/></svg>';
+            return '<svg viewBox="0 0 40 40"><path d="M20 4 L24.5 15 L36 15.5 L27 23 L30 34.5 L20 28 L10 34.5 L13 23 L4 15.5 L15.5 15 Z" fill="#ffcf3f" stroke="#c99a00" stroke-width="2"/></svg>';
+        }
+        function toast(m, ms) { var t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 1800); }
+        function announce(m) { $('announce').textContent = m; }
+        function open(id) { $(id).classList.add('active'); }
+        function closeAll() { Array.prototype.forEach.call(document.querySelectorAll('.modal-overlay'), function (m) { m.classList.remove('active'); }); }
+        function anyOpen() { return !!document.querySelector('.modal-overlay.active'); }
+        document.addEventListener('click', function (e) { if (e.target.closest('[data-close]') || (e.target.classList && e.target.classList.contains('modal-overlay') && !e.target.hasAttribute('data-sticky'))) closeAll(); });
+        function getJSON(k, d) { try { var v = JSON.parse(S.getString(k, 'null')); return v === null ? d : v; } catch (e) { return d; } }
+        function setJSON(k, v) { S.setString(k, JSON.stringify(v)); }
+        function wait(ms) { return new Promise(function (res) { setTimeout(res, reduced ? Math.min(ms, 30) : ms); }); }
+        var reduced = false; try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ignore */ }
+
+        // ---------- progress ----------
+        var prog = getJSON('pickmix_progress', null); if (!prog || typeof prog !== 'object') prog = { unlocked: 1, stars: {} };
+        prog.unlocked = Math.max(1, Math.min(LEVELS.length, prog.unlocked | 0)); prog.stars = prog.stars || {};
+        function saveProg() { setJSON('pickmix_progress', prog); }
+        var levelNo = Math.min(prog.unlocked, Math.max(1, getJSON('pickmix_current', prog.unlocked) | 0));
+
+        // ---------- a level in play ----------
+        var L = null, s = null, boosts = 0, busy = false, hammer = false, sel = -1, cursor = -1;
+        function newSeed() { return 1 + Math.floor(Math.random() * 2e9); }
+        function startLevel(n, fresh) {
+            closeAll(); levelNo = n; setJSON('pickmix_current', n); L = LEVELS[n - 1];
+            var saved = fresh ? null : getJSON('pickmix_game', null);
+            if (saved && saved.level === n && saved.s && !saved.s.won && !saved.s.lost) { s = E.revive(saved.s, newSeed()); boosts = saved.boosts | 0; }
+            else { s = E.newGame(L, newSeed()); boosts = 0; if (!fresh || true) showStart(); }
+            hammer = false; sel = -1;
+            build(); renderAll(); saveGame();
+        }
+        function saveGame() { if (s && !s.won && !s.lost) setJSON('pickmix_game', { level: levelNo, s: E.save(s), boosts: boosts }); else setJSON('pickmix_game', null); }
+        function goalText(g) {
+            if (g.type === 'score') return 'Score ' + g.n.toLocaleString();
+            if (g.type === 'colour') return 'Collect ' + g.n + ' ' + NAMES[g.c];
+            if (g.type === 'jelly') return 'Clear all the jelly';
+            if (g.type === 'crate') return 'Break all the crates';
+            return 'Bring ' + g.n + ' cherr' + (g.n === 1 ? 'y' : 'ies') + ' down to the bottom';
+        }
+        function showStart() {
+            $('startTitle').textContent = 'Level ' + levelNo;
+            $('startText').innerHTML = L.goals.map(goalText).join('<br>') + '<br><small>in ' + L.moves + ' moves</small>';
+            $('startGoals').innerHTML = L.goals.map(function (g) { return '<div class="goal">' + iconFor(g) + '</div>'; }).join('');
+            open('startModal');
+        }
+
+        // ---------- drawing ----------
+        var cs = 44, els = {};
+        function layout() {
+            var wrap = $('wrap'), W = wrap.clientWidth - 4, H = wrap.clientHeight - 4;
+            cs = Math.floor(Math.min(W / L.C, H / L.R, 64));
+            $('board').style.width = cs * L.C + 'px'; $('board').style.height = cs * L.R + 'px';
+        }
+        function xy(i) { return [(i % L.C) * cs, Math.floor(i / L.C) * cs]; }
+        function build() {
+            layout();
+            var b = $('board'); b.innerHTML = ''; els = {};
+            for (var i = 0; i < L.R * L.C; i++) {
+                if (!s.mask[i]) continue;
+                var p = xy(i), sq = document.createElement('div'), r = Math.floor(i / L.C), c = i % L.C;
+                sq.className = 'sq ' + ((r + c) % 2 ? 'a' : 'b'); place(sq, p[0] + 1, p[1] + 1, cs - 2, cs - 2); b.appendChild(sq);
+                var j = document.createElement('div'); j.className = 'jelly'; j.dataset.j = i; place(j, p[0] + 1, p[1] + 1, cs - 2, cs - 2); b.appendChild(j);
+                var cr = document.createElement('div'); cr.className = 'crate'; cr.dataset.cr = i; place(cr, p[0] + 2, p[1] + 2, cs - 4, cs - 4); b.appendChild(cr);
+            }
+            var cur = document.createElement('div'); cur.className = 'cursor'; cur.id = 'cursor'; b.appendChild(cur);
+            drawSnap(E.snap(s), false);
+        }
+        function place(el, x, y, w, h) { el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px'; }
+        function makeSweet(id, t, sp) {
+            var el = document.createElement('div'); el.className = 'sweet'; el.dataset.id = id; el.dataset.k = t + ':' + sp;
+            el.style.width = cs + 'px'; el.style.height = cs + 'px'; el.style.padding = Math.round(cs * 0.08) + 'px';
+            el.innerHTML = sweetSVG(t, sp); $('board').appendChild(el); els[id] = el; return el;
+        }
+        function setPos(el, i, rowOffset) { var p = xy(i); el.style.transform = 'translate(' + p[0] + 'px,' + (p[1] - (rowOffset || 0) * cs) + 'px)'; }
+        // show a board snapshot: sweets slide to their squares; new ones drop in from above the board
+        function drawSnap(sn, animate, newIds) {
+            var seen = {}, byCol = {};
+            for (var i = 0; i < sn.id.length; i++) {
+                var id = sn.id[i]; if (!id) continue; seen[id] = 1;
+                var el = els[id];
+                if (!el) {
+                    el = makeSweet(id, sn.t[i], sn.sp[i]);
+                    if (animate && newIds && newIds.indexOf(id) >= 0) {
+                        // start above the board, stacked by column
+                        var c = i % L.C; byCol[c] = (byCol[c] || 0) + 1;
+                        el.style.transition = 'none'; setPos(el, i, Math.floor(i / L.C) + byCol[c] + 1); void el.offsetWidth; el.style.transition = '';
+                    } else if (animate) el.classList.add('grow');
+                } else if (el.dataset.k !== sn.t[i] + ':' + sn.sp[i]) { el.dataset.k = sn.t[i] + ':' + sn.sp[i]; el.innerHTML = sweetSVG(sn.t[i], sn.sp[i]); }
+                setPos(el, i);
+            }
+            Object.keys(els).forEach(function (id) { if (!seen[id]) { els[id].remove(); delete els[id]; } });
+            Array.prototype.forEach.call(document.querySelectorAll('.jelly'), function (j) { var v = sn.jelly[+j.dataset.j]; j.style.opacity = v ? 1 : 0; j.classList.toggle('j2', v === 2); });
+            Array.prototype.forEach.call(document.querySelectorAll('.crate'), function (c) { var v = sn.crate[+c.dataset.cr]; c.style.display = v ? '' : 'none'; c.classList.toggle('c2', v === 2); });
+            renderHud(sn);
+        }
+        function renderHud(sn) {
+            sn = sn || E.snap(s);
+            $('moves').textContent = s.movesLeft; $('movesBox').classList.toggle('low', s.movesLeft <= 3 && !s.won);
+            var tmp = { score: sn.score, collected: sn.collected, cherriesDone: sn.cherriesDone, jelly: sn.jelly, crate: sn.crate };
+            $('goals').innerHTML = s.goals.map(function (g) {
+                if (g.type === 'score') return '';
+                var left = E.goalLeft(Object.assign({}, s, tmp), g);
+                return '<div class="goal' + (left ? '' : ' done') + '" aria-label="' + goalText(g) + ': ' + left + ' to go">' + iconFor(g) + '<b>' + (left || '') + '</b></div>';
+            }).join('') || '<div class="goal">' + iconFor({ type: 'score' }) + '<b>' + Math.max(0, s.goals[0].n - sn.score).toLocaleString() + '</b></div>';
+            var top = Math.max(L.stars[2] * 1.12, 1), bar = $('scorebar');
+            $('fill').style.width = Math.min(100, 100 * sn.score / top) + '%';
+            var marks = ''; for (var k = 0; k < 3; k++) { var at = k === 0 && !L.stars[0] ? 0 : L.stars[k]; if (k === 0 && !at) continue; marks += '<span class="mark' + (sn.score >= at ? ' got' : '') + '" style="left:' + (100 * at / top) + '%">★</span>'; }
+            Array.prototype.forEach.call(bar.querySelectorAll('.mark'), function (m) { m.remove(); }); bar.insertAdjacentHTML('beforeend', marks);
+            $('score').textContent = sn.score.toLocaleString();
+            $('target').textContent = s.goals.some(function (g) { return g.type === 'score'; }) ? 'Target ' + s.goals.filter(function (g) { return g.type === 'score'; })[0].n.toLocaleString() : '';
+            $('sub').textContent = 'Level ' + levelNo + (prog.stars[levelNo] ? ' · best ' + '★★★'.slice(0, prog.stars[levelNo]) : '');
+            $('boostnote').textContent = boosts ? 'Boosters used: ' + boosts + ' · most stars now ' + capFor(boosts) : '';
+            $('hammerBtn').classList.toggle('on', hammer);
+        }
+        function renderAll() { drawSnap(E.snap(s), false); }
+
+        // ---------- animating a move ----------
+        var PRAISE = ['', '', '', 'Tasty!', 'Sweet!', 'Delicious!', 'Scrumptious!', 'Sugar rush!'];
+        async function animate(steps) {
+            busy = true;
+            for (var k = 0; k < steps.length; k++) {
+                var st = steps[k];
+                if (st.kind === 'swap') { drawSnap(st.snap, true); await wait(200); }
+                else if (st.kind === 'clear') {
+                    st.blasts.forEach(blast);
+                    (st.crates || []).forEach(function (q) { var c = document.querySelector('.crate[data-cr="' + q + '"]'); if (c) { c.classList.remove('hit'); void c.offsetWidth; c.classList.add('hit'); } });
+                    st.cleared.forEach(function (c) { var el = els[c.id]; if (el) { el.classList.add('pop'); el.style.transform += ' scale(1.35)'; } });
+                    if (st.cascade >= 3) praise(PRAISE[Math.min(st.cascade, PRAISE.length - 1)]);
+                    await wait(230);
+                    st.cleared.forEach(function (c) { if (els[c.id]) { els[c.id].remove(); delete els[c.id]; } });
+                    drawSnap(st.snap, true);
+                    if (st.made.length) await wait(120);
+                }
+                else if (st.kind === 'fall') {
+                    st.dropped.forEach(function (d) { var el = els[d.id]; if (el) { el.style.transform += ' translateY(' + cs + 'px)'; el.classList.add('pop'); } });
+                    if (st.dropped.length) { toast('Cherry collected!'); await wait(220); st.dropped.forEach(function (d) { if (els[d.id]) { els[d.id].remove(); delete els[d.id]; } }); }
+                    drawSnap(st.snap, true, st.spawned);
+                    await wait(260);
+                }
+                else if (st.kind === 'shuffle') { toast('No moves left: shuffling'); await wait(400); drawSnap(st.snap, true); await wait(400); }
+            }
+            busy = false;
+            renderHud();
+            saveGame();
+            afterMove();
+        }
+        function blast(b) {
+            var p = xy(b.i), board = $('board'), el = document.createElement('div');
+            if (b.sp === 1) { el.className = 'beam'; place(el, 0, p[1] - cs * 0.2, cs * L.C, cs * 1.4); }
+            else if (b.sp === 2) { el.className = 'beam'; place(el, p[0] - cs * 0.2, 0, cs * 1.4, cs * L.R); }
+            else { el.className = 'ring'; var r = b.sp === 3 ? 3 : 4; place(el, p[0] + cs / 2 - r * cs / 2, p[1] + cs / 2 - r * cs / 2, r * cs, r * cs); }
+            board.appendChild(el); setTimeout(function () { el.remove(); }, 500);
+            try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) { /* ignore */ }
+        }
+        function praise(text) { var el = document.createElement('div'); el.className = 'praise'; el.textContent = text; $('board').appendChild(el); setTimeout(function () { el.remove(); }, 1000); }
+
+        // ---------- after a move: win, lose or carry on ----------
+        function capFor(n) { return n === 0 ? 3 : n <= 2 ? 2 : 1; }
+        function afterMove() {
+            idleHint();
+            if (s.won) { win(); return; }
+            if (s.lost) { lose(); return; }
+            if (s.movesLeft === 5) toast('5 moves left!');
+        }
+        async function win() {
+            setJSON('pickmix_game', null);
+            praise('Level complete!');
+            await wait(650);
+            var bonus = 0; if (s.movesLeft > 0) { bonus = E.finishBonus(s); s.movesLeft = 0; renderHud(); }
+            var earned = s.score >= L.stars[2] ? 3 : s.score >= L.stars[1] ? 2 : 1, stars = Math.min(earned, capFor(boosts));
+            var before = prog.stars[levelNo] || 0;
+            prog.stars[levelNo] = Math.max(before, stars);
+            if (levelNo === prog.unlocked && levelNo < LEVELS.length) prog.unlocked++;
+            saveProg();
+            $('winStars').innerHTML = [0, 1, 2].map(function (k) { return '<span class="' + (k < stars ? 'got' : '') + '" style="animation-delay:' + (k * 0.25) + 's">★</span>'; }).join('');
+            $('winText').innerHTML = 'Score <b>' + s.score.toLocaleString() + '</b>' + (bonus ? ' (including ' + bonus.toLocaleString() + ' for moves to spare)' : '') + '.' +
+                (earned > stars ? '<br><small>Your score earned ' + earned + ' stars; boosters capped it at ' + stars + '. Play again without them for more.</small>' : stars < 3 ? '<br><small>Score ' + L.stars[stars].toLocaleString() + ' for ' + (stars + 1) + ' stars.</small>' : '');
+            $('nextBtn').style.display = levelNo < LEVELS.length ? '' : 'none';
+            confetti(); try { if (navigator.vibrate) navigator.vibrate([30, 40, 30]); } catch (e) { /* ignore */ }
+            open('winModal');
+            announce('Level ' + levelNo + ' complete with ' + stars + ' stars.');
+        }
+        function lose() {
+            var left = s.goals.map(function (g) { var n = E.goalLeft(s, g); return n ? (g.type === 'score' ? n.toLocaleString() + ' more points' : g.type === 'jelly' ? n + ' jelly left' : g.type === 'crate' ? n + ' crate' + (n === 1 ? '' : 's') + ' left' : g.type === 'cherry' ? n + ' cherr' + (n === 1 ? 'y' : 'ies') + ' to go' : n + ' ' + NAMES[g.c] + ' to go') : ''; }).filter(Boolean);
+            $('loseText').textContent = 'So close: ' + left.join(', ') + '.';
+            $('moreBtn').textContent = '5 more moves (booster' + (capFor(boosts + 1) < 3 ? ', most stars ' + capFor(boosts + 1) : '') + ')';
+            open('loseModal');
+        }
+        function confetti() {
+            if (reduced) return;
+            var cols = ['#ff5a6e', '#ffd93b', '#5fd36a', '#4aa8ff', '#b67bff', '#ff9a2e'];
+            for (var i = 0; i < 50; i++) { var c = document.createElement('span'); c.className = 'confetti'; c.style.left = (Math.random() * 100) + 'vw'; c.style.background = cols[i % cols.length]; document.body.appendChild(c); if (!c.animate) { c.remove(); continue; }
+                var a = c.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(' + ((Math.random() - 0.5) * 160) + 'px,' + (innerHeight * (0.7 + Math.random() * 0.4)) + 'px) rotate(' + ((Math.random() - 0.5) * 900) + 'deg)' }], { duration: 1500 + Math.random() * 900, delay: Math.random() * 300, fill: 'forwards' });
+                a.onfinish = (function (x) { return function () { x.remove(); }; })(c); }
+        }
+
+        // ---------- swapping ----------
+        function cellAt(x, y) { var r = $('board').getBoundingClientRect(), c = Math.floor((x - r.left) / cs), rr = Math.floor((y - r.top) / cs); if (c < 0 || rr < 0 || c >= L.C || rr >= L.R) return -1; return rr * L.C + c; }
+        function select(i) { if (sel >= 0 && els[s.id[sel]]) els[s.id[sel]].classList.remove('sel'); sel = i; if (i >= 0 && els[s.id[i]]) els[s.id[i]].classList.add('sel'); }
+        async function trySwap(a, b) {
+            select(-1);
+            if (busy || s.won || s.lost || b < 0 || !E.neighbours(s, a, b) || !E.movable(s, a) || !E.movable(s, b)) return;
+            clearIdle();
+            var steps = E.play(s, a, b);
+            if (!steps) {
+                // not a match: swap there and back
+                busy = true;
+                var ea = els[s.id[a]], eb = els[s.id[b]];
+                if (ea && eb) { setPos(ea, b); setPos(eb, a); await wait(180); setPos(ea, a); setPos(eb, b); await wait(180); }
+                busy = false; try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) { /* ignore */ }
+                idleHint();
+                return;
+            }
+            await animate(steps);
+        }
+        async function doSmash(i) {
+            var steps = E.smash(s, i);
+            if (!steps) { toast('Pick a sweet or a crate'); return; }
+            hammer = false; boosts++; renderHud(); clearIdle();
+            await animate(steps);
+        }
+        var down = null;
+        $('board').addEventListener('pointerdown', function (e) {
+            if (busy || anyOpen() || !s || s.won || s.lost) return;
+            var i = cellAt(e.clientX, e.clientY); if (i < 0) return;
+            e.preventDefault();
+            if (hammer) { doSmash(i); return; }
+            down = { i: i, x: e.clientX, y: e.clientY, pid: e.pointerId, done: false };
+        });
+        window.addEventListener('pointermove', function (e) {
+            if (!down || down.done || e.pointerId !== down.pid) return;
+            var dx = e.clientX - down.x, dy = e.clientY - down.y;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < cs * 0.35) return;
+            down.done = true;
+            var C = L.C, i = down.i, j = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? (i % C < C - 1 ? i + 1 : -1) : (i % C > 0 ? i - 1 : -1)) : (dy > 0 ? i + C : i - C);
+            if (j >= L.R * C) j = -1;
+            trySwap(i, j);
+        });
+        window.addEventListener('pointerup', function (e) {
+            if (!down || e.pointerId !== down.pid) return;
+            var d = down; down = null; if (d.done) return;
+            // a tap: pick a sweet, then tap a neighbour to swap
+            if (!E.movable(s, d.i)) { select(-1); return; }
+            if (sel >= 0 && sel !== d.i && E.neighbours(s, sel, d.i)) trySwap(sel, d.i);
+            else if (sel === d.i) select(-1); else select(d.i);
+        });
+        window.addEventListener('pointercancel', function () { down = null; });
+        // keyboard: arrows move a cursor; Enter picks a sweet; an arrow then swaps it that way
+        $('board').addEventListener('keydown', function (e) {
+            if (busy || !s || s.won || s.lost) return;
+            var dirs = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -L.C, ArrowDown: L.C };
+            if (cursor < 0) cursor = Math.floor(L.R / 2) * L.C + Math.floor(L.C / 2);
+            if (dirs[e.key] !== undefined) {
+                e.preventDefault();
+                var d = dirs[e.key], n = cursor + d;
+                if ((d === 1 && cursor % L.C === L.C - 1) || (d === -1 && cursor % L.C === 0) || n < 0 || n >= L.R * L.C) return;
+                if (sel >= 0) { trySwap(sel, n); return; }
+                cursor = n;
+            } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (hammer) doSmash(cursor); else select(sel === cursor ? -1 : cursor); }
+            var p = xy(cursor), cur = $('cursor'); cur.style.display = 'block'; place(cur, p[0] - 1, p[1] - 1, cs + 2, cs + 2);
+            var t = s.t[cursor]; announce(t < 0 ? 'Empty' : t === E.CHERRY ? 'Cherry' : t === E.RAINBOW ? 'Rainbow sweet' : NAMES[t].replace(/s$/, '') + (s.sp[cursor] ? ' (special)' : ''));
+        });
+        // after a few idle seconds, gently wiggle a move
+        var idleT = null;
+        function clearIdle() { clearTimeout(idleT); Array.prototype.forEach.call(document.querySelectorAll('.sweet.nudge'), function (el) { el.classList.remove('nudge'); }); }
+        function idleHint() {
+            clearIdle();
+            idleT = setTimeout(function () {
+                if (busy || !s || s.won || s.lost || anyOpen()) return;
+                var m = E.allMoves(s); if (!m.length) return;
+                var pick = m[Math.floor(Math.random() * m.length)];
+                pick.forEach(function (i) { var el = els[s.id[i]]; if (el) el.classList.add('nudge'); });
+            }, 7000);
+        }
+
+        // ---------- boosters and buttons ----------
+        $('hammerBtn').addEventListener('click', function () { if (busy || s.won || s.lost) return; hammer = !hammer; select(-1); renderHud(); if (hammer) toast('Tap a sweet or crate to smash it'); });
+        $('shuffleBtn').addEventListener('click', async function () { if (busy || s.won || s.lost) return; boosts++; renderHud(); await animate(E.shuffleNow(s)); });
+        $('restartBtn').addEventListener('click', function () { if (busy) return; startLevel(levelNo, true); });
+        $('moreBtn').addEventListener('click', function () { E.addMoves(s, 5); boosts++; closeAll(); renderHud(); saveGame(); });
+        $('retryBtn').addEventListener('click', function () { startLevel(levelNo, true); });
+        $('nextBtn').addEventListener('click', function () { startLevel(Math.min(LEVELS.length, levelNo + 1), true); });
+        $('replayBtn').addEventListener('click', function () { startLevel(levelNo, true); });
+        $('startGo').addEventListener('click', function () { closeAll(); idleHint(); });
+        $('helpBtn').addEventListener('click', function () { open('helpModal'); });
+        $('levelsBtn').addEventListener('click', function () {
+            var total = 0; for (var k in prog.stars) total += prog.stars[k];
+            $('levelSummary').textContent = total + ' of ' + LEVELS.length * 3 + ' stars';
+            $('levelGrid').innerHTML = LEVELS.map(function (lv, i) { var n = i + 1, st = prog.stars[n] || 0; return '<button data-n="' + n + '"' + (n > prog.unlocked ? ' disabled' : '') + ' class="' + (n === levelNo ? 'cur' : '') + '" aria-label="Level ' + n + (st ? ', ' + st + ' stars' : '') + '">' + n + '<small>' + '★★★'.slice(0, st) + '</small></button>'; }).join('');
+            open('levelModal');
+            var cur = $('levelGrid').querySelector('.cur'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+        });
+        $('levelGrid').addEventListener('click', function (e) { var b = e.target.closest('button[data-n]'); if (b && !b.disabled) startLevel(+b.dataset.n, +b.dataset.n !== levelNo); });
+        $('key').innerHTML = [[sweetSVG(1, 2), '<b>4 in a row</b>: a striped sweet. It clears its whole row or column.'], [sweetSVG(4, 3), '<b>L or T shape</b>: a wrapped sweet. It clears the squares around it.'], [sweetSVG(E.RAINBOW, 4), '<b>5 in a row</b>: a rainbow sweet. Swap it with any sweet to clear every sweet of that colour.'], [sweetSVG(E.CHERRY, 0), '<b>Cherry</b>: bring it down to the bottom of the board.']]
+            .map(function (x) { return x[0] + '<div>' + x[1] + '</div>'; }).join('');
+
+        var rt = null;
+        function refit() { clearTimeout(rt); rt = setTimeout(function () { if (!s || busy) return; build(); }, 150); }
+        window.addEventListener('resize', refit);
+        try { new ResizeObserver(refit).observe($('wrap')); } catch (e) { /* ignore */ }
+        if (window.HubNoSwipeBack) window.HubNoSwipeBack(document.querySelector('main'), { onBlocked: function () { toast('Tap ‹ at the top left to leave the game', 2200); } });
+        document.addEventListener('visibilitychange', function () { if (document.hidden) saveGame(); });
+
+        if (!LEVELS.length) { toast('Levels are still loading'); return; }
+        startLevel(levelNo, false);
+        if (!S.getFlag('pickmix_seen')) { S.setFlag('pickmix_seen', true); closeAll(); open('helpModal'); }
+        window.__pm = function () { return { s: s, levelNo: levelNo, busy: busy, boosts: boosts, prog: prog }; };
+        window.__swap = trySwap;
+    })();
+    </script>
+</body>
+</html>
