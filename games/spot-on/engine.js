@@ -8,9 +8,9 @@
     function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
     function shuffle(a, r) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
     var LEVELS = {
-        easy: { n: [5, 6], W: 5, H: 5, maxRegion: 3, blank: 0.1, exact: 0.6, answers: 3 },
-        medium: { n: [7, 8], W: 6, H: 6, maxRegion: 4, blank: 0.2, exact: 0.45, answers: 2 },
-        hard: { n: [10, 11], W: 6, H: 7, maxRegion: 4, blank: 0.25, exact: 0.35, answers: 2 }
+        easy: { n: [5, 6], W: 5, H: 5, maxRegion: 3, blank: 0.1, exact: 0.6, trial: false },
+        medium: { n: [7, 8], W: 6, H: 6, maxRegion: 4, blank: 0.2, exact: 0.45, trial: false },
+        hard: { n: [10, 11], W: 6, H: 7, maxRegion: 4, blank: 0.25, exact: 0.35, trial: true }
     };
     // all 28 dominoes of a double-six set, as [low, high]
     var SET = []; for (var a = 0; a <= 6; a++) for (var b = a; b <= 6; b++) SET.push([a, b]);
@@ -84,15 +84,135 @@
         return { count: count, complete: steps <= budget, grids: found, tiles: Object.keys(tileSols).map(function (k) { return tileSols[k]; }) };
     }
 
+
+    // ---------- solving by reasoning alone ----------
+    // Works the way a person does, with no blind guessing:
+    //  - each square keeps a list of numbers it could still be; a rule crosses off numbers that can't fit
+    //    (a total of 3 over two squares rules out anything above 3; "all the same" needs a number every square can take)
+    //  - a square that can only join one neighbour must join it; a domino that only fits one place goes there;
+    //    if every place a domino can go covers a square, nothing else can go on that square
+    //  - with `trial` on (Hard), it may also try a placement and cross it off if that leads straight to a contradiction
+    // Returns { solved, stuck: [squares not worked out], trial: whether the try-it step was needed }.
+    function logicSolve(p, trial) {
+        var W = p.W, set = {}, pls = [], byCell = {}, byKind = [];
+        p.cells.forEach(function (c) { set[c] = 1; byCell[c] = []; });
+        p.dominoes.forEach(function (d, k) {
+            byKind[k] = [];
+            p.cells.forEach(function (a) {
+                [a % W < W - 1 ? a + 1 : -1, a + W].forEach(function (b) {
+                    if (b < 0 || !set[b]) return;
+                    var ways = d[0] === d[1] ? [[d[0], d[1]]] : [[d[0], d[1]], [d[1], d[0]]];
+                    ways.forEach(function (w) { var id = pls.length; pls.push({ k: k, a: a, b: b, va: w[0], vb: w[1] }); byCell[a].push(id); byCell[b].push(id); byKind[k].push(id); });
+                });
+            });
+        });
+        var regionRules = p.regions.filter(function (g) { return g.rule.type !== 'none'; }), ruleOf = {};
+        regionRules.forEach(function (g) { g.cells.forEach(function (c) { ruleOf[c] = g; }); });
+        function valAt(pl, c) { return pl.a === c ? pl.va : pl.vb; }
+        function other(pl, c) { return pl.a === c ? pl.b : pl.a; }
+        // alive: array of 0/1 per placement. Returns false if something is impossible.
+        function propagate(alive) {
+            var changed = true, guard = 0;
+            function kill(id) { if (alive[id]) { alive[id] = 0; changed = true; } }
+            while (changed && guard++ < 500) {
+                changed = false;
+                // numbers each square could still be (as bits)
+                var cand = {};
+                for (var ci = 0; ci < p.cells.length; ci++) { var c = p.cells[ci], m = 0; byCell[c].forEach(function (id) { if (alive[id]) m |= 1 << valAt(pls[id], c); }); if (!m) return false; cand[c] = m; }
+                // rules cross off numbers
+                for (var ri = 0; ri < regionRules.length; ri++) {
+                    var g = regionRules[ri], rule = g.rule;
+                    for (var i = 0; i < g.cells.length; i++) {
+                        var c2 = g.cells[i], lo = 0, hi = 0, others = [];
+                        for (var j = 0; j < g.cells.length; j++) if (j !== i) { var m2 = cand[g.cells[j]]; lo += lowBit(m2); hi += highBit(m2); others.push(m2); }
+                        for (var v = 0; v <= 6; v++) {
+                            if (!(cand[c2] & (1 << v))) continue;
+                            var ok = rule.type === 'sum' ? v + lo <= rule.n && v + hi >= rule.n
+                                : rule.type === 'lt' ? v + lo < rule.n
+                                : rule.type === 'gt' ? v + hi > rule.n
+                                : rule.type === 'eq' ? others.every(function (m3) { return m3 & (1 << v); })
+                                : rule.type === 'ne' ? others.every(function (m3) { return m3 !== (1 << v); }) : true;
+                            if (!ok) byCell[c2].forEach(function (id) { if (alive[id] && valAt(pls[id], c2) === v) kill(id); });
+                        }
+                    }
+                }
+                if (changed) continue;
+                // a whole domino in one spot: would it break a rule, given what the other squares could be?
+                for (var pi = 0; pi < pls.length; pi++) {
+                    if (!alive[pi]) continue;
+                    var pl0 = pls[pi], fixedV = {}; fixedV[pl0.a] = pl0.va; fixedV[pl0.b] = pl0.vb;
+                    var regsHit = []; [pl0.a, pl0.b].forEach(function (c4) { var g4 = ruleOf[c4]; if (g4 && regsHit.indexOf(g4) < 0) regsHit.push(g4); });
+                    for (var h = 0; h < regsHit.length; h++) {
+                        var g5 = regsHit[h], lo5 = 0, hi5 = 0, ms = [], fv = [];
+                        g5.cells.forEach(function (c5) { if (fixedV[c5] !== undefined) { lo5 += fixedV[c5]; hi5 += fixedV[c5]; fv.push(fixedV[c5]); } else { var m5 = cand[c5]; lo5 += lowBit(m5); hi5 += highBit(m5); ms.push(m5); } });
+                        var t5 = g5.rule.type, n5 = g5.rule.n, bad = false;
+                        if (t5 === 'sum') bad = lo5 > n5 || hi5 < n5;
+                        else if (t5 === 'lt') bad = lo5 >= n5;
+                        else if (t5 === 'gt') bad = hi5 <= n5;
+                        else if (t5 === 'eq') bad = fv.some(function (x) { return x !== fv[0]; }) || ms.some(function (m6) { return !(m6 & (1 << fv[0])); });
+                        else if (t5 === 'ne') bad = fv.length === 2 && fv[0] === fv[1] || ms.some(function (m6) { return fv.some(function (x) { return m6 === (1 << x); }); });
+                        if (bad) { kill(pi); break; }
+                    }
+                }
+                if (changed) continue;
+                // squares: which neighbour, which domino
+                for (ci = 0; ci < p.cells.length; ci++) {
+                    var cc = p.cells[ci], live = byCell[cc].filter(function (id) { return alive[id]; });
+                    if (!live.length) return false;
+                    var partner = other(pls[live[0]], cc), kind = pls[live[0]].k;
+                    var samePartner = live.every(function (id) { return other(pls[id], cc) === partner; });
+                    var sameKind = live.every(function (id) { return pls[id].k === kind; });
+                    // only one neighbour possible: that neighbour can't join anything else
+                    if (samePartner) byCell[partner].forEach(function (id) { if (alive[id] && other(pls[id], partner) !== cc) kill(id); });
+                    // only one domino possible here: it can't go anywhere else
+                    if (sameKind) byKind[kind].forEach(function (id) { if (alive[id] && pls[id].a !== cc && pls[id].b !== cc) kill(id); });
+                }
+                for (var k = 0; k < byKind.length; k++) {
+                    var lk = byKind[k].filter(function (id) { return alive[id]; });
+                    if (!lk.length) return false;
+                    // every place this domino could go covers square q: nothing else can go on q
+                    [pls[lk[0]].a, pls[lk[0]].b].forEach(function (q) {
+                        if (lk.every(function (id) { return pls[id].a === q || pls[id].b === q; })) byCell[q].forEach(function (id) { if (alive[id] && pls[id].k !== k) kill(id); });
+                    });
+                }
+            }
+            return true;
+        }
+        function lowBit(m) { for (var v = 0; v <= 6; v++) if (m & (1 << v)) return v; return 0; }
+        function highBit(m) { for (var v = 6; v >= 0; v--) if (m & (1 << v)) return v; return 0; }
+        function settled(alive) { return p.cells.every(function (c) { return byCell[c].filter(function (id) { return alive[id]; }).length === 1; }); }
+        var alive = pls.map(function () { return 1; }), usedTrial = false;
+        if (!propagate(alive)) return { solved: false, stuck: p.cells.slice(), trial: false, broken: true };
+        var tries = 0;
+        // the try-it step, as a person would use it: only on a square that's down to two possibilities
+        while (trial && !settled(alive) && tries < 80) {
+            var progress = false;
+            var two = {}; p.cells.forEach(function (c) { if (byCell[c].filter(function (x) { return alive[x]; }).length === 2) two[c] = 1; });
+            for (var id = 0; id < pls.length && !progress && tries < 80; id++) {
+                if (!alive[id] || !(two[pls[id].a] || two[pls[id].b])) continue;
+                tries++;
+                var test = alive.slice(), pl = pls[id];
+                // assume this placement: everything clashing with it goes
+                for (var q = 0; q < pls.length; q++) if (q !== id && test[q] && (pls[q].k === pl.k || pls[q].a === pl.a || pls[q].a === pl.b || pls[q].b === pl.a || pls[q].b === pl.b)) test[q] = 0;
+                if (!propagate(test)) { alive[id] = 0; usedTrial = true; progress = true; if (!propagate(alive)) return { solved: false, stuck: p.cells.slice(), trial: true, broken: true }; }
+            }
+            if (!progress) break;
+        }
+        var stuck = p.cells.filter(function (c) { return byCell[c].filter(function (id) { return alive[id]; }).length !== 1; });
+        var result = { solved: !stuck.length, stuck: stuck, trial: usedTrial };
+        if (result.solved) { result.values = {}; p.cells.forEach(function (c) { var id = byCell[c].filter(function (x) { return alive[x]; })[0]; result.values[c] = valAt(pls[id], c); }); }
+        return result;
+    }
+
     // ---------- maker ----------
-    function make(seed, level) {
+    function make(seed, level, batch) {
         var L = LEVELS[level] || LEVELS.easy;
         // make a batch and keep the most interesting: few single-square regions, a good mix of rule types
         var best = null, bestScore = 1e9, made = 0;
-        for (var attempt = 0; attempt < 120 && made < 25; attempt++) {
+        for (var attempt = 0; attempt < (batch || 25) * 5 && made < (batch || 25); attempt++) {
             var r = rng(seed * 31 + attempt * 7919 + 1), p = tryMake(r, L);
             if (!p) continue; made++;
-            var sc = quality(p);
+            var sc = quality(p) - (L.trial && p.trial ? 4 : 0);
             if (sc < bestScore) { bestScore = sc; best = p; }
         }
         if (best) { best.seed = seed; best.level = level; }
@@ -172,16 +292,21 @@
                 if (g.rule.type === 'gt' && sm === 0) g.rule = { type: 'lt', n: gap };
             }
         });
-        // 6. tighten rules until there's only one way to fill in the spots
+        // 6. tighten rules until the whole board can be worked out by reasoning alone (so there's exactly one answer)
         var dominoes = shuffle(tiles.map(function (t) { return r() < 0.5 ? [val[t[0]], val[t[1]]] : [val[t[1]], val[t[0]]]; }), r);
-        var p = { W: W, H: H, cells: cells, regions: regions, dominoes: dominoes };
+        var p = { W: W, H: H, cells: cells, regions: regions, dominoes: dominoes }, res;
         for (var step = 0; ; step++) {
-            var res = countSolutions(p, L.answers + 1, 300000);
-            if (!res.complete || step > 60) return null;
-            if (res.count <= L.answers) break;
-            var other = res.grids.filter(function (gr) { return p.cells.some(function (c) { return gr[c] !== val[c]; }); })[0];
+            res = logicSolve(p, L.trial);
+            if (res.broken || step > 60) return null;
+            if (res.solved) break;
+            // tighten a rule next to the squares that couldn't be worked out
+            var stuck = {}; res.stuck.forEach(function (c) { stuck[c] = -1; });
+            var other = {}; p.cells.forEach(function (c) { other[c] = stuck[c] === -1 ? -1 : val[c]; });
             if (!tighten(p, val, r, other)) return null;
         }
+        // reasoning must arrive at the answer we laid out (a safety check on the solver)
+        if (p.cells.some(function (c) { return res.values[c] !== val[c]; })) return null;
+        var needTrial = res.trial;
         var minX = W, minY = H, maxX = 0, maxY = 0;
         cells.forEach(function (c) { var x = c % W, y = Math.floor(c / W); minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); });
         // trim the board to the squares used
@@ -189,7 +314,7 @@
         var ans = {}; cells.forEach(function (c) { ans[map(c)] = val[c]; });
         return { W: nw, H: nh, cells: cells.map(map).sort(function (x, y) { return x - y; }),
             regions: regions.map(function (g) { return { cells: g.cells.map(map).sort(function (x, y) { return x - y; }), rule: g.rule }; }),
-            dominoes: dominoes, answer: ans };
+            dominoes: dominoes, answer: ans, trial: needTrial };
     }
     function quality(p) {
         var sc = 0, kinds = {};
@@ -251,7 +376,24 @@
     function dayNumber(d) { d = d || new Date(); var t = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); return Math.floor((t - EPOCH) / 86400000) + 1; }
     function daily(day, level) { return make(900001 + day * 3 + (level === 'easy' ? 0 : level === 'medium' ? 1 : 2), level); }
 
-    var api = { VERSION: 1, LEVELS: LEVELS, check: check, countSolutions: countSolutions, make: make, daily: daily, dayNumber: dayNumber };
+    // ---------- compact text form, for the puzzle bank ----------
+    // "W H|squares|rules|dominoes": a square is one character (code 48 + index); each rule is a letter, a number
+    // character and its squares; dominoes are pairs of digits.
+    var RT = { sum: 's', eq: 'e', ne: 'n', lt: 'l', gt: 'g', none: 'x' }, TR = { s: 'sum', e: 'eq', n: 'ne', l: 'lt', g: 'gt', x: 'none' };
+    function ch(n) { return String.fromCharCode(48 + n); }
+    function un(c) { return c.charCodeAt(0) - 48; }
+    function encode(p) {
+        return p.W + ' ' + p.H + '|' + p.cells.map(ch).join('') + '|' +
+            p.regions.map(function (g) { return RT[g.rule.type] + ch(g.rule.n || 0) + g.cells.map(ch).join(''); }).join(' ') + '|' +
+            p.dominoes.map(function (d) { return '' + d[0] + d[1]; }).join('');
+    }
+    function decode(str) {
+        var parts = str.split('|'), wh = parts[0].split(' ');
+        return { W: +wh[0], H: +wh[1], cells: parts[1].split('').map(un),
+            regions: parts[2].split(' ').map(function (t) { var type = TR[t[0]], rule = { type: type }; if (type === 'sum' || type === 'lt' || type === 'gt') rule.n = un(t[1]); return { rule: rule, cells: t.slice(2).split('').map(un) }; }),
+            dominoes: parts[3].match(/../g).map(function (x) { return [+x[0], +x[1]]; }) };
+    }
+    var api = { encode: encode, decode: decode, VERSION: 2, logicSolve: logicSolve, LEVELS: LEVELS, check: check, countSolutions: countSolutions, make: make, daily: daily, dayNumber: dayNumber };
     root.SpotOn = api;
     if (typeof module !== 'undefined') module.exports = api;
 })(typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : globalThis);
