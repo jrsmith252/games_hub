@@ -264,14 +264,14 @@
         function start(id, puzzle, code) {
             P = puzzle; pid = id; code0 = code; sel = -1; history = [];
             var prog = getJSON('spoton_progress', {})[id];
-            var dayRec = mode === 'daily' ? dailyRecord(level) : null;
+            var dayRec = mode === 'daily' ? dailyRecord(level) : practiceRecord(level, num);
             if (prog && Array.isArray(prog.placed) && prog.placed.length === P.dominoes.length) { placed = prog.placed; trayRot = prog.trayRot || P.dominoes.map(function () { return 0; }); hints = prog.hints | 0; elapsed = prog.elapsed || 0; }
             else { placed = P.dominoes.map(function () { return null; }); trayRot = P.dominoes.map(function () { return 0; }); hints = 0; elapsed = 0; }
             done = false;
             colourRegions();
             if (dayRec) {
                 done = true; elapsed = dayRec.time; hints = dayRec.hints;
-                if (dayRec.placed && dayRec.code === code) placed = dayRec.placed; else showAnswer();
+                if (dayRec.placed && (!dayRec.code || dayRec.code === code) && dayRec.placed.length === P.dominoes.length) placed = dayRec.placed; else showAnswer();
             }
             fit();
         }
@@ -451,9 +451,10 @@
             sub();
         }
         function nextDaily() { return LEVELS.filter(function (lv) { return lv !== level && !dailyRecord(lv); })[0] || null; }
+        function practiceRecord(lv, n) { var ps = getJSON('spoton_psolved_' + lv, {}); return ps && ps[n] ? ps[n] : null; }
         function doneText() {
             var how = 'Solved in ' + fmt(elapsed) + (hints ? ' with ' + hints + ' hint' + (hints === 1 ? '' : 's') : ' with no hints') + '. ';
-            if (mode === 'practice') return how.trim();
+            if (mode === 'practice') return how + 'Tap below for another ' + LNAME[level] + ' puzzle.';
             var left = LEVELS.filter(function (lv) { return !dailyRecord(lv); }).length;
             return how + (left ? 'Try the other difficulties, or practice mode. New daily puzzles tomorrow.' : 'That\'s all three for today! Come back tomorrow for new puzzles, or try practice mode.');
         }
@@ -603,7 +604,14 @@
             done = true; clearProgress();
             var o = stats(), st = o[mode][level];
             st.solved++; if (!hints) st.nohint++;
-            if (mode === 'practice') markPlayed(level, num);
+            if (mode === 'practice') {
+                markPlayed(level, num);
+                // remember the finished board, so coming back shows it solved rather than starting it again
+                var ps = getJSON('spoton_psolved_' + level, {}); if (!ps || typeof ps !== 'object') ps = {};
+                ps[num] = { time: elapsed, hints: hints, placed: placed, at: Date.now() };
+                var keys = Object.keys(ps).sort(function (a, b) { return ps[a].at - ps[b].at; }); keys.slice(0, Math.max(0, keys.length - 100)).forEach(function (k) { ps[k] = { time: ps[k].time, hints: ps[k].hints, at: ps[k].at }; });
+                setJSON('spoton_psolved_' + level, ps);
+            }
             if (!st.fastest || elapsed < st.fastest) st.fastest = elapsed;
             if (mode === 'daily') {
                 st.streak = st.last === today - 1 ? st.streak + 1 : st.last === today ? st.streak : 1; st.last = today; st.best = Math.max(st.best, st.streak);
