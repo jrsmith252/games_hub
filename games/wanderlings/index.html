@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wanderlings — Game Hub</title>
+    <link rel="stylesheet" href="../../shared/fonts.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --accent: #7ee0b5; --ink: #f2f5fb; --soft: #9fb0c8; --panel: rgba(8,14,30,0.75); --line: rgba(255,255,255,0.12); --warn: #ffb35c; }
+        html, body.fs { height: 100%; }
+        body { font-family: 'DM Sans', -apple-system, sans-serif; background: #0b1226; color: var(--ink); }
+        body.fs { overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        button { font: inherit; color: inherit; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top)); background: rgba(0,0,0,0.35); border-bottom: 3px solid var(--accent); }
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; flex: none; }
+        .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-block { flex: 1; text-align: center; min-width: 0; }
+        .game-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.3rem; color: var(--accent); }
+        .sub { font-size: 0.75rem; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+        .view { display: none; flex: 1; min-height: 0; flex-direction: column; }
+        .view.on { display: flex; }
+
+        /* ---------- level picker ---------- */
+        #levels { overflow-y: auto; padding: 14px 16px 28px; }
+        .lv-in { width: 100%; max-width: 520px; margin: 0 auto; }
+        .lv-in > p { color: var(--soft); font-size: 0.9rem; margin-bottom: 12px; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .lv { position: relative; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(160deg, #1b2b52, #121c38); padding: 10px 8px 8px; min-height: 92px; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+        .lv b { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+        .lv span { font-size: 0.72rem; color: var(--soft); line-height: 1.2; }
+        .lv .st { font-size: 0.85rem; letter-spacing: 1px; color: #ffd45c; }
+        .lv .st i { font-style: normal; color: rgba(255,255,255,0.18); }
+        .lv.next { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(126,224,181,0.25); }
+        .lv:disabled { cursor: default; opacity: 0.45; }
+        .lv:disabled b { font-size: 1.1rem; }
+
+        /* ---------- playing ---------- */
+        #play { gap: 0; }
+        .hud { display: flex; gap: 6px; padding: 6px 10px; flex: none; justify-content: center; flex-wrap: wrap; }
+        .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; white-space: nowrap; }
+        .chip small { color: var(--soft); font-weight: 600; }
+        .chip.good { border-color: var(--accent); color: var(--accent); }
+        .chip.low { border-color: var(--warn); color: var(--warn); }
+        .stage { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; }
+        #cv { display: block; touch-action: none; cursor: crosshair; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+        .paused-tag { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 0.8rem; border-radius: 999px; padding: 4px 12px; pointer-events: none; display: none; text-align: center; }
+        .paused-tag small { display: block; font-weight: 600; color: var(--soft); font-size: 0.7rem; }
+        .paused .paused-tag { display: block; }
+        .demo-tag { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: #ffd45c; font-weight: 800; font-size: 0.8rem; border-radius: 999px; padding: 4px 12px; pointer-events: none; display: none; }
+        .demo .demo-tag { display: block; }
+        #mini { display: block; margin: 4px auto 0; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; touch-action: none; flex: none; }
+        .tools { flex: none; padding: 6px 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); background: rgba(0,0,0,0.3); }
+        .skills { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; max-width: 560px; margin: 0 auto; }
+        .sk { position: relative; border: 2px solid var(--line); border-radius: 12px; background: #17223f; min-height: 58px; padding: 4px 0 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+        .sk svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .sk .nm { font-size: 0.6rem; font-weight: 700; color: var(--soft); }
+        .sk .ct { position: absolute; top: -6px; right: -3px; min-width: 20px; height: 20px; border-radius: 10px; background: #fff; color: #0b1226; font-weight: 800; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+        .sk.on { border-color: var(--accent); background: #1f3b4a; box-shadow: 0 0 0 2px rgba(126,224,181,0.3); }
+        .sk.on .nm { color: var(--accent); }
+        .sk:disabled { opacity: 0.3; cursor: default; }
+        .sk:disabled .ct { background: #556; color: #ccd; }
+        .ctrls { display: flex; gap: 6px; max-width: 560px; margin: 6px auto 0; }
+        .cb { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: #17223f; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .cb svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .cb.on { border-color: var(--accent); color: var(--accent); background: #1f3b4a; }
+        .cb.danger.arm { border-color: #ff6b6b; color: #ff8f8f; background: #3a1820; }
+
+        /* ---------- pop-ups ---------- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 16px; }
+        .modal-overlay.on { display: flex; }
+        .modal { width: 100%; max-width: 380px; background: linear-gradient(170deg, #1d2d55, #111a33); border: 1px solid var(--line); border-radius: 20px; padding: 18px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .modal h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 4px; }
+        .modal .kicker { font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--soft); font-weight: 700; }
+        .modal p { color: var(--soft); font-size: 0.92rem; line-height: 1.45; margin: 8px 0; }
+        .modal .goal { font-size: 1.05rem; color: var(--ink); font-weight: 700; }
+        .jobs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 8px 0; }
+        .jobs span { background: rgba(255,255,255,0.08); border-radius: 999px; padding: 3px 10px; font-size: 0.8rem; font-weight: 700; }
+        .big-stars { font-size: 2rem; letter-spacing: 4px; color: #ffd45c; margin: 4px 0; }
+        .big-stars i { font-style: normal; color: rgba(255,255,255,0.15); }
+        .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; border: 0; border-radius: 14px; background: var(--accent); color: #0b2a1e; font-weight: 800; font-size: 1rem; cursor: pointer; margin-top: 10px; }
+        .btn.ghost { background: rgba(255,255,255,0.1); color: var(--ink); font-weight: 700; margin-top: 8px; }
+        .how { text-align: left; }
+        .how li { margin: 0 0 8px 18px; color: var(--soft); font-size: 0.88rem; line-height: 1.4; }
+        .how li b { color: var(--ink); }
+        .toast { position: fixed; left: 50%; bottom: 190px; transform: translateX(-50%); background: rgba(0,0,0,0.85); border: 1px solid var(--line); color: #fff; padding: 8px 14px; border-radius: 18px; font-size: 0.88rem; font-weight: 600; z-index: 3000; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+        .toast.on { opacity: 1; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        @media (max-width: 380px) { .sk .nm { font-size: 0.54rem; } .sk svg { width: 21px; height: 21px; } }
+    </style>
+    <meta name="theme-color" content="#0b1226">
+    <meta name="hub-root" content="../../">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <link rel="icon" href="../../icons/icon-192.png">
+    <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+    <link rel="stylesheet" href="../../shared/base.css">
+    <script src="../../shared/hub.js"></script>
+</head>
+<body class="fs">
+    <header class="top-bar">
+        <a href="../../index.html" class="icon-btn" id="backBtn" aria-label="Back to Game Hub"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+        <div class="title-block"><div class="game-title">Wanderlings</div><div class="sub" id="sub">Get them home</div></div>
+        <button class="icon-btn" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><path d="M12 17.5v.01"/></svg></button>
+    </header>
+    <main>
+        <section class="view on" id="levels">
+            <div class="lv-in">
+                <p>They walk wherever their feet take them. Give them jobs so enough of them get home.</p>
+                <div class="grid" id="grid"></div>
+            </div>
+        </section>
+        <section class="view" id="play">
+            <div class="hud" id="hud" aria-live="off"></div>
+            <div class="stage" id="stage">
+                <canvas id="cv" aria-label="The level. Pick a job below, then tap a wanderling to give it the job."></canvas>
+                <div class="paused-tag">Paused<small>You can still give jobs</small></div>
+                <div class="demo-tag">Watching a solution</div>
+            </div>
+            <canvas id="mini" aria-label="Map of the whole level. Tap to look somewhere else."></canvas>
+            <div class="tools">
+                <div class="skills" id="skills"></div>
+                <div class="ctrls">
+                    <button class="cb" id="pauseBtn" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg><span>Pause</span></button>
+                    <button class="cb" id="fastBtn" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 6l7 6-7 6zM13 6l7 6-7 6z"/></svg><span>Fast</span></button>
+                    <button class="cb" id="restartBtn"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg><span>Restart</span></button>
+                    <button class="cb danger" id="nukeBtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="14" r="6"/><path d="M15 9l3-3M18 3v2M21 6h-2"/></svg><span>Give up</span></button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal-overlay" id="introM"><div class="modal">
+        <div class="kicker" id="iKick">Level 1</div>
+        <h2 id="iName"></h2>
+        <p class="goal" id="iGoal"></p>
+        <div class="jobs" id="iJobs"></div>
+        <p id="iHint"></p>
+        <button class="btn" id="iGo">Let them out</button>
+        <button class="btn ghost" id="iDemo">Watch a solution</button>
+        <button class="btn ghost" id="iBack">All levels</button>
+    </div></div>
+
+    <div class="modal-overlay" id="endM"><div class="modal">
+        <div class="kicker" id="eKick"></div>
+        <h2 id="eTitle"></h2>
+        <div class="big-stars" id="eStars"></div>
+        <p id="eText"></p>
+        <button class="btn" id="eMain"></button>
+        <button class="btn ghost" id="eAlt"></button>
+        <button class="btn ghost" id="eLevels">All levels</button>
+    </div></div>
+
+    <div class="modal-overlay" id="helpM"><div class="modal">
+        <h2>How to play</h2>
+        <ul class="how">
+            <li>Wanderlings drop out of the hatch and <b>keep walking</b>. They turn round at walls, step up small bumps and fall off edges. A long fall, or water, is the end of them.</li>
+            <li>Get enough of them to the <b>glowing door</b> before time runs out.</li>
+            <li><b>Pick a job</b> at the bottom, then <b>tap a wanderling</b> to give it that job. Each level gives you only a few.</li>
+            <li><b>Pause</b> whenever you like: you can still give jobs while paused, so there's no rush to get the timing right.</li>
+            <li>Drag the level, or tap the map underneath, to look around a big level.</li>
+            <li><b>Give up</b> ends the level (tap it twice). Every level has been checked with a real solution, and you can watch it from the level's start screen.</li>
+        </ul>
+        <h2 style="font-size:1.05rem;margin-top:8px">The jobs</h2>
+        <ul class="how" id="jobList"></ul>
+        <button class="btn" id="helpClose">Got it</button>
+    </div></div>
+    <div class="toast" id="toast" role="status"></div>
+
+    <script src="engine.js"></script>
+    <script src="levels.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var E = window.Wanderlings, LEVELS = window.WANDERLINGS_LEVELS, S = window.HubStorage;
+        var $ = function (id) { return document.getElementById(id); };
+        function getJSON(k, d) { try { var v = JSON.parse(S.getString(k, 'null')); return v === null ? d : v; } catch (e) { return d; } }
+        function setJSON(k, v) { S.setString(k, JSON.stringify(v)); }
+
+        var JOBS = {
+            climb: { name: 'Climber', icon: '<path d="M8 21V3M16 21V3M8 7h8M8 12h8M8 17h8"/>', about: 'climbs up any wall it walks into (and stays a climber)' },
+            float: { name: 'Floater', icon: '<path d="M3 11a9 7 0 0 1 18 0z"/><path d="M12 11v9a2 2 0 0 1-3 0"/>', about: 'opens a brolly and drifts down safely from any height (and stays a floater)' },
+            bomb: { name: 'Bomber', icon: '<circle cx="11" cy="14" r="6"/><path d="M15 9l3-3M18 3v2M21 6h-2"/>', about: 'blows up after 5 seconds, clearing the dirt around it. It doesn\'t make it home' },
+            block: { name: 'Blocker', icon: '<path d="M12 3v18M4 10h16"/><circle cx="12" cy="5" r="2"/>', about: 'stands still and turns everyone who walks into it around' },
+            build: { name: 'Builder', icon: '<path d="M3 20h5v-4h5v-4h5V8h3"/>', about: 'lays 12 steps going up. Give a builder another one while it\'s building to make the staircase longer' },
+            bash: { name: 'Basher', icon: '<path d="M4 12h10M10 7l5 5-5 5"/><path d="M19 5v14"/>', about: 'tunnels straight ahead through dirt' },
+            mine: { name: 'Miner', icon: '<path d="M5 5l14 14"/><path d="M12 19h7v-7"/>', about: 'tunnels down at a slant' },
+            dig: { name: 'Digger', icon: '<path d="M12 3v16M6 13l6 6 6-6"/>', about: 'digs straight down' }
+        };
+        $('jobList').innerHTML = E.SKILLS.map(function (k) { return '<li><b>' + JOBS[k].name + '</b> ' + JOBS[k].about + '.</li>'; }).join('');
+
+        // ---------- progress ----------
+        var prog = getJSON('wanderlings_progress', null);
+        if (!prog || typeof prog !== 'object') prog = { unlocked: 1, stars: {} };
+        if (!prog.stars || typeof prog.stars !== 'object') prog.stars = {};
+        prog.unlocked = Math.max(1, Math.min(LEVELS.length, prog.unlocked | 0));
+        function saveProg() { setJSON('wanderlings_progress', prog); }
+
+        // the best each level's own solution manages (for 3 stars)
+        var bestCache = {};
+        function best(n) { if (!(n in bestCache)) bestCache[n] = E.replay(LEVELS[n - 1], LEVELS[n - 1].solution).saved; return bestCache[n]; }
+        function starsFor(n, saved) {
+            var L = LEVELS[n - 1], b = Math.max(L.need, best(n));
+            if (saved < L.need) return 0;
+            if (saved >= b) return 3;
+            return saved >= Math.ceil((L.need + b) / 2) && saved > L.need ? 2 : 1;
+        }
+        function starStr(k) { var s = ''; for (var i = 0; i < 3; i++) s += i < k ? '★' : '<i>★</i>'; return s; }
+
+        function show(view) { ['levels', 'play'].forEach(function (v) { $(v).classList.toggle('on', v === view); }); }
+        function modal(id, on) { $(id).classList.toggle('on', !!on); }
+        var toastT = null;
+        function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, ms || 1600); }
+
+        function drawGrid() {
+            $('grid').innerHTML = LEVELS.map(function (L, i) {
+                var n = i + 1, locked = n > prog.unlocked, st = prog.stars[n] | 0;
+                if (locked) return '<button class="lv" disabled aria-label="Level ' + n + ', locked"><b>🔒</b><span>' + n + '</span></button>';
+                return '<button class="lv' + (n === prog.unlocked && !st ? ' next' : '') + '" data-n="' + n + '" aria-label="Level ' + n + ', ' + L.name + ', ' + st + ' stars"><b>' + n + '</b><span>' + L.name + '</span><div class="st">' + starStr(st) + '</div></button>';
+            }).join('');
+        }
+        $('grid').addEventListener('click', function (e) { var b = e.target.closest('.lv'); if (b && b.dataset.n) intro(+b.dataset.n); });
+
+        // ---------- a level ----------
+        var levelNo = 1, L = null, g = null, sel = null, paused = false, fast = false, demo = null, running = false;
+        var camX = 0, scale = 2, viewW = 0, viewH = 0, dpr = 1, parts = [], lastDead = 0, pops = [], hoverId = -1, moves = [];
+
+        function intro(n) {
+            levelNo = n; L = LEVELS[n - 1];
+            $('iKick').textContent = 'Level ' + n + ' of ' + LEVELS.length;
+            $('iName').textContent = L.name;
+            $('iGoal').textContent = 'Get ' + L.need + ' of ' + L.count + ' home in ' + fmtTime(L.time);
+            var jobs = E.SKILLS.filter(function (k) { return L.skills[k]; });
+            $('iJobs').innerHTML = jobs.length ? jobs.map(function (k) { return '<span>' + L.skills[k] + ' × ' + JOBS[k].name + '</span>'; }).join('') : '<span>No jobs needed</span>';
+            $('iHint').textContent = L.hint;
+            $('iDemo').style.display = L.solution.length ? '' : 'none';
+            modal('endM', false); modal('introM', true);
+            start(false); // draw it behind the card, ready to go
+            running = false;
+        }
+        $('iGo').onclick = function () { modal('introM', false); running = true; };
+        $('iDemo').onclick = function () { modal('introM', false); start(true); running = true; };
+        $('iBack').onclick = function () { modal('introM', false); toLevels(); };
+
+        function start(watch) {
+            L = LEVELS[levelNo - 1];
+            g = E.newGame(L); parts = []; pops = []; lastDead = 0; moves = []; hoverId = -1;
+            demo = watch ? L.solution.slice().sort(function (a, b) { return a[0] - b[0]; }) : null;
+            paused = false; fast = !!watch; acc = 0;
+            $('stage').classList.toggle('demo', !!watch);
+            sel = E.SKILLS.filter(function (k) { return L.skills[k]; })[0] || null;
+            $('sub').textContent = levelNo + '. ' + L.name;
+            show('play'); layout();
+            camX = clampCam(L.hatch[0] - viewW / scale / 3);
+            drawSkills(); drawCtrls(); hud(); draw();
+        }
+        function toLevels() { running = false; g = null; $('sub').textContent = 'Get them home'; drawGrid(); show('levels'); }
+
+        // ---------- the job buttons ----------
+        function drawSkills() {
+            $('skills').innerHTML = E.SKILLS.map(function (k) {
+                var n = g.skills[k];
+                return '<button class="sk' + (sel === k ? ' on' : '') + '" data-k="' + k + '"' + (n ? '' : ' disabled') + ' aria-pressed="' + (sel === k) + '" aria-label="' + JOBS[k].name + ', ' + n + ' left"><span class="ct">' + n + '</span><svg viewBox="0 0 24 24">' + JOBS[k].icon + '</svg><span class="nm">' + JOBS[k].name + '</span></button>';
+            }).join('');
+        }
+        $('skills').addEventListener('click', function (e) { var b = e.target.closest('.sk'); if (!b || b.disabled || demo) return; sel = b.dataset.k; drawSkills(); });
+        function drawCtrls() {
+            $('pauseBtn').classList.toggle('on', paused); $('pauseBtn').setAttribute('aria-pressed', paused); $('pauseBtn').querySelector('span').textContent = paused ? 'Resume' : 'Pause';
+            $('pauseBtn').querySelector('svg').innerHTML = paused ? '<path d="M7 5l12 7-12 7z"/>' : '<path d="M9 6v12M15 6v12"/>';
+            $('fastBtn').classList.toggle('on', fast); $('fastBtn').setAttribute('aria-pressed', fast);
+            $('stage').classList.toggle('paused', paused);
+        }
+        $('pauseBtn').onclick = function () { if (!g || g.over) return; paused = !paused; drawCtrls(); };
+        $('fastBtn').onclick = function () { fast = !fast; drawCtrls(); };
+        $('restartBtn').onclick = function () { if (!g) return; disarm(); start(false); running = true; };
+        var armT = null;
+        function disarm() { clearTimeout(armT); $('nukeBtn').classList.remove('arm'); $('nukeBtn').querySelector('span').textContent = 'Give up'; }
+        $('nukeBtn').onclick = function () {
+            if (!g || g.over) return;
+            var b = $('nukeBtn');
+            if (!b.classList.contains('arm')) { b.classList.add('arm'); b.querySelector('span').textContent = 'Tap again'; armT = setTimeout(disarm, 2500); return; }
+            disarm(); E.nuke(g); paused = false; drawCtrls();
+        };
+
+        function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+        var lastHud = '';
+        function hud() {
+            var out = g.spawned, left = (g.limit - g.tick) / E.TPS, ok = g.saved >= L.need;
+            var h = '<span class="chip">Out <b>' + out + '</b><small>/' + L.count + '</small></span>' +
+                '<span class="chip' + (ok ? ' good' : '') + '">Home <b>' + g.saved + '</b><small> · need ' + L.need + '</small></span>' +
+                '<span class="chip' + (left < 30 ? ' low' : '') + '">⏱ ' + fmtTime(left) + '</span>';
+            if (h !== lastHud) { $('hud').innerHTML = h; lastHud = h; }
+        }
+
+        // ---------- sizing ----------
+        var cv = $('cv'), ctx = cv.getContext('2d'), mini = $('mini'), mctx = mini.getContext('2d');
+        var terr = document.createElement('canvas'), tctx = terr.getContext('2d'), img = null, buf = null;
+        function layout() {
+            if (!g) return;
+            var st = $('stage'), aw = st.clientWidth, ah = st.clientHeight;
+            dpr = Math.min(3, window.devicePixelRatio || 1);
+            // fill the height if we can, but always show at least about 190 across, and never more than the level
+            scale = Math.min(ah / g.H, aw / Math.min(g.W, 190));
+            scale = Math.max(1, scale);
+            viewW = Math.min(aw, Math.floor(g.W * scale)); viewH = Math.floor(g.H * scale);
+            cv.style.width = viewW + 'px'; cv.style.height = viewH + 'px';
+            cv.width = Math.round(viewW * dpr); cv.height = Math.round(viewH * dpr);
+            terr.width = g.W; terr.height = g.H; img = tctx.createImageData(g.W, g.H); buf = new Uint32Array(img.data.buffer);
+            // the map underneath, only when the level doesn't fit
+            var needMini = g.W * scale > aw + 1;
+            mini.style.display = needMini ? 'block' : 'none';
+            if (needMini) { var mh = 46, mw = Math.min(aw - 20, Math.round(mh * g.W / g.H)); mini.style.width = mw + 'px'; mini.style.height = mh + 'px'; mini.width = Math.round(mw * dpr); mini.height = Math.round(mh * dpr); }
+            camX = clampCam(camX);
+        }
+        function clampCam(x) { return Math.max(0, Math.min(g.W - viewW / scale, x)); }
+        window.addEventListener('resize', function () { layout(); if (g) draw(); });
+
+        // ---------- colours ----------
+        function rgba(r, gg, b) { return (255 << 24) | (b << 16) | (gg << 8) | r; }
+        var noise = null;
+        function makeNoise() { noise = new Uint8Array(g.W * g.H); for (var i = 0; i < noise.length; i++) { var h = (i * 2654435761) >>> 0; h ^= h >>> 13; h = (h * 1274126177) >>> 0; noise[i] = h & 255; } }
+        var DIRTS = [rgba(150, 92, 52), rgba(139, 84, 47), rgba(161, 101, 58), rgba(128, 76, 43)];
+        var GRASS = [rgba(96, 186, 84), rgba(78, 166, 72)];
+        var STEELS = [rgba(132, 146, 166), rgba(118, 132, 152)], RIVET = rgba(190, 202, 220), STEEL_EDGE = rgba(88, 100, 120);
+        function paintTerrain() {
+            if (!noise || noise.length !== g.W * g.H) makeNoise();
+            var W = g.W, H = g.H, t = g.t;
+            for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+                var i = y * W + x, v = t[i];
+                if (v === 0) { buf[i] = 0; continue; }
+                if (v === 1) {
+                    var top = y === 0 || t[i - W] === 0, top2 = y > 1 && t[i - 2 * W] === 0;
+                    buf[i] = top ? GRASS[noise[i] & 1] : top2 ? GRASS[1] : DIRTS[noise[i] & 3];
+                } else {
+                    var edge = (x > 0 && t[i - 1] !== 2) || (x < W - 1 && t[i + 1] !== 2) || (y > 0 && t[i - W] !== 2) || (y < H - 1 && t[i + W] !== 2);
+                    buf[i] = edge ? STEEL_EDGE : ((x % 6 === 2 && y % 6 === 2) ? RIVET : STEELS[((x / 6 | 0) + (y / 6 | 0)) & 1]);
+                }
+            }
+            tctx.putImageData(img, 0, 0);
+        }
+
+        // ---------- drawing ----------
+        var BODY = '#8a6cff', HAT = '#2fd0a8', SKIN = '#ffd6a6', BOOT = '#3a2a55';
+        function draw() {
+            if (!g) return;
+            paintTerrain();
+            var s = scale * dpr, W = cv.width, H = cv.height;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            var sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#16224a'); sky.addColorStop(1, '#0a1022');
+            ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+            ctx.setTransform(s, 0, 0, s, -camX * s, 0);
+            // far-off stars, drifting slower than the ground
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            for (var k = 0; k < 40; k++) { var sx = ((k * 97) % g.W) + camX * 0.6, sy = (k * 53) % 70; ctx.fillRect(sx, sy, 0.6, 0.6); }
+            // the hatch
+            var hx = L.hatch[0], hy = L.hatch[1];
+            ctx.fillStyle = '#5a4630'; ctx.fillRect(hx - 9, hy - 14, 18, 6);
+            ctx.fillStyle = '#2a1f14'; ctx.fillRect(hx - 6, hy - 8, 12, 2);
+            ctx.fillStyle = '#8a6c48'; ctx.fillRect(hx - 9, hy - 15, 18, 1.5);
+            // water
+            var tw = performance.now() / 400;
+            (L.water || []).forEach(function (w) {
+                ctx.fillStyle = '#1d5fb8'; ctx.fillRect(w[0], w[1] + 2, w[2], w[3] - 2);
+                ctx.fillStyle = '#4fa3ff';
+                for (var x = w[0]; x < w[0] + w[2]; x++) { var yy = w[1] + 1 + Math.sin(x * 0.6 + tw) * 1; ctx.fillRect(x, yy, 1, 1.5); }
+            });
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(terr, 0, 0);
+            // the way home
+            var ex = L.exit[0], ey = L.exit[1], glow = 0.6 + 0.4 * Math.sin(performance.now() / 250);
+            ctx.fillStyle = '#6b4a2a'; ctx.fillRect(ex - 7, ey - 14, 14, 15);
+            ctx.fillStyle = 'rgba(255,214,92,' + (0.55 + 0.35 * glow) + ')'; ctx.fillRect(ex - 4.5, ey - 11, 9, 12);
+            ctx.fillStyle = '#ffe9a8'; ctx.fillRect(ex - 2.5, ey - 9, 5, 10);
+            ctx.fillStyle = '#e25b5b'; ctx.fillRect(ex + 6, ey - 20, 4, 3); ctx.fillStyle = '#ddd'; ctx.fillRect(ex + 6, ey - 20, 0.7, 8);
+            // the wanderlings
+            g.all.forEach(function (c) { if (c.alive) drawOne(c); });
+            // bits flying about
+            parts.forEach(function (p) { ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, p.s, p.s); });
+            pops.forEach(function (p) { ctx.globalAlpha = Math.max(0, p.life / 20); ctx.fillStyle = p.c; ctx.font = 'bold 7px DM Sans, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(p.t, p.x, p.y); });
+            ctx.globalAlpha = 1;
+            // who you'd give the job to
+            if (hoverId >= 0 && g.all[hoverId] && g.all[hoverId].alive && !demo) {
+                var hc = g.all[hoverId]; ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.7; ctx.strokeRect(hc.x - 6, hc.y - 15, 12, 16);
+            }
+            drawMini();
+        }
+        function drawOne(c) {
+            var x = c.x, y = c.y + 1, d = c.dir, f = (c.frame >> 1) & 3, st = c.st;
+            var floating = st === 'fall' && c.floater && c.fall >= 14;
+            // drawn a little bigger than they really are, so they're easy to see and tap
+            ctx.save(); ctx.translate(x, y); ctx.scale(1.35, 1.35); ctx.translate(-x, -y);
+            // brolly
+            if (floating) { ctx.fillStyle = '#ff7a59'; ctx.beginPath(); ctx.arc(x, y - 9, 5, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#eee'; ctx.fillRect(x - 0.3, y - 9, 0.6, 4); }
+            // boots
+            ctx.fillStyle = BOOT;
+            if (st === 'walk' && f % 2) { ctx.fillRect(x - 2, y - 1, 1.5, 1); ctx.fillRect(x + 0.5, y - 1.5, 1.5, 1); }
+            else ctx.fillRect(x - 1.5, y - 1, 3, 1);
+            // body
+            ctx.fillStyle = BODY; ctx.fillRect(x - 1.5, y - 5, 3, 4);
+            // head
+            ctx.fillStyle = SKIN; ctx.fillRect(x - 1.5, y - 7.5, 3, 2.5);
+            ctx.fillStyle = '#222'; ctx.fillRect(x + (d > 0 ? 0.6 : -1.2), y - 6.8, 0.6, 0.8);
+            // pointy hat, tip trailing behind
+            ctx.fillStyle = c.climber && c.floater ? '#ffd45c' : c.climber ? '#ff9e3d' : c.floater ? '#ff7a59' : HAT;
+            ctx.beginPath(); ctx.moveTo(x - 2, y - 7.5); ctx.lineTo(x + 2, y - 7.5); ctx.lineTo(x - d * 2, y - 11); ctx.closePath(); ctx.fill();
+            // arms, by job
+            ctx.fillStyle = SKIN;
+            if (st === 'block') { ctx.fillRect(x - 4, y - 5, 2.5, 1); ctx.fillRect(x + 1.5, y - 5, 2.5, 1); }
+            else if (st === 'fall' && !floating) { ctx.fillRect(x - 2.5, y - 8, 1, 2); ctx.fillRect(x + 1.5, y - 8, 1, 2); }
+            else if (floating) { ctx.fillRect(x - 0.5, y - 7.5, 1, 2); }
+            else if (st === 'climb') { ctx.fillRect(x + d * 1.5, y - 7 + (f & 1), 1, 1); }
+            else if (st === 'build') { ctx.fillStyle = '#c98b52'; ctx.fillRect(x + d * 1.5 - (d < 0 ? 2 : 0), y - 4, 2, 1); }
+            else if (st === 'bash') { ctx.fillRect(x + d * (1.5 + (f & 1)) - (d < 0 ? 1.5 : 0), y - 4, 1.5, 1); }
+            else if (st === 'mine' || st === 'dig') { ctx.fillStyle = '#ccd'; ctx.fillRect(x + d * 1.5 - (d < 0 ? 1 : 0), y - 5 + (f & 1), 1, 4); }
+            else if (st === 'shrug') { ctx.fillRect(x - 2.5, y - 6, 1, 1); ctx.fillRect(x + 1.5, y - 6, 1, 1); }
+            // fuse countdown
+            if (c.bombAt >= 0) {
+                var n = Math.ceil((c.bombAt - g.tick) / E.TPS);
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 6px DM Sans, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(Math.max(0, n)), x, y - 12);
+            }
+            ctx.restore();
+        }
+        function drawMini() {
+            if (mini.style.display === 'none') return;
+            var mw = mini.width, mh = mini.height, k = mw / g.W;
+            mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.fillStyle = '#0d1530'; mctx.fillRect(0, 0, mw, mh);
+            mctx.imageSmoothingEnabled = true; mctx.drawImage(terr, 0, 0, mw, mh);
+            (L.water || []).forEach(function (w) { mctx.fillStyle = '#2f7be0'; mctx.fillRect(w[0] * k, w[1] * k, w[2] * k, w[3] * k); });
+            mctx.fillStyle = '#ffd45c'; mctx.fillRect((L.exit[0] - 4) * k, (L.exit[1] - 10) * k, 8 * k, 10 * k);
+            mctx.fillStyle = '#b9a6ff'; g.all.forEach(function (c) { if (c.alive) mctx.fillRect((c.x - 1) * k, (c.y - 6) * k, Math.max(2, 2 * k), Math.max(3, 6 * k)); });
+            mctx.strokeStyle = '#fff'; mctx.lineWidth = Math.max(1, dpr); mctx.strokeRect(camX * k + 1, 1, viewW / scale * k - 2, mh - 2);
+        }
+
+        // ---------- effects ----------
+        function effects() {
+            // anything newly dug, blown up or lost
+            g.all.forEach(function (c) {
+                if (c.alive || c.fx) return; c.fx = true;
+                if (c.home) pops.push({ x: L.exit[0], y: L.exit[1] - 16, t: '+1', c: '#7ee0b5', life: 24 });
+                else if (c.how === 'bomb') { for (var i = 0; i < 26; i++) { var a = Math.random() * 6.28, v = 0.6 + Math.random() * 1.8; parts.push({ x: c.x, y: c.y - 4, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.8, s: 1 + Math.random(), c: i % 3 ? '#a8653a' : (i % 2 ? '#ffd45c' : '#ff7a59'), life: 30 }); } }
+                else if (c.how === 'splat' || c.how === 'drown') { for (var j = 0; j < 10; j++) parts.push({ x: c.x, y: c.y - 1, vx: (Math.random() - 0.5) * 1.6, vy: -Math.random() * 1.6, s: 0.8, c: c.how === 'drown' ? '#8fd0ff' : BODY, life: 18 }); }
+            });
+        }
+        function moveFx() {
+            parts = parts.filter(function (p) { p.x += p.vx; p.y += p.vy; p.vy += 0.12; return --p.life > 0; });
+            pops = pops.filter(function (p) { p.y -= 0.3; return --p.life > 0; });
+        }
+
+        // ---------- the clock ----------
+        var acc = 0, lastT = 0;
+        function frame(t) {
+            requestAnimationFrame(frame);
+            var dt = Math.min(100, t - (lastT || t)); lastT = t;
+            if (!g || !running || document.hidden) return;
+            if (!paused && !g.over) {
+                acc += dt * (fast ? 3 : 1);
+                var stepMs = 1000 / E.TPS, n = 0;
+                while (acc >= stepMs && n < 8 && !g.over) {
+                    acc -= stepMs; n++;
+                    if (demo) while (demo.length && demo[0][0] <= g.tick) { var m = demo.shift(); if (E.assign(g, m[1], m[2])) flash(m[1], m[2]); drawSkills(); }
+                    E.step(g); effects();
+                }
+                if (g.over) finish();
+            }
+            // when watching a solution, keep the one in front on screen
+            if (demo !== null && !drag) {
+                var lead = null; g.all.forEach(function (c) { if (c.alive && c.st !== 'block' && (!lead || Math.abs(c.x - L.exit[0]) < Math.abs(lead.x - L.exit[0]))) lead = c; });
+                if (lead) { var want = clampCam(lead.x - viewW / scale / 2); camX += (want - camX) * 0.08; }
+            }
+            moveFx(); hud(); draw();
+        }
+        requestAnimationFrame(frame);
+        function flash(id, skill) { var c = g.all[id]; if (c) pops.push({ x: c.x, y: c.y - 13, t: JOBS[skill].name, c: '#ffd45c', life: 26 }); }
+
+        // ---------- tapping and dragging ----------
+        var drag = null;
+        function toGame(e) { var r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / scale + camX, y: (e.clientY - r.top) / scale }; }
+        function candidates(p) {
+            var reach = Math.max(10, 22 / scale);
+            return g.all.filter(function (c) { return c.alive; }).map(function (c) { var dx = c.x - p.x, dy = (c.y - 4) - p.y; return { c: c, d: dx * dx + dy * dy }; })
+                .filter(function (o) { return o.d <= reach * reach; }).sort(function (a, b) { return a.d - b.d; }).map(function (o) { return o.c; });
+        }
+        cv.addEventListener('pointerdown', function (e) { if (!g) return; drag = { x: e.clientX, cam: camX, moved: false, id: e.pointerId }; try { cv.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ } });
+        cv.addEventListener('pointermove', function (e) {
+            if (!g) return;
+            if (drag && drag.id === e.pointerId) {
+                if (Math.abs(e.clientX - drag.x) > 8) drag.moved = true;
+                if (drag.moved) { camX = clampCam(drag.cam - (e.clientX - drag.x) / scale); if (paused || !running) draw(); }
+            }
+            if (e.pointerType === 'mouse') { var list = candidates(toGame(e)); hoverId = list.length ? list[0].id : -1; if (paused) draw(); }
+        });
+        cv.addEventListener('pointerup', function (e) {
+            if (!g || !drag || drag.id !== e.pointerId) return;
+            var moved = drag.moved; drag = null;
+            if (!moved) tap(toGame(e));
+        });
+        cv.addEventListener('pointercancel', function () { drag = null; });
+        function tap(p) {
+            if (g.over || demo || !running) return;
+            if (!sel) { toast('No jobs on this level: just watch'); return; }
+            if (!g.skills[sel]) { toast('No ' + JOBS[sel].name.toLowerCase() + 's left'); return; }
+            var list = candidates(p);
+            if (!list.length) { toast('Tap right on a wanderling'); return; }
+            for (var i = 0; i < list.length; i++) {
+                if (E.assign(g, list[i].id, sel)) { moves.push([g.tick, list[i].id, sel]); flash(list[i].id, sel); drawSkills(); if (paused) draw(); if (!g.skills[sel]) autoPick(); return; }
+            }
+            toast(whyNot(list[0], sel), 2000);
+        }
+        function autoPick() { var k = E.SKILLS.filter(function (s) { return g.skills[s]; }); if (k.length && k.indexOf(sel) < 0) { sel = k[0]; drawSkills(); } }
+        function whyNot(c, k) {
+            if (k === 'climb' && c.climber) return 'That one\'s already a climber';
+            if (k === 'float' && c.floater) return 'That one\'s already a floater';
+            if (k === 'bomb' && c.bombAt >= 0) return 'That one\'s already a bomber';
+            if (c.st === 'fall' || c.st === 'climb') return 'Wait until it\'s on its feet';
+            if (c.st === 'block') return 'Blockers stay put';
+            if (k === 'bash') return 'Nothing to bash through just ahead';
+            if (k === 'dig') return 'Nothing to dig into there';
+            return 'It\'s already doing that';
+        }
+        mini.addEventListener('pointerdown', function (e) { if (!g) return; var r = mini.getBoundingClientRect(); camX = clampCam((e.clientX - r.left) / r.width * g.W - viewW / scale / 2); if (paused || !running) draw(); });
+        window.addEventListener('keydown', function (e) {
+            if (!g || $('play').className.indexOf('on') < 0) return;
+            if (e.key === ' ' || e.key === 'p') { e.preventDefault(); $('pauseBtn').click(); }
+            else if (e.key === 'f') $('fastBtn').click();
+            else if (e.key === 'ArrowLeft') { camX = clampCam(camX - 30); }
+            else if (e.key === 'ArrowRight') { camX = clampCam(camX + 30); }
+            else { var n = +e.key; if (n >= 1 && n <= 8) { var k = E.SKILLS[n - 1]; if (g.skills[k]) { sel = k; drawSkills(); } } }
+        });
+        // leaving the app mid-level pauses it
+        if (window.HubPause) window.HubPause.onChange(function (hidden) { if (hidden && g && running && !g.over && !demo) { paused = true; drawCtrls(); } });
+
+        // ---------- the end ----------
+        function finish() {
+            running = false; paused = false; drawCtrls();
+            var won = g.saved >= L.need, stars = won ? starsFor(levelNo, g.saved) : 0, wasDemo = !!demo;
+            setTimeout(function () {
+                $('eKick').textContent = 'Level ' + levelNo + ' · ' + L.name;
+                if (wasDemo) {
+                    $('eTitle').textContent = 'That\'s one way';
+                    $('eStars').innerHTML = '';
+                    $('eText').textContent = g.saved + ' of ' + L.count + ' made it home. Now you try (there\'s often more than one way).';
+                    $('eMain').textContent = 'My turn'; $('eMain').onclick = function () { modal('endM', false); start(false); running = true; };
+                    $('eAlt').textContent = 'Watch again'; $('eAlt').onclick = function () { modal('endM', false); start(true); running = true; };
+                } else if (won) {
+                    var before = prog.stars[levelNo] | 0;
+                    if (stars > before) prog.stars[levelNo] = stars;
+                    if (levelNo < LEVELS.length && prog.unlocked < levelNo + 1) prog.unlocked = levelNo + 1;
+                    saveProg();
+                    $('eTitle').textContent = stars === 3 ? 'Perfect!' : 'Home safe!';
+                    $('eStars').innerHTML = starStr(stars);
+                    $('eText').textContent = g.saved + ' of ' + L.count + ' made it home (you needed ' + L.need + ').' + (stars < 3 ? ' Save ' + Math.max(L.need, best(levelNo)) + ' for three stars.' : '');
+                    if (levelNo < LEVELS.length) { $('eMain').textContent = 'Next level →'; $('eMain').onclick = function () { modal('endM', false); intro(levelNo + 1); }; }
+                    else { $('eMain').textContent = 'You\'ve done them all!'; $('eMain').onclick = function () { modal('endM', false); toLevels(); }; }
+                    $('eAlt').textContent = 'Play again'; $('eAlt').onclick = function () { modal('endM', false); start(false); running = true; };
+                    if (stars === 3 && window.confettiBurst) window.confettiBurst();
+                } else {
+                    $('eTitle').textContent = g.tick >= g.limit ? 'Out of time' : 'Not enough made it';
+                    $('eStars').innerHTML = starStr(0);
+                    $('eText').textContent = g.saved + ' of ' + L.count + ' got home, and you needed ' + L.need + '. ' + L.hint;
+                    $('eMain').textContent = 'Try again'; $('eMain').onclick = function () { modal('endM', false); start(false); running = true; };
+                    $('eAlt').textContent = 'Watch a solution'; $('eAlt').onclick = function () { modal('endM', false); start(true); running = true; };
+                    $('eAlt').style.display = L.solution.length ? '' : 'none';
+                }
+                if (wasDemo || won) $('eAlt').style.display = '';
+                modal('endM', true);
+            }, 700);
+        }
+        $('eLevels').onclick = function () { modal('endM', false); toLevels(); };
+
+        $('helpBtn').onclick = function () { if (g && running && !g.over && !demo) { paused = true; drawCtrls(); } modal('helpM', true); };
+        $('helpClose').onclick = function () { modal('helpM', false); };
+        document.querySelectorAll('.modal-overlay').forEach(function (m) { m.addEventListener('click', function (e) { if (e.target === m && m.id === 'helpM') modal('helpM', false); }); });
+
+        if (window.HubNoSwipeBack) window.HubNoSwipeBack(document.querySelector('main'), { onBlocked: function () { toast('Tap ‹ at the top left to leave the game', 2200); } });
+
+        // for the automated tests
+        window.WanderlingsView = { game: function () { return g; }, cam: function () { return { x: camX, scale: scale }; } };
+
+        drawGrid();
+        // first time here: straight into level 1
+        if (!S.getFlag('wanderlings_seen')) { S.setFlag('wanderlings_seen', true); intro(1); }
+    })();
+    </script>
+</body>
+</html>

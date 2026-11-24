@@ -8,6 +8,25 @@
      friends  true if it can be played against friends (shows under the Play a friend filter) */
 window.HUB_GAMES = [
  {
+  "slug": "wanderlings",
+  "name": "Wanderlings",
+  "blurb": "Give them jobs to get them home",
+  "about": "Little wanderlings walk wherever their feet take them, even into water. Give them jobs (climbing, floating, building, digging, tunnelling, blocking) so enough of them make it home. 15 levels, each one checked with a real solution you can watch. Pause any time: you can still give jobs while paused.",
+  "icon": "🧙",
+  "bg": "linear-gradient(135deg, #3fbf8f, #1b2b52)",
+  "cat": "puzzle",
+  "tags": [
+   "Levels",
+   "Lemmings-style"
+  ],
+  "fresh": 21,
+  "progress": [
+   "wanderlings_progress",
+   "unlocked",
+   "Level"
+  ]
+ },
+ {
   "slug": "flip-side",
   "name": "Flip Side",
   "blurb": "Flip your friend's discs, or the computer's",
